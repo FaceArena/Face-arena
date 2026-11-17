@@ -457,7 +457,7 @@ return "data:image/svg+xml,"+encodeURIComponent(svg)}
 
 const MAX_ACTIVE=3, MAX_SIZE=5*1024*1024, MATCH_SEC=10, STAGE_SEC=150, MAX_BATTLES=10;
 const ACTIVE_STATUSES=new Set(["queued","matched","confirmed","voting","champion"]);
-const LS_KEY="face_arena_v3";
+const LS_KEY="face_arena_demo_v2";
 let photos=[];
 let arenaBattles=[];
 let history=[];
@@ -794,7 +794,7 @@ function tryFillSlots(){
     if(!assignment)break;
     const p=photos.find(x=>String(x.id)===String(assignment.photoId));
     const lane=arenaBattles.find(x=>String(x.id)===String(assignment.laneId));
-    if(!p||!lane)break;
+    if(!p||!lane||!lane.championPhotoId)break;
     p.status="matched";p.targetLaneId=lane.id;p.matchedAt=now;p.matchDeadline=now+MATCH_SEC*1000;
     if(lane.championPhotoId){
       p.opponentName=lane.championName||"Чемпион";p.opponentImg=lane.championImg||face(1,"B");
