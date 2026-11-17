@@ -1471,21 +1471,21 @@ function renderSettings(){
       <button type="button" class="settings-back" id="backFromSound">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Звук</h2>
       <div class="set-row">
-        <div><div class="lbl">Звуковые эффекты</div><div class="sub">Звуки интерфейса и баттлов</div></div>
+        <div><div class="lbl">Игровые звуки</div><div class="sub">Только победы, чемпионские титулы и поражения</div></div>
         <button type="button" class="set-toggle" id="togSound" aria-label="Звуковые эффекты" aria-pressed="true"></button>
       </div>
       <div class="set-row" style="display:block">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
-          <div><div class="lbl">Громкость</div><div class="sub">Общая громкость эффектов</div></div>
+          <div><div class="lbl">Громкость</div><div class="sub">Громкость игровых эффектов</div></div>
           <strong id="soundVolumeValue" style="font-variant-numeric:tabular-nums">65%</strong>
         </div>
         <input id="soundVolume" type="range" min="0" max="100" step="5" value="65" aria-label="Громкость звуковых эффектов" style="width:100%;margin:14px 0 4px;accent-color:var(--blue);touch-action:pan-y">
       </div>
       <div class="set-row">
-        <div><div class="lbl">Проверка звука</div><div class="sub">Короткий пример гибридного звучания</div></div>
+        <div><div class="lbl">Проверка звука</div><div class="sub">Прослушать главный эффект победы</div></div>
         <button type="button" class="menu-item" id="soundPreview" style="width:auto;min-width:100px;padding:10px 14px;border:1px solid #292929;border-radius:10px">Прослушать</button>
       </div>
-      <p class="set-info">Настройки сохраняются на этом устройстве. На iPhone звук активируется после первого нажатия. Музыка не используется.</p>
+      <p class="set-info">Звуки интерфейса отключены. Акцент — на победе и чемпионских моментах. На iPhone звук активируется после первого нажатия.</p>
     </div>
 
     <div id="setSubNotifications" class="settings-sub">
