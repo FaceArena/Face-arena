@@ -239,7 +239,7 @@
             redName: leftPhoto?.name || "—", blueName: rightPhoto?.name || "—",
             redImg: leftPhoto?.dataUrl || "", blueImg: rightPhoto?.dataUrl || "",
             redPhotoId: leftPhoto?.id || null, bluePhotoId: rightPhoto?.id || null,
-            userPhotoId: me?.photo_id || null, userSide: me?.side === "left" ? "R" : me?.side === "right" ? "B" : null,
+            userPhotoId: me?.photo_id || null, isParticipant: !!me, userSide: me?.side === "left" ? "R" : me?.side === "right" ? "B" : null,
             championPhotoId: battle?.opening ? null : lane.champion_photo_id,
             championSide: !battle ? (champ ? "R" : null) : !battle.opening && champ ? (leftPhoto?.id === champ.id ? "R" : rightPhoto?.id === champ.id ? "B" : null) : null,
             championName: !battle?.opening ? champ?.name || null : null,
