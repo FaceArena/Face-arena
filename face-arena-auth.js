@@ -93,6 +93,7 @@
       const { data, error } = await sb.auth.getSession();
       if (error) throw error;
       await updateSession(data.session);
+      mount();
       const { data: listener } = sb.auth.onAuthStateChange((event, session) => {
         currentSession = session || null;
         // Defer database reads outside the auth callback to avoid holding its internal lock.
@@ -158,6 +159,7 @@
       const { error } = await client.auth.signOut();
       if (error) throw error;
       await updateSession(null);
+      if (typeof window.clearFaceArenaCloudProfile === "function") window.clearFaceArenaCloudProfile();
       setStatus("Вы вышли из аккаунта. Гостевой профиль остался на этом устройстве.", false);
     } catch (error) { setStatus(friendlyError(error), true); }
   }
