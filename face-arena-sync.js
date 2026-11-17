@@ -448,7 +448,9 @@
         const { error: storageError } = await this.client.storage.from("arena-photos").remove([photo.objectPath]);
         if (storageError) console.warn("[FACE ARENA storage cleanup]", storageError);
       }
+      const coordinator = await this.wakeSafely();
       await this.loadSnapshot();
+      return coordinator;
     }
 
     async updateProfile(name,handle) {
