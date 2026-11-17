@@ -555,6 +555,14 @@ function createDefaultArena(){
 (function initArena(){
   if(!loadState()){
     arenaBattles=createDefaultArena();
+  } else {
+    // Recover demo lanes that were cancelled by an older build.
+    const now=Date.now();
+    arenaBattles.forEach(b=>{
+      if(b.isMock&&!b.userPhotoId&&!b.demoShowcase&&b.stage==="cancelled"){
+        resetMockBattle(b,now);
+      }
+    });
   }
   // One-time visual demo: two fictional contestants, BLUE wins after 3 seconds.
   if(!demoVictoryPreviewDone && !arenaBattles.some(x=>!!x.userPhotoId) && arenaBattles.length){
@@ -706,10 +714,25 @@ function ensureStats(photoId, name, img){
   if(!participantStats[k]) participantStats[k]={wins:0,losses:0,defenses:0,bestStreak:0,currentStreak:0,name:name||"Участник",img:img||"",isChampion:false,laneId:null};
   return participantStats[k];
 }
+function resetMockBattle(b,now){
+  // Demo-only lanes are reusable; never recycle a real user's battle.
+  b.stage="w";
+  b.stageStarted=now;
+  b.stageEnd=now+STAGE_SEC*1000;
+  b.totalStage=STAGE_SEC;
+  b.redVotes=0;
+  b.blueVotes=0;
+  b.battleUid=newBattleUid();
+  b._finalized=false;
+  b.victoryPending=false;
+  b.victoryShown=false;
+  return true;
+}
 function finishBattle(b,now){
   if(b.stage!=="w"&&b.stage!=="v")return false;
-  if(b._finalized)return false; // prevent double processing
+  if(b._finalized)return false;
   if(b.stage==="w"){
+    if(b.isMock&&!b.userPhotoId&&!b.demoShowcase)return resetMockBattle(b,now);
     b.stage="cancelled";b._finalized=true;
     if(b.userPhotoId){const p=photos.find(x=>String(x.id)===String(b.userPhotoId));if(p){p.status="cancelled";p.completedAt=now;p.battleId=null}}
     // champion stays if had one and was waiting without challenger finish
@@ -717,6 +740,7 @@ function finishBattle(b,now){
   }
   const tot=b.redVotes+b.blueVotes;
   if(tot===0){
+    if(b.isMock&&!b.userPhotoId&&!b.demoShowcase)return resetMockBattle(b,now);
     b.stage="cancelled";b._finalized=true;
     if(b.userPhotoId){const p=photos.find(x=>String(x.id)===String(b.userPhotoId));if(p){p.status="cancelled";p.completedAt=now;p.battleId=null}}
     return true;
