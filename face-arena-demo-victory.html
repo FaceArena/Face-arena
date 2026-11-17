@@ -1396,11 +1396,13 @@ function renderSettings(){
 
     <div id="setMain">
       <ul class="settings-menu-list">
-        <li><button type="button" class="menu-item" data-go="profile">Профиль</button></li>
-        <li><button type="button" class="menu-item" data-go="anim">Анимации</button></li>
+        <li><button type="button" class="menu-item" data-go="profile">Аккаунт и профиль</button></li>
+        <li><button type="button" class="menu-item" data-go="appearance">Внешний вид</button></li>
+        <li><button type="button" class="menu-item" data-go="sound">Звук</button></li>
+        <li><button type="button" class="menu-item" data-go="notifications">Уведомления</button></li>
+        <li><button type="button" class="menu-item" data-go="privacy">Приватность и безопасность</button></li>
         <li><button type="button" class="menu-item" data-go="data">Данные</button></li>
-        <li><button type="button" class="menu-item" data-go="about">О прототипе</button></li>
-        <li><button type="button" class="menu-item danger" data-go="reset">Сброс демо-данных</button></li>
+        <li><button type="button" class="menu-item" data-go="support">Поддержка</button></li>
       </ul>
       <div class="settings-menu-sep"></div>
       <div class="settings-menu-foot">
@@ -1424,36 +1426,55 @@ function renderSettings(){
 
     <div id="setSubAnim" class="settings-sub">
       <button type="button" class="settings-back" id="backFromAnim">← Назад</button>
-      <h2 class="sec-h" style="margin-top:4px">Анимации</h2>
+      <h2 class="sec-h" style="margin-top:4px">Внешний вид</h2>
       <div class="set-row">
         <div><div class="lbl">Анимации интерфейса</div><div class="sub">Отключение ускоряет интерфейс</div></div>
         <button type="button" class="set-toggle ${prefAnim?"on":""}" id="togAnim" aria-pressed="${prefAnim}"></button>
       </div>
     </div>
 
+    <div id="setSubSound" class="settings-sub">
+      <button type="button" class="settings-back" id="backFromSound">← Назад</button>
+      <h2 class="sec-h" style="margin-top:4px">Звук</h2>
+      <p class="set-info">Управление звуковыми эффектами появится после подключения единой аудиосистемы. Сейчас переключатели звука не добавлены, чтобы не создавать неработающие настройки.</p>
+    </div>
+
+    <div id="setSubNotifications" class="settings-sub">
+      <button type="button" class="settings-back" id="backFromNotifications">← Назад</button>
+      <h2 class="sec-h" style="margin-top:4px">Уведомления</h2>
+      <p class="set-info">Уведомления о битвах, результатах и чемпионских вызовах станут доступны после подключения аккаунтов и серверной синхронизации.</p>
+    </div>
+
+    <div id="setSubPrivacy" class="settings-sub">
+      <button type="button" class="settings-back" id="backFromPrivacy">← Назад</button>
+      <h2 class="sec-h" style="margin-top:4px">Приватность и безопасность</h2>
+      <p class="set-info">Настройки видимости профиля, блокировок и жалоб пока не активны: в демо-версии нет серверных аккаунтов и системы модерации.</p>
+    </div>
+
     <div id="setSubData" class="settings-sub">
       <button type="button" class="settings-back" id="backFromData">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Данные</h2>
       <p class="set-info">Это локальный демо-режим. Данные хранятся только в этом браузере (localStorage), не синхронизируются между устройствами и не связаны с реальным аккаунтом или сервером.</p>
+      <p class="set-info">Сброс удалит фотографии, голоса, комментарии, историю и локальные настройки профиля только в этом браузере.</p>
+      <button type="button" class="menu-item danger" id="setResetBtn">Сбросить демо-данные</button>
     </div>
 
-    <div id="setSubAbout" class="settings-sub">
-      <button type="button" class="settings-back" id="backFromAbout">← Назад</button>
-      <h2 class="sec-h" style="margin-top:4px">О прототипе</h2>
-      <p class="set-info">FACE ARENA — демонстрационный прототип. Портреты, имена, голоса и таймеры вымышленные. Сервер не подключён: всё работает только в этом окне браузера.</p>
-      <p class="set-info">Десять баттлов идут одновременно. Выберите сторону и объясните свой выбор комментарием.</p>
+    <div id="setSubSupport" class="settings-sub">
+      <button type="button" class="settings-back" id="backFromSupport">← Назад</button>
+      <h2 class="sec-h" style="margin-top:4px">Поддержка</h2>
+      <p class="set-info">Канал связи с поддержкой будет добавлен перед запуском публичной версии FACE ARENA.</p>
     </div>
   `;
 
   const showSub=(id)=>{
     $("setMain").style.display="none";
-    ["setSubProfile","setSubAnim","setSubData","setSubAbout"].forEach(k=>{
+    ["setSubProfile","setSubAnim","setSubSound","setSubNotifications","setSubPrivacy","setSubData","setSubSupport"].forEach(k=>{
       const el=$(k);if(el)el.classList.toggle("on",k===id);
     });
   };
   const showMain=()=>{
     $("setMain").style.display="";
-    ["setSubProfile","setSubAnim","setSubData","setSubAbout"].forEach(k=>{
+    ["setSubProfile","setSubAnim","setSubSound","setSubNotifications","setSubPrivacy","setSubData","setSubSupport"].forEach(k=>{
       const el=$(k);if(el)el.classList.remove("on");
     });
   };
@@ -1462,20 +1483,25 @@ function renderSettings(){
     btn.onclick=()=>{
       const go=btn.dataset.go;
       if(go==="profile")showSub("setSubProfile");
-      else if(go==="anim")showSub("setSubAnim");
+      else if(go==="appearance")showSub("setSubAnim");
+      else if(go==="sound")showSub("setSubSound");
+      else if(go==="notifications")showSub("setSubNotifications");
+      else if(go==="privacy")showSub("setSubPrivacy");
       else if(go==="data")showSub("setSubData");
-      else if(go==="about")showSub("setSubAbout");
-      else if(go==="reset")resetDemo();
+      else if(go==="support")showSub("setSubSupport");
     };
   });
 
-  ["backFromProfile","backFromAnim","backFromData","backFromAbout"].forEach(id=>{
+  ["backFromProfile","backFromAnim","backFromSound","backFromNotifications","backFromPrivacy","backFromData","backFromSupport"].forEach(id=>{
     const el=$(id);if(el)el.onclick=showMain;
   });
 
   const closeSettings=()=>{location.hash=""};
   const cx=$("setCloseX");if(cx)cx.onclick=closeSettings;
   const ex=$("setExit");if(ex)ex.onclick=closeSettings;
+
+  const resetBtn=$("setResetBtn");
+  if(resetBtn)resetBtn.onclick=resetDemo;
 
   const ta=$("togAnim");
   if(ta)ta.onclick=()=>{
