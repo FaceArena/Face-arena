@@ -49,6 +49,10 @@ test("challenger loss preserves incumbent title",()=>{
  const state={photos:[{id:"new",status:"voting",side:"B",dataUrl:"n"}],lanes:[lane(1,{stage:"v",userPhotoId:"new",championPhotoId:"old",championSide:"R",battleUid:"b",redVotes:4,blueVotes:0})],history:[],participantStats:{}};
  const r=E.resolveBattle(state,1,100);assert.equal(r.state.lanes[0].championPhotoId,"old");assert.equal(r.state.photos[0].status,"completed");
 });
+test("draw by incumbent keeps champion photo active",()=>{
+ const state={photos:[{id:"c",status:"voting",side:"R"}],lanes:[lane(1,{stage:"v",userPhotoId:"c",championPhotoId:"c",championSide:"R",battleUid:"draw-champ",redVotes:2,blueVotes:2})],history:[],participantStats:{c:{isChampion:true,wins:3,defenses:2}}};
+ const r=E.resolveBattle(state,1,100);assert.equal(r.state.photos[0].status,"champion");assert.equal(r.state.lanes[0].championPhotoId,"c");
+});
 test("draw completes challenger without changing title",()=>{
  const state={photos:[{id:"p",status:"voting",side:"B"}],lanes:[lane(1,{stage:"v",userPhotoId:"p",championPhotoId:"c",championSide:"R",battleUid:"b",redVotes:2,blueVotes:2})],history:[],participantStats:{}};
  const r=E.resolveBattle(state,1,100);assert.equal(r.state.lanes[0].championPhotoId,"c");assert.equal(r.state.photos[0].result,"draw");
