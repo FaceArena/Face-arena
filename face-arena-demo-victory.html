@@ -375,6 +375,7 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 <nav><div class="tabs" id="tabs"><span class="ind" id="ind"></span></div></nav>
 <div class="toast" id="toast" role="status"></div>
 <div class="ov" id="ov"><div class="sh" id="sh" role="dialog" aria-modal="true"></div></div>
+<script src="./face-arena-audio.js"></script>
 <script>
 (function(){
   var done=function(){document.documentElement.classList.add("fonts-ready")};
@@ -1436,7 +1437,22 @@ function renderSettings(){
     <div id="setSubSound" class="settings-sub">
       <button type="button" class="settings-back" id="backFromSound">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Звук</h2>
-      <p class="set-info">Управление звуковыми эффектами появится после подключения единой аудиосистемы. Сейчас переключатели звука не добавлены, чтобы не создавать неработающие настройки.</p>
+      <div class="set-row">
+        <div><div class="lbl">Звуковые эффекты</div><div class="sub">Звуки интерфейса и баттлов</div></div>
+        <button type="button" class="set-toggle" id="togSound" aria-label="Звуковые эффекты" aria-pressed="true"></button>
+      </div>
+      <div class="set-row" style="display:block">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <div><div class="lbl">Громкость</div><div class="sub">Общая громкость эффектов</div></div>
+          <strong id="soundVolumeValue" style="font-variant-numeric:tabular-nums">65%</strong>
+        </div>
+        <input id="soundVolume" type="range" min="0" max="100" step="5" value="65" aria-label="Громкость звуковых эффектов" style="width:100%;margin:14px 0 4px;accent-color:var(--blue);touch-action:pan-y">
+      </div>
+      <div class="set-row">
+        <div><div class="lbl">Проверка звука</div><div class="sub">Короткий пример гибридного звучания</div></div>
+        <button type="button" class="menu-item" id="soundPreview" style="width:auto;min-width:100px;padding:10px 14px;border:1px solid #292929;border-radius:10px">Прослушать</button>
+      </div>
+      <p class="set-info">Настройки сохраняются на этом устройстве. На iPhone звук активируется после первого нажатия. Музыка не используется.</p>
     </div>
 
     <div id="setSubNotifications" class="settings-sub">
@@ -1502,6 +1518,22 @@ function renderSettings(){
 
   const resetBtn=$("setResetBtn");
   if(resetBtn)resetBtn.onclick=resetDemo;
+
+  const audio=window.FaceArenaAudio;
+  if(audio){
+    const soundSettings=audio.getSettings();
+    const togSound=$("togSound"),soundVolume=$("soundVolume"),soundValue=$("soundVolumeValue"),soundPreview=$("soundPreview");
+    const syncSound=()=>{
+      const current=audio.getSettings();
+      if(togSound){togSound.classList.toggle("on",current.enabled);togSound.setAttribute("aria-pressed",String(current.enabled));}
+      if(soundVolume)soundVolume.value=String(current.volume);
+      if(soundValue)soundValue.textContent=current.volume+"%";
+    };
+    syncSound();
+    if(togSound)togSound.onclick=()=>{audio.setEnabled(!audio.getSettings().enabled);syncSound();};
+    if(soundVolume)soundVolume.oninput=()=>{audio.setVolume(Number(soundVolume.value));if(soundValue)soundValue.textContent=soundVolume.value+"%";};
+    if(soundPreview)soundPreview.onclick=()=>audio.preview();
+  }
 
   const ta=$("togAnim");
   if(ta)ta.onclick=()=>{
