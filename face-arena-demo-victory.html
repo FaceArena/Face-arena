@@ -596,7 +596,8 @@ function renderArenaGrid(){
   const now=Date.now();
   // Show only active (w/v) and empty slots — completed/cancelled appear as empty state
   $("grid").innerHTML=arenaBattles.map((b,i)=>{
-    const isActive=b.stage==="w"||b.stage==="v";
+    const isActive=b.stage==="m"||b.stage==="w"||b.stage==="v";
+    const confirming=b.stage==="m";
     const isEmpty=b.stage==="empty"||b.stage==="done"||b.stage==="cancelled";
     if(isEmpty&&!b.isMock&&!b.championPhotoId){
       // Empty slot card; a waiting champion must remain visible on its lane.
@@ -617,7 +618,7 @@ function renderArenaGrid(){
         else{blueSrc=up.dataUrl;blueNm=(up.status==="champion"?"👑 ":"")+(profile.name||"Вы");redSrc=up.opponentImg||redSrc;redNm=up.opponentName||redNm}
       }
     }
-    const chipText=!isActive?(b.hasChampionWaiting||b.championPhotoId?"Чемпион ждёт":b.stage==="done"?"Итоги":"Слот свободен"):t(w?"wait":"vote");
+    const chipText=confirming?"10 секунд на отмену":!isActive?(b.hasChampionWaiting||b.championPhotoId?"Чемпион ждёт":b.stage==="done"?"Итоги":"Слот свободен"):t(w?"wait":"vote");
     const crownR=b.championSide==="R"&&b.championPhotoId?`<span class="champ-badge">👑</span>`:"";
     const crownB=b.championSide==="B"&&b.championPhotoId?`<span class="champ-badge">👑</span>`:"";
     const streak=b.championStreak?`<div class="streak">Серия: ${b.championStreak}</div>`:"";
@@ -631,7 +632,7 @@ function renderArenaGrid(){
 <div class="ph B ${bCls}">${crownB}<img alt="" loading="lazy" src="${blueSrc}"><span class="side">BLUE</span><div class="nm">${esc(blueNm)}</div></div><div class="vs ${vsCls}">VS</div></div>${streak}
 <div class="bar ${tot?"":"zero"} ${lead!=="eq"?"fight":""}" style="--p:${rp};--sx:${rp/100}"><u data-p="${rp/100}"></u>${lead!=="eq"?`<i class="clash"></i>`:""}</div>
 <div class="pct">${tot?`<span class="r ${lead==="R"?"lead":""}">RED ${rp}%</span><span class="m">${pl(tot,["голос","голоса","голосов"])}</span><span class="b ${lead==="B"?"lead":""}">${100-rp}% BLUE</span>`:`<span class="m">${t("noVotes")}</span>`}</div>
-${isActive?`<div class="tm"><small>${t(w?"tWait":"tVote")}</small><b class="cd">${fmt(left)}</b></div><div class="tl"><u style="transform:scaleX(${left/STAGE_SEC})"></u></div>`:""}</article>`;
+${isActive?`<div class="tm"><small>${confirming?"Отмена участия":t(w?"tWait":"tVote")}</small><b class="cd">${fmt(left)}</b></div><div class="tl"><u style="transform:scaleX(${left/STAGE_SEC})"></u></div>`:""}</article>`;
   }).join("");
   requestAnimationFrame(()=>{
     document.querySelectorAll(".bar u").forEach(u=>{
@@ -650,7 +651,7 @@ ${isActive?`<div class="tm"><small>${t(w?"tWait":"tVote")}</small><b class="cd">
   document.querySelectorAll(".card[tabindex]").forEach(c=>{
     const id=+c.dataset.id;
     const b=arenaBattles.find(x=>x.id===id);
-    if(!b||(b.stage!=="w"&&b.stage!=="v"))return;
+    if(!b||(b.stage!=="m"&&b.stage!=="w"&&b.stage!=="v"))return;
     c.onclick=()=>location.hash="battle-"+id;
     c.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();location.hash="battle-"+id}};
   });
@@ -827,10 +828,14 @@ function tryFillSlots(){
 function tickArena(){
   const now=Date.now();
   if(window.FaceArenaSync?.isOnline()){
+    if(arenaBattles.some(b=>b.stage==="m"&&b.confirmUntil&&b.confirmUntil<=now)&&!window._faConfirmRefresh){
+      window._faConfirmRefresh=true;
+      window.FaceArenaSync.loadSnapshot().finally(()=>{window._faConfirmRefresh=false});
+    }
     if(!$("av").hidden){
       document.querySelectorAll(".card[data-id]").forEach(card=>{
         const b=arenaBattles.find(x=>x.id===+card.dataset.id);
-        if(!b||(b.stage!=="w"&&b.stage!=="v"))return;
+        if(!b||(b.stage!=="m"&&b.stage!=="w"&&b.stage!=="v"))return;
         const left=Math.max(0,Math.ceil((b.stageEnd-now)/1000));
         const cd=card.querySelector(".cd");if(cd)cd.textContent=fmt(left);
         const bar=card.querySelector(".tl u");if(bar)bar.style.transform=`scaleX(${Math.min(1,left/STAGE_SEC)})`;
@@ -888,6 +893,7 @@ function bview(n){
   const myComments=MY[uid]||[];
   const k=Math.min(4,Math.max(0,tot-myComments.length));
   let cs=myComments.map((m,j)=>`<li class="cm ${m.s}" style="--i:${j}"><b>${esc(m.author||t("you"))}</b><span class="tg">${m.s==="R"?"RED":"BLUE"}</span><p>${esc(m.v)}</p></li>`).join("");
+  const confirming=b.stage==="m";
   const closed=b.stage==="done"||b.stage==="cancelled"||b.stage==="empty";
   let redSrc=b.redImg||face((n-1)*2+1,"R"), blueSrc=b.blueImg||face((n-1)*2+4,"B"), redNm=b.redName, blueNm=b.blueName;
   if(b.userPhotoId&&!window.FaceArenaSync?.isOnline()){
@@ -909,7 +915,7 @@ function bview(n){
 <div class="pct">${tot?`<span class="r ${lead==="R"?"lead":""}">RED ${rp}%</span><span class="m">${pl(tot,["голос","голоса","голосов"])}</span><span class="b ${lead==="B"?"lead":""}">${100-rp}% BLUE</span>`:`<span class="m">${t("noVotes")}</span>`}</div>
 <div class="tm"><small>${t(w?"tWait":"tVote")}</small><b id="bcd" data-id="${n}"></b></div><div class="tl"><u id="btl"></u></div>
 <p class="note">${t("srv")}</p>
-${b.isParticipant?`<p class="done">Участники не голосуют в собственном баттле</p>`:VOTED.has(uid)?`<p class="done">${t("done")}</p>`:closed?`<p class="done">${b.stage==="cancelled"?"Баттл отменён":"Голосование завершено"}</p>`:`<div class="picks"><button class="pick R">${t("pickR")}</button><button class="pick B">${t("pickB")}</button></div><p class="note">${t("hint")}</p>`}
+${confirming?`<p class="done">Можно отменить участие во вкладке «Очередь» ещё ${fmt(Math.max(0,Math.ceil((b.confirmUntil-Date.now())/1000)))} сек.</p>`:b.isParticipant?`<p class="done">Участники не голосуют в собственном баттле</p>`:VOTED.has(uid)?`<p class="done">${t("done")}</p>`:closed?`<p class="done">${b.stage==="cancelled"?"Баттл отменён":"Голосование завершено"}</p>`:`<div class="picks"><button class="pick R">${t("pickR")}</button><button class="pick B">${t("pickB")}</button></div><p class="note">${t("hint")}</p>`}
 <h2>${t("cm")}</h2>${cs?`<ul class="cms">${cs}</ul>`:`<div class="empty">${t("cmEmpty")}</div>`}</div>`;
   $("bk").onclick=()=>{location.hash=""};
   document.querySelectorAll(".pick").forEach(btn=>btn.onclick=()=>openV(n,btn.classList.contains("R")?"R":"B"));
@@ -1004,6 +1010,7 @@ function renderQueue(){
   if(show.length){
     list+=`<h2>${t("qYours")}</h2><div class="q-list">`+show.map(p=>{
       const canCancel=p.status==="queued";
+      const canCancelMatch=p.status==="matched"&&p.confirmUntil>Date.now()&&!!p.battleUid;
       const canFind=p.status==="queued"&&!window.FaceArenaSync?.isOnline();
       const canOpenMatch=p.status==="matched"&&!window.FaceArenaSync?.isOnline();
       const canOpenBattle=!!p.battleId;
@@ -1017,6 +1024,7 @@ function renderQueue(){
           ${canFind?`<button class="btn-sm-blue" data-act="find" data-id="${p.id}">${t("findPair")}</button>`:""}
           ${canOpenMatch?`<button class="btn-sm-blue" data-act="openmatch" data-id="${p.id}">Открыть таймер</button>`:""}
           ${canOpenBattle?`<button class="btn-sm-blue" data-act="openbattle" data-id="${p.id}">Открыть</button>`:""}
+          ${canCancelMatch?`<button class="btn-sm-muted" data-act="cancelmatch" data-id="${p.id}">Отменить участие</button>`:""}
           ${canCancel?`<button class="btn-sm-muted" data-act="del" data-id="${p.id}">Удалить</button>`:""}
         </div>
       </div>`;
@@ -1048,6 +1056,10 @@ function renderQueue(){
       if(act==="find") startMatch(id);
       else if(act==="openmatch") location.hash="match-"+encodeURIComponent(id);
       else if(act==="openbattle"){const p=photos.find(x=>String(x.id)===String(id));if(p&&p.battleId)location.hash="battle-"+p.battleId}
+      else if(act==="cancelmatch"){
+        const p=photos.find(x=>String(x.id)===String(id));
+        if(p?.battleUid)window.FaceArenaSync.cancelMatch(p.battleUid).then(()=>toast("Участие отменено, обе фотографии возвращены в очередь")).catch(error=>toast(error?.message||"Окно отмены уже закрыто"));
+      }
       else if(act==="del"){
         const p=photos.find(x=>String(x.id)===String(id));
         if(window.FaceArenaSync?.isOnline()){
