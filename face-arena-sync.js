@@ -202,6 +202,16 @@
           participantsByBattle.get(p.battle_id).push(p);
         }
         const votesByBattle = new Map();
+        const battleById = new Map(battleRes.data.map(b => [b.id,b]));
+        for (const member of participantRes.data) {
+          const battle = battleById.get(member.battle_id);
+          const photo = photoMap.get(member.photo_id);
+          if (battle && photo && member.owner_id === this.user.id) {
+            photo.battleId = battle.lane_id;
+            photo.battleUid = battle.id;
+            photo.side = member.side === "left" ? "R" : "B";
+          }
+        }
         for (const v of voteRes.data) {
           if (!votesByBattle.has(v.battle_id)) votesByBattle.set(v.battle_id, []);
           votesByBattle.get(v.battle_id).push(v);
@@ -219,7 +229,7 @@
           const blueVotes = right ? votes.filter(v => v.target_photo_id === right.photo_id).length : 0;
           const champ = lane.champion_photo_id ? photoMap.get(lane.champion_photo_id) : null;
           const me = members.find(x => x.owner_id === this.user.id);
-          const stage = !battle ? (champ ? "empty" : "empty") : (battle.stage === "waiting" ? "w" : "v");
+          const stage = !battle ? "empty" : (battle.stage === "waiting" ? "w" : "v");
           return {
             id: lane.lane_id, laneId: lane.lane_id, battleUid: battle?.id || null, opening: !!battle?.opening,
             stage, stageEnd: battle ? Date.parse(battle.stage_ends_at) : 0,
@@ -233,7 +243,7 @@
             championSide: !battle?.opening && champ ? (leftPhoto?.id === champ.id ? "R" : rightPhoto?.id === champ.id ? "B" : null) : null,
             championName: !battle?.opening ? champ?.name || null : null,
             championImg: !battle?.opening ? champ?.dataUrl || null : null,
-            championStreak: 0, isMock: false
+            championStreak: 0, isMock: false, hasChampionWaiting: !battle && !!champ
           };
         });
 
@@ -289,6 +299,7 @@
         .on("postgres_changes", { event: "*", schema: "public", table: "arena_battle_participants" }, () => this.loadSnapshot())
         .on("postgres_changes", { event: "*", schema: "public", table: "arena_votes" }, () => this.loadSnapshot())
         .on("postgres_changes", { event: "*", schema: "public", table: "arena_results" }, () => this.loadSnapshot())
+        .on("postgres_changes", { event: "*", schema: "public", table: "arena_profiles" }, () => this.loadSnapshot())
         .subscribe();
     }
 
