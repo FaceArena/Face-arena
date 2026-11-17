@@ -32,7 +32,7 @@ test("three active photo cap is enforced",()=>{
  assert.equal(E.assignChallenger(state,{photoId:"4",laneId:1},"b",1).assigned,false);
 });
 test("assignment preserves string IDs and starts battle",()=>{
- const state={photos:[photo("photo-abc")],lanes:[lane(1)],history:[],participantStats:{}};
+ const state={photos:[photo("photo-abc")],lanes:[lane(1,{championPhotoId:"incumbent"})],history:[],participantStats:{}};
  const r=E.assignChallenger(state,{photoId:"photo-abc",laneId:1},"battle-1",500);
  assert.equal(r.assigned,true);assert.equal(r.state.photos[0].status,"confirmed");assert.equal(r.state.lanes[0].userPhotoId,"photo-abc");
 });
