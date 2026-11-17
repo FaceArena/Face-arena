@@ -755,6 +755,7 @@ function finishBattle(b,now){
       b.demoWinner="R";
     }
     b.stage="done";b._finalized=true;b.victoryPending=true;
+    window.FaceArenaAudio?.play("victory");
     demoVictoryPreviewDone=true;
     return true;
   }
@@ -763,8 +764,10 @@ function finishBattle(b,now){
   if(p&&(p.status==="voting"||p.status==="confirmed"||p.status==="champion")){
     const myV=p.side==="R"?b.redVotes:b.blueVotes, oppV=p.side==="R"?b.blueVotes:b.redVotes;
     let res="draw";if(myV>oppV)res="win";else if(myV<oppV)res="lose";
+    const wasChampion=String(b.championPhotoId||"")===String(p.id);
     const st=ensureStats(p.id, profile.name||"Вы", p.dataUrl);
     if(res==="win"){
+      window.FaceArenaAudio?.play(wasChampion?"victory":"champion");
       st.wins++;st.currentStreak=(st.currentStreak||0)+1;st.bestStreak=Math.max(st.bestStreak||0,st.currentStreak);
       // User becomes/stays champion of this lane
       if(b.championPhotoId&&String(b.championPhotoId)===String(p.id)){
@@ -784,6 +787,7 @@ function finishBattle(b,now){
       p.completedAt=null;
       // Opponent mock loses — no photo record
     } else if(res==="lose"){
+      window.FaceArenaAudio?.play(wasChampion?"titleLost":"defeat");
       st.losses++;st.currentStreak=0;st.isChampion=false;st.laneId=null;
       p.status="completed";p.result=res;p.myVotes=myV;p.oppVotes=oppV;p.completedAt=now;p.battleId=null;
       // Title goes to mock opponent side — clear user championship on lane, keep lane open for next
@@ -891,6 +895,7 @@ function bview(n){
   const uid=b.battleUid;
   if(b.stage==="w"){
     b.stage="v";b.stageEnd=Date.now()+STAGE_SEC*1000;b.stageStarted=Date.now();
+    window.FaceArenaAudio?.play("votingStart");
     if(b.userPhotoId){const p=photos.find(x=>x.id===b.userPhotoId);if(p)p.status="voting"}
     saveState(); // persist stage transition — do not restart on reopen
     renderArenaGrid();
@@ -933,6 +938,7 @@ function tick2(){
   const b=arenaBattles.find(x=>x.id===+e.dataset.id);if(!b)return;
   if(b.stage!=="w"&&b.stage!=="v"){e.textContent=t("ending");return}
   const s=Math.max(0,Math.ceil((b.stageEnd-Date.now())/1000));
+  if(!$("bv").hidden&&s>=1&&s<=3)window.FaceArenaAudio?.play("countdown");
   e.textContent=s?fmt(s):t("ending");
   const tl=$("btl");if(tl)tl.style.transform=`scaleX(${Math.min(1,Math.max(0,s/STAGE_SEC))})`;
 }
@@ -974,6 +980,7 @@ function submit(n){
   (MY[b2.battleUid]=MY[b2.battleUid]||[]).unshift({s:side,v});
   busy=false;closeV();
   saveState();
+  window.FaceArenaAudio?.play("voteSuccess");
   bview(n);renderArenaGrid();toast(t("ok"));
 }
 $("ov").onclick=e=>{if(e.target==$("ov"))closeV()};
@@ -1057,6 +1064,7 @@ function startMatch(photoId){
   if(p.status==="matched"||p.status==="confirmed"||p.status==="voting"){toast("Фото уже в процессе");return}
   const opp=MOCK_OPP[Math.floor(Math.random()*MOCK_OPP.length)];
   p.status="matched";
+  window.FaceArenaAudio?.play("matchFound");
   p.matchedAt=Date.now();
   p.matchDeadline=Date.now()+MATCH_SEC*1000;
   p.opponentName=opp.name;
@@ -1194,6 +1202,7 @@ function confirmMatch(p){
     saveState();location.hash="queue";return;
   }
   toast(t("matchConfirm"));
+  window.FaceArenaAudio?.play("impact");
   saveState();
   renderArenaGrid();
   location.hash="queue";
