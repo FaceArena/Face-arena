@@ -374,6 +374,8 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 <nav><div class="tabs" id="tabs"><span class="ind" id="ind"></span></div></nav>
 <div class="toast" id="toast" role="status"></div>
 <div class="ov" id="ov"><div class="sh" id="sh" role="dialog" aria-modal="true"></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./face-arena-sync.js"></script>
 <script src="./face-arena-audio.js"></script>
 <script src="./face-arena-game-engine.js"></script>
 <script>
@@ -604,17 +606,17 @@ function renderArenaGrid(){
     }
     const tot=b.redVotes+b.blueVotes, w=b.stage==="w", rp=tot?Math.round(b.redVotes/tot*100):50;
     const left=isActive?Math.max(0,Math.ceil((b.stageEnd-now)/1000)):0;
-    let redSrc=face(i*2+1,"R"), blueSrc=face(i*2+4,"B"), redNm="@"+b.redName, blueNm="@"+b.blueName;
+    let redSrc=b.redImg||face(i*2+1,"R"), blueSrc=b.blueImg||face(i*2+4,"B"), redNm="@"+b.redName, blueNm="@"+b.blueName;
     if(b.championImg&&b.championSide==="R"){redSrc=b.championImg;redNm=b.championName||"Чемпион"}
     if(b.championImg&&b.championSide==="B"){blueSrc=b.championImg;blueNm=b.championName||"Чемпион"}
-    if(b.userPhotoId){
+    if(b.userPhotoId&&!window.FaceArenaSync?.isOnline()){
       const up=photos.find(x=>String(x.id)===String(b.userPhotoId));
       if(up){
         if(up.side==="R"){redSrc=up.dataUrl;redNm=(up.status==="champion"?"👑 ":"")+(profile.name||"Вы");blueSrc=up.opponentImg||blueSrc;blueNm=up.opponentName||blueNm}
         else{blueSrc=up.dataUrl;blueNm=(up.status==="champion"?"👑 ":"")+(profile.name||"Вы");redSrc=up.opponentImg||redSrc;redNm=up.opponentName||redNm}
       }
     }
-    const chipText=!isActive?(b.stage==="done"?(b.championPhotoId?"Чемпион ждёт":"Итоги"):"Отменён"):t(w?"wait":"vote");
+    const chipText=!isActive?(b.hasChampionWaiting||b.championPhotoId?"Чемпион ждёт":b.stage==="done"?"Итоги":"Слот свободен"):t(w?"wait":"vote");
     const crownR=b.championSide==="R"&&b.championPhotoId?`<span class="champ-badge">👑</span>`:"";
     const crownB=b.championSide==="B"&&b.championPhotoId?`<span class="champ-badge">👑</span>`:"";
     const streak=b.championStreak?`<div class="streak">Серия: ${b.championStreak}</div>`:"";
@@ -789,6 +791,7 @@ function finishBattle(b,now){
   return true;
 }
 function tryFillSlots(){
+  if(window.FaceArenaSync?.isOnline())return;
   const now=Date.now();
   const waitingMatched=photos.filter(p=>p.status==="matched"&&p.matchDeadline&&p.matchDeadline<=now&&!p._confirming);
   waitingMatched.forEach(p=>confirmMatch(p));
@@ -822,6 +825,18 @@ function tryFillSlots(){
 }
 function tickArena(){
   const now=Date.now();
+  if(window.FaceArenaSync?.isOnline()){
+    if(!$("av").hidden){
+      document.querySelectorAll(".card[data-id]").forEach(card=>{
+        const b=arenaBattles.find(x=>x.id===+card.dataset.id);
+        if(!b||(b.stage!=="w"&&b.stage!=="v"))return;
+        const left=Math.max(0,Math.ceil((b.stageEnd-now)/1000));
+        const cd=card.querySelector(".cd");if(cd)cd.textContent=fmt(left);
+        const bar=card.querySelector(".tl u");if(bar)bar.style.transform=`scaleX(${Math.min(1,left/STAGE_SEC)})`;
+      });
+    }
+    return;
+  }
   let changed=false;
   arenaBattles.forEach(b=>{
     if(b.stage!=="w"&&b.stage!=="v")return;
@@ -856,9 +871,12 @@ function tickArena(){
 
 function bview(n){
   const b=arenaBattles.find(x=>x.id===n);if(!b)return;
-  if(!b.battleUid)b.battleUid=newBattleUid();
+  if(!b.battleUid&&!window.FaceArenaSync?.isOnline())b.battleUid=newBattleUid();
   const uid=b.battleUid;
-  if(b.stage==="w"){
+  if(window.FaceArenaSync?.isOnline()&&b.stage==="w"&&!b._visitRequested){
+    b._visitRequested=true;
+    window.FaceArenaSync.registerVisit(uid).catch(error=>{b._visitRequested=false;toast(error?.message||"Не удалось открыть голосование")});
+  }else if(!window.FaceArenaSync?.isOnline()&&b.stage==="w"){
     b.stage="v";b.stageEnd=Date.now()+STAGE_SEC*1000;b.stageStarted=Date.now();
     window.FaceArenaAudio?.play("votingStart");
     if(b.userPhotoId){const p=photos.find(x=>x.id===b.userPhotoId);if(p)p.status="voting"}
@@ -868,10 +886,10 @@ function bview(n){
   const tot=b.redVotes+b.blueVotes,w=b.stage==="w",rp=tot?Math.round(b.redVotes/tot*100):50;
   const myComments=MY[uid]||[];
   const k=Math.min(4,Math.max(0,tot-myComments.length));
-  let cs=myComments.map((m,j)=>`<li class="cm ${m.s}" style="--i:${j}"><b>${t("you")}</b><span class="tg">${m.s==="R"?"RED":"BLUE"}</span><p>${esc(m.v)}</p></li>`).join("");
+  let cs=myComments.map((m,j)=>`<li class="cm ${m.s}" style="--i:${j}"><b>${esc(m.author||t("you"))}</b><span class="tg">${m.s==="R"?"RED":"BLUE"}</span><p>${esc(m.v)}</p></li>`).join("");
   const closed=b.stage==="done"||b.stage==="cancelled"||b.stage==="empty";
-  let redSrc=face((n-1)*2+1,"R"), blueSrc=face((n-1)*2+4,"B"), redNm=b.redName, blueNm=b.blueName;
-  if(b.userPhotoId){
+  let redSrc=b.redImg||face((n-1)*2+1,"R"), blueSrc=b.blueImg||face((n-1)*2+4,"B"), redNm=b.redName, blueNm=b.blueName;
+  if(b.userPhotoId&&!window.FaceArenaSync?.isOnline()){
     const up=photos.find(x=>x.id===b.userPhotoId);
     if(up){
       if(up.side==="R"){redSrc=up.dataUrl;redNm=profile.name||"Вы";blueSrc=up.opponentImg||blueSrc;blueNm=(up.opponentName||blueNm).replace("@","")}
@@ -921,7 +939,7 @@ function openV(n,s){
   $("ct").oninput=()=>{$("cc").textContent=$("ct").value.length+"/300";$("er").textContent=""};
   $("cx").onclick=closeV;$("sd").onclick=()=>submit(n);setTimeout(()=>$("ct").focus(),350);
 }
-function submit(n){
+async function submit(n){
   if(busy)return;
   const v=$("ct").value.trim();
   if(!v){$("er").textContent=t("e0");return}
@@ -938,6 +956,21 @@ function submit(n){
   const b2=arenaBattles.find(x=>x.id===n);
   if(!b2||b2.stage!=="v"||b2.stageEnd<=Date.now()||!b2.battleUid||VOTED.has(b2.battleUid)){
     busy=false;toast(t("closed"));closeV();return;
+  }
+  if(window.FaceArenaSync?.isOnline()){
+    const targetPhotoId=side==="R"?b2.redPhotoId:b2.bluePhotoId;
+    if(!targetPhotoId){busy=false;toast("Не удалось определить участника. Обновите арену.");return}
+    try{
+      await window.FaceArenaSync.submitVote(b2.battleUid,targetPhotoId,v);
+      busy=false;closeV();window.FaceArenaAudio?.play("voteSuccess");
+      toast(t("ok"));
+      if(location.hash==="#battle-"+n)bview(n);
+    }catch(error){
+      busy=false;
+      const send=$("sd");if(send){send.disabled=false;send.textContent=t("send")}
+      const err=$("er");if(err)err.textContent=error?.message||"Не удалось отправить голос";
+    }
+    return;
   }
   VOTED.add(b2.battleUid);
   if(side==="R")b2.redVotes++;else b2.blueVotes++;
@@ -969,9 +1002,9 @@ function renderQueue(){
   if(show.length){
     list+=`<h2>${t("qYours")}</h2><div class="q-list">`+show.map(p=>{
       const canCancel=p.status==="queued";
-      const canFind=p.status==="queued";
-      const canOpenMatch=p.status==="matched";
-      const canOpenBattle=p.status==="confirmed"||p.status==="voting";
+      const canFind=p.status==="queued"&&!window.FaceArenaSync?.isOnline();
+      const canOpenMatch=p.status==="matched"&&!window.FaceArenaSync?.isOnline();
+      const canOpenBattle=p.status==="confirmed"||p.status==="voting"||p.status==="matched"||p.status==="champion";
       const frameCls=p.side?`frame-${p.side}`:"";
       const qIdx=qOrder.findIndex(x=>x.id===p.id);
       const posLabel=qIdx>=0?` · позиция ${qIdx+1} (впереди: ${qIdx})`:"";
@@ -1015,7 +1048,9 @@ function renderQueue(){
       else if(act==="openbattle"){const p=photos.find(x=>String(x.id)===String(id));if(p&&p.battleId)location.hash="battle-"+p.battleId}
       else if(act==="del"){
         const p=photos.find(x=>String(x.id)===String(id));
-        if(p&&p.status==="queued"){photos=photos.filter(x=>String(x.id)!==String(id));toast("Фото удалено из очереди");saveState();renderQueue();updateArenaStats()}
+        if(window.FaceArenaSync?.isOnline()){
+          window.FaceArenaSync.deletePhoto(id).then(()=>toast("Фото удалено")).catch(error=>toast(error?.message||"Не удалось удалить фото"));
+        }else if(p&&p.status==="queued"){photos=photos.filter(x=>String(x.id)!==String(id));toast("Фото удалено из очереди");saveState();renderQueue();updateArenaStats()}
         else toast("Нельзя удалить: фото уже в баттле");
       }
     };
@@ -1256,9 +1291,18 @@ function handleFile(f){
   reader.readAsDataURL(f);
 }
 
-function confirmAdd(){
+async function confirmAdd(){
   if(!pendingUrl){toast(t("upNoFile"));return}
   if(activeCount()>=MAX_ACTIVE){toast(t("upLimit"));return}
+  if(window.FaceArenaSync?.isOnline()){
+    try{
+      await window.FaceArenaSync.uploadPhoto(pendingFile);
+      pendingFile=null;pendingUrl=null;
+      toast("Фото добавлено в общую очередь");
+      location.hash="queue";
+    }catch(error){toast(error?.message||"Не удалось загрузить фото");}
+    return;
+  }
   const id=Date.now()+"_"+Math.random().toString(36).slice(2,8);
   photos.push({id,dataUrl:pendingUrl,status:"queued",queuedAt:Date.now(),queueSeq:photos.reduce((m,x)=>Math.max(m,Number.isFinite(x.queueSeq)?x.queueSeq:-1),-1)+1});
   tryFillSlots();
@@ -1529,11 +1573,14 @@ function renderSettings(){
   };
 
   const sp=$("saveProfile");
-  if(sp)sp.onclick=()=>{
+  if(sp)sp.onclick=async()=>{
     const name=($("setName").value||"").trim().slice(0,24);
     const handle=($("setHandle").value||"").trim().replace(/^@/,"").replace(/[^\w.]/g,"").slice(0,20);
     if(!name){toast("Укажите имя");return}
     if(!handle){toast("Укажите никнейм");return}
+    if(window.FaceArenaSync?.isOnline()){
+      try{await window.FaceArenaSync.updateProfile(name,handle)}catch(error){toast(error?.message||"Не удалось сохранить профиль");return}
+    }
     profile={name,handle};
     saveState();
     toast("Профиль сохранён");
@@ -1641,6 +1688,25 @@ function show(){
 }
 
 addEventListener("hashchange",show);
+window.addEventListener("face-arena-snapshot",event=>{
+  const snapshot=event.detail;
+  if(!snapshot)return;
+  photos=snapshot.photos||[];
+  arenaBattles=snapshot.arenaBattles||createDefaultArena();
+  history=snapshot.history||[];
+  VOTED=snapshot.VOTED||new Set();
+  MY=snapshot.MY||{};
+  profile=snapshot.profile||profile;
+  participantStats=snapshot.participantStats||{};
+  updateArenaStats();
+  const hash=location.hash.slice(1);
+  if(hash==="results")renderResults();
+  else if(hash.startsWith("result-"))renderResult(decodeURIComponent(hash.slice(7)));
+  else if(/^battle-\\d+$/.test(hash))bview(Number(hash.slice(7)));
+  else if(hash==="queue")renderQueue();
+  else if(hash==="profile")renderProfile();
+  else renderArenaGrid();
+});
 renderArenaGrid();
 show();
 setInterval(()=>{tickArena();tick2()},1000);
