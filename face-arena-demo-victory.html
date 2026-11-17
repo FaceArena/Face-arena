@@ -497,6 +497,10 @@ window.applyFaceArenaCloudProfile=function(cloudProfile){
   if(handleInput)handleInput.value=profile.handle;
   const avatar=document.querySelector("#pv .pr-av img");
   if(avatar&&profile.avatarUrl)avatar.src=profile.avatarUrl;
+  const profileName=document.querySelector("#pv .pr-name");
+  const profileHandle=document.querySelector("#pv .pr-handle");
+  if(profileName)profileName.textContent=profile.name;
+  if(profileHandle)profileHandle.textContent="@"+profile.handle;
 };
 window.clearFaceArenaCloudProfile=function(){
   profile={name:"Вы",handle:"demo_user"};
