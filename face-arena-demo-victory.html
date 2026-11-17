@@ -718,21 +718,41 @@ function resetMockBattle(b,now){
   b.victoryShown=false;
   return true;
 }
+function cancelInactiveBattle(b,now){
+  if(window.FaceArenaGameEngine){
+    const cancelled=window.FaceArenaGameEngine.cancelBattle({photos,lanes:arenaBattles,history,participantStats},b.id,now);
+    if(!cancelled.changed)return false;
+    photos=cancelled.state.photos;
+    arenaBattles=cancelled.state.lanes;
+    history=cancelled.state.history;
+    participantStats=cancelled.state.participantStats;
+    return true;
+  }
+  // Defensive fallback for a missing engine script: never leave a dead lane occupied.
+  const p=b.userPhotoId?photos.find(x=>String(x.id)===String(b.userPhotoId)):null;
+  if(p){
+    p.status="queued";p.battleId=null;p.battleUid=null;p.targetLaneId=null;
+    p.matchedAt=null;p.matchDeadline=null;p.completedAt=null;
+    p.side=null;p.opponentName=null;p.opponentImg=null;
+  }
+  b.userPhotoId=null;b.stage="done";b._finalized=true;
+  b.redVotes=0;b.blueVotes=0;
+  return true;
+}
 function finishBattle(b,now){
   if(b.stage!=="w"&&b.stage!=="v")return false;
   if(b._finalized)return false;
   if(b.stage==="w"){
     if(b.isMock&&!b.userPhotoId&&!b.demoShowcase)return resetMockBattle(b,now);
-    b.stage="cancelled";b._finalized=true;
-    if(b.userPhotoId){const p=photos.find(x=>String(x.id)===String(b.userPhotoId));if(p){p.status="cancelled";p.completedAt=now;p.battleId=null}}
-    // champion stays if had one and was waiting without challenger finish
+    if(!cancelInactiveBattle(b,now))return false;
+    // The participant returns to FIFO; tickArena() immediately refills released lanes.
     return true;
   }
   const tot=b.redVotes+b.blueVotes;
   if(tot===0){
     if(b.isMock&&!b.userPhotoId&&!b.demoShowcase)return resetMockBattle(b,now);
-    b.stage="cancelled";b._finalized=true;
-    if(b.userPhotoId){const p=photos.find(x=>String(x.id)===String(b.userPhotoId));if(p){p.status="cancelled";p.completedAt=now;p.battleId=null}}
+    if(!cancelInactiveBattle(b,now))return false;
+    // The participant returns to FIFO; tickArena() immediately refills released lanes.
     return true;
   }
   b.stage="done";b._finalized=true;
