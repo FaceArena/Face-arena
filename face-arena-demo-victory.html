@@ -913,7 +913,7 @@ function bview(n){
 <div class="ph B ${bCls}"><img alt="" src="${blueSrc}"><span class="side">BLUE</span><div class="nm"><span class="av"><img alt="" src="${blueSrc}"></span><button class="nk">@${esc(blueNm)}</button></div></div><div class="vs ${vsCls}">VS</div></div>
 <div class="bar ${tot?"":"zero"} ${lead!=="eq"?"fight":""}" style="--p:${rp};--sx:${rp/100}"><u id="bp" data-p="${rp/100}"></u>${lead!=="eq"?`<i class="clash"></i>`:""}</div>
 <div class="pct">${tot?`<span class="r ${lead==="R"?"lead":""}">RED ${rp}%</span><span class="m">${pl(tot,["голос","голоса","голосов"])}</span><span class="b ${lead==="B"?"lead":""}">${100-rp}% BLUE</span>`:`<span class="m">${t("noVotes")}</span>`}</div>
-<div class="tm"><small>${t(w?"tWait":"tVote")}</small><b id="bcd" data-id="${n}"></b></div><div class="tl"><u id="btl"></u></div>
+<div class="tm"><small>${confirming?"Отмена участия":t(w?"tWait":"tVote")}</small><b id="bcd" data-id="${n}"></b></div><div class="tl"><u id="btl"></u></div>
 <p class="note">${t("srv")}</p>
 ${confirming?`<p class="done">Можно отменить участие во вкладке «Очередь» ещё ${fmt(Math.max(0,Math.ceil((b.confirmUntil-Date.now())/1000)))} сек.</p>`:b.isParticipant?`<p class="done">Участники не голосуют в собственном баттле</p>`:VOTED.has(uid)?`<p class="done">${t("done")}</p>`:closed?`<p class="done">${b.stage==="cancelled"?"Баттл отменён":"Голосование завершено"}</p>`:`<div class="picks"><button class="pick R">${t("pickR")}</button><button class="pick B">${t("pickB")}</button></div><p class="note">${t("hint")}</p>`}
 <h2>${t("cm")}</h2>${cs?`<ul class="cms">${cs}</ul>`:`<div class="empty">${t("cmEmpty")}</div>`}</div>`;
@@ -925,7 +925,7 @@ ${confirming?`<p class="done">Можно отменить участие во в
 function tick2(){
   const e=$("bcd");if(!e)return;
   const b=arenaBattles.find(x=>x.id===+e.dataset.id);if(!b)return;
-  if(b.stage!=="w"&&b.stage!=="v"){e.textContent=t("ending");return}
+  if(b.stage!=="m"&&b.stage!=="w"&&b.stage!=="v"){e.textContent=t("ending");return}
   const s=Math.max(0,Math.ceil((b.stageEnd-Date.now())/1000));
   if(!$("bv").hidden&&s>=1&&s<=3)window.FaceArenaAudio?.play("countdown");
   e.textContent=s?fmt(s):t("ending");
