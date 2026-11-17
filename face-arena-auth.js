@@ -47,10 +47,17 @@
       .maybeSingle();
     if (error) throw error;
     if (data && typeof window.applyFaceArenaCloudProfile === "function") {
+      let avatarUrl = "";
+      if (data.avatar_path) {
+        const publicAvatar = client.storage.from("face-arena-avatars").getPublicUrl(data.avatar_path);
+        avatarUrl = publicAvatar.data.publicUrl;
+      }
       window.applyFaceArenaCloudProfile({
         name: data.display_name || user.user_metadata?.display_name || "Игрок",
         handle: data.handle || "",
-        avatarPath: data.avatar_path || ""
+        avatarPath: data.avatar_path || "",
+        avatarUrl,
+        userId: user.id
       });
     }
   }
