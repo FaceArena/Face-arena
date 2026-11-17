@@ -37,7 +37,6 @@ h1{font:800 clamp(28px,8.5vw,72px)/.95 var(--hd);letter-spacing:-.02em;margin:16
 .stat{background:var(--s);border-radius:12px;padding:10px 12px}
 .stat b{display:block;font:800 18px var(--hd)}
 .stat span{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu)}
-.demo{background:var(--s);border-left:3px solid var(--blue);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--mu);margin-bottom:16px;line-height:1.4}
 .grid{display:grid;gap:12px;grid-template-columns:repeat(2,1fr);contain:content}
 @media(min-width:640px){.grid{gap:16px}}
 @media(min-width:1000px){.grid{grid-template-columns:repeat(3,1fr)}}
@@ -243,11 +242,10 @@ html.no-anim .card{opacity:1}
 .hist-item .vs-s{font:800 10px var(--hd);color:var(--mu)}
 .hist-item .res{font:800 12px var(--hd);letter-spacing:.06em}
 .hist-item .res.win{color:#4ade80}.hist-item .res.lose{color:var(--red)}.hist-item .res.draw{color:var(--mu)}
-.demo-tag{display:inline-block;font:700 9px var(--bd);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#1a1a1a;color:var(--mu);margin-left:6px;vertical-align:middle}
+.champion-tag{display:inline-block;font:700 9px var(--bd);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#3a3010;color:#f0d060;margin-left:6px;vertical-align:middle}
 .btn-main{width:100%;border:0;border-radius:14px;min-height:52px;font:800 13px var(--hd);letter-spacing:.06em;color:#fff;background:var(--blue);cursor:pointer;touch-action:manipulation;margin-top:12px}
 .btn-main:disabled{opacity:.5}
 .btn-ghost{width:100%;border:0;border-radius:14px;min-height:48px;font:700 13px var(--bd);color:var(--mu);background:none;cursor:pointer;margin-top:6px}
-.sec-demo{background:var(--s);border-left:3px solid var(--blue);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--mu);margin-bottom:16px;line-height:1.4}
 .match-card{background:var(--c);border-radius:16px;padding:20px 16px;text-align:center;margin-bottom:16px}
 .match-card .countdown{font:800 48px var(--hd);line-height:1;margin:12px 0 4px;color:var(--blue)}
 .match-card .cd-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mu)}
@@ -387,32 +385,30 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 })();
 const STR={ru:{
 live:"Прямой эфир",title:"Кто красивее?",lead:"Десять баттлов идут одновременно. Выбери сторону и объясни свой выбор комментарием.",
-demo:"Демонстрационный прототип. Портреты, имена, голоса и таймеры — вымышленные. Сервер не подключён: всё работает только в этом окне браузера.",
 battle:"Баттл №",wait:"Ждём первого зрителя",vote:"Идёт голосование",tWait:"До отмены",tVote:"До конца голосования",
 noVotes:"Голосов пока нет",slots:"слотов занято",queue:"фото в очереди",ending:"Подсчёт итогов",
 arena:"Арена",q:"Очередь",up:"Загрузка",pr:"Профиль",st:"Ещё",of:"из",back:"Назад",
-setTitle:"Настройки",setLead:"Локальные настройки демо-прототипа.",
+setTitle:"Настройки",setLead:"Настройки приложения.",
 setProfile:"Профиль",setName:"Имя",setHandle:"Никнейм",setSave:"Сохранить",
 setAppear:"Оформление",setAnim:"Анимации",setAnimSub:"Отключение ускоряет интерфейс",
-setData:"Данные",setDataInfo:"Это локальный демо-режим. Данные хранятся только в этом браузере (localStorage), не синхронизируются между устройствами и не связаны с реальным аккаунтом или сервером.",
+setData:"Данные",setDataInfo:"Данные хранятся только в этом браузере и пока не синхронизируются между устройствами.",
 setReset:"Сброс",setResetInfo:"Удалит фото, голоса, комментарии, историю и настройки профиля из этого браузера.",
-setResetBtn:"Сбросить демо-данные",
+setResetBtn:"Сбросить данные",
 cm:"Комментарии зрителей",cmEmpty:"Комментариев пока нет. Станьте первым, кто объяснит свой выбор.",
 pickR:"Голосую за RED",pickB:"Голосую за BLUE",hint:"Чтобы проголосовать, нужно написать комментарий и объяснить выбор.",
-srv:"Демо-таймер: время идёт только в этом окне. Повторный вход не сбрасывает его.",
+srv:"Таймер работает, пока эта страница открыта.",
 dup:"Повторное голосование запрещено: вы уже голосовали в этом баттле",yourVote:"Ваш голос за",
 ph:"Почему вы выбрали эту сторону?",send:"Отправить голос",cancel:"Отмена",sending:"Отправляем…",
 e0:"Напишите комментарий: без него голос не засчитывается",e1:"Слишком коротко: напишите минимум 10 символов",
-ok:"Голос и комментарий сохранены (локально, демо)",closed:"Голосование в этом баттле уже завершено",
+ok:"Голос и комментарий сохранены на этом устройстве",closed:"Голосование в этом баттле уже завершено",
 done:"Ваш голос засчитан. Повторное голосование запрещено.",you:"Вы",
 qTitle:"Очередь",qLead:"Ваши фото ждут пары или уже участвуют в баттлах.",
 qPos:"Ваша позиция",qAhead:"фото впереди",
 stQueued:"В очереди",stMatched:"Пара найдена",stConfirmed:"Ожидание зрителя",stVoting:"Идёт голосование",
 stCompleted:"Завершён",stCancelled:"Отменён",
 qEmpty:"В очереди пока нет ваших фото. Загрузите портрет во вкладке «Загрузка».",
-qDemo:"Демо. Позиция и статусы считаются локально. Другие участники — вымышленные.",
-qYours:"Ваши фото",qOthers:"Другие в очереди (демо)",
-findPair:"Найти пару (демо)",cancelMatch:"Отменить участие",
+qYours:"Ваши фото",
+findPair:"Найти пару",cancelMatch:"Отменить участие",
 upTitle:"Загрузка",upLead:"Выберите портрет из галереи. Максимум 3 активных фото (очередь + баттлы).",
 upTap:"Нажмите, чтобы выбрать фото",upHint:"JPEG, PNG, WebP · до 5 МБ",
 upReplace:"Заменить",upAdd:"Добавить в очередь",upCancel:"Отменить",
@@ -420,13 +416,13 @@ upOk:"Фото добавлено в локальную очередь",upLimit:
 upBadType:"Поддерживаются только JPEG, PNG и WebP",upBadSize:"Файл больше 5 МБ",
 upNoFile:"Сначала выберите изображение",upMy:"Активные фото",upEmptyMy:"Пока нет загруженных фото",
 upConfirmAdd:"Добавить это фото в очередь?",upConfirmDel:"Удалить фото из очереди?",
-prTitle:"Профиль",prLead:"Демо-профиль. Статистика считается из вашей локальной истории.",
+prTitle:"Профиль",prLead:"Статистика по вашим результатам и участию.",
 prWins:"Победы",prLosses:"Поражения",prBattles:"Баттлы",
 prActive:"Активные фото",prHist:"История баттлов",prArchived:"Архив фото",
 prEmptyHist:"История пуста. Завершите баттл, чтобы увидеть результат.",
 prWin:"ПОБЕДА",prLose:"ПОРАЖЕНИЕ",prDraw:"НИЧЬЯ",
-prDemo:"Демо-профиль. Состояние сохраняется в localStorage этого браузера (не сервер).",
-prReset:"Сбросить демо-данные",
+prLocal:"Профиль пока хранится на этом устройстве.",
+prReset:"Сбросить данные",
 matchTitle:"Пара найдена",matchLead:"У вас 10 секунд, чтобы отменить участие.",
 matchConfirm:"Баттл подтверждён",matchCancelOk:"Участие отменено, фото вернулось в очередь",
 matchExpired:"Время вышло — баттл подтверждён",
@@ -461,7 +457,7 @@ return "data:image/svg+xml,"+encodeURIComponent(svg)}
 
 const MAX_ACTIVE=3, MAX_SIZE=5*1024*1024, MATCH_SEC=10, STAGE_SEC=150, MAX_BATTLES=10;
 const ACTIVE_STATUSES=new Set(["queued","matched","confirmed","voting","champion"]);
-const LS_KEY="face_arena_demo_v2";
+const LS_KEY="face_arena_v3";
 let photos=[];
 let arenaBattles=[];
 let history=[];
@@ -470,11 +466,9 @@ let VOTED=new Set(); // Set of battleUid strings
 let MY={}; // { [battleUid]: [{s,v}] }
 let pendingUrl=null, pendingFile=null;
 let matchTimerId=null;
-let profile={name:"Вы",handle:"demo_user"};
+let profile={name:"Вы",handle:"user"}
 let prefAnim=true;
 let participantStats={}; // photoId -> {wins,losses,defenses,bestStreak,name,img}
-let demoVictoryPreviewDone=false; // one-time demo victory overlay state
-const MOCK_OPP=[{name:"@ksu_v",seed:5},{name:"@vlad_t",seed:9},{name:"@sofia_e",seed:11},{name:"@ilya_f",seed:13},{name:"@vera_o",seed:15}];
 let _uidSeq=0;
 function newBattleUid(){return "b_"+Date.now().toString(36)+"_"+((++_uidSeq)%1e6).toString(36)+"_"+Math.random().toString(36).slice(2,7)}
 
@@ -482,7 +476,7 @@ function saveState(){
   try{
     const data={
       v:3,
-      photos, history, profile, prefAnim, _uidSeq, participantStats, demoVictoryPreviewDone,
+      photos, history, profile, prefAnim, _uidSeq, participantStats,
       arenaBattles:arenaBattles.map(b=>({...b})),
       voted:[...VOTED],
       my:MY,
@@ -497,7 +491,6 @@ function loadState(){
   try{
     // migrate from v1 if needed
     let raw=localStorage.getItem(LS_KEY);
-    if(!raw){raw=localStorage.getItem("face_arena_demo_v1");}
     if(!raw)return false;
     const data=JSON.parse(raw);
     if(!data||!Array.isArray(data.photos)||!Array.isArray(data.arenaBattles))return false;
@@ -512,11 +505,10 @@ function loadState(){
     });
     VOTED=new Set(data.voted||[]);
     MY=data.my||{};
-    profile=data.profile||{name:"Вы",handle:"demo_user"};
+    profile=data.profile||{name:"Вы",handle:"user"};
     prefAnim=data.prefAnim!==false;
     _uidSeq=data._uidSeq||0;
     participantStats=data.participantStats||{};
-    demoVictoryPreviewDone=data.demoVictoryPreviewDone===true;
     // Ensure every active battle has a battleUid
     arenaBattles.forEach(b=>{
       if((b.stage==="w"||b.stage==="v")&&!b.battleUid){
@@ -527,11 +519,9 @@ function loadState(){
     return true;
   }catch(e){return false}
 }
-function resetDemo(){
-  if(!confirm("Сбросить все демо-данные?\n\nБудут удалены: фото, голоса, комментарии, история баттлов и настройки профиля."))return;
-  localStorage.removeItem(LS_KEY);
-  localStorage.removeItem("face_arena_demo_v1");
-  location.hash="";location.reload();
+function resetData(){
+  if(!confirm("Сбросить все данные?\\n\\nБудут удалены фото, голоса, комментарии, история и настройки профиля."))return;
+  localStorage.removeItem(LS_KEY);location.hash="";location.reload();
 }
 function applyAnimPref(){
   const root=document.documentElement;
@@ -543,59 +533,22 @@ function applyAnimPref(){
 }
 
 function createDefaultArena(){
-  const raw=[["Алина К.","Тимур Р.",96,64,"v",112],["Мария С.","Егор Л.",41,73,"v",87],["Ксения В.","Артём Н.",0,0,"w",121],
-  ["Дарья М.","Никита Б.",58,57,"v",134],["Полина Ш.","Влад Т.",132,40,"v",33],["Софья Е.","Максим Д.",0,0,"w",64],
-  ["Ева Г.","Илья Ф.",77,91,"v",96],["Вера О.","Руслан А.",23,12,"v",146],["Лиза З.","Кирилл Ю.",0,0,"w",18],["Анна П.","Денис И.",64,88,"v",58]];
-  const NK=["alina_k","timur_r","masha.s","egor_l","ksu_v","artem_n","dasha_m","nikita_b","polina_sh","vlad_t","sofia_e","maxim_d","eva_g","ilya_f","vera_o","ruslan_a","liza_z","kirill_y","anna_p","denis_i"];
-  const now=Date.now();
-  return raw.map((d,i)=>{
-    const [rn,bn,rv,bv,st,sec]=d;
-    return {id:i+1,laneId:i+1,battleUid:newBattleUid(),isMock:true,userPhotoId:null,redName:NK[i*2],blueName:NK[i*2+1],redVotes:rv,blueVotes:bv,stage:st,stageEnd:now+sec*1000,stageStarted:now,totalStage:STAGE_SEC,championPhotoId:null,championSide:null,championStreak:0,championName:null,championImg:null};
-  });
+  return Array.from({length:MAX_BATTLES},(_,i)=>({id:i+1,laneId:i+1,battleUid:null,isMock:false,userPhotoId:null,redName:"—",blueName:"—",redVotes:0,blueVotes:0,stage:"empty",stageEnd:0,stageStarted:0,totalStage:STAGE_SEC,championPhotoId:null,championSide:null,championStreak:0,championName:null,championImg:null}));
 }
 (function initArena(){
-  if(!loadState()){
-    arenaBattles=createDefaultArena();
-  } else {
-    // Recover demo lanes that were cancelled by an older build.
-    const now=Date.now();
-    arenaBattles.forEach(b=>{
-      // Demo-only lanes must not remain as dead "Итоги" cards after their
-      // previous preview round. Keep real/user lanes and the one-time
-      // victory showcase untouched; restart completed or cancelled mock lanes.
-      const hasLaneHistory=(history||[]).some(h=>Number(h.laneId||h.battleId)===Number(b.id));
-      const hasLanePhoto=(photos||[]).some(p=>Number(p.battleId)===Number(b.id)&&p.status!=="completed"&&p.status!=="cancelled");
-      const isStaleDemoLane=!b.userPhotoId&&!b.championPhotoId&&!hasLaneHistory&&!hasLanePhoto&&!b.demoShowcase;
-      if(isStaleDemoLane&&(b.stage==="cancelled"||b.stage==="done")){
-        // Older LocalStorage snapshots may have lost the isMock flag.
-        // Only recycle lanes with no real photo, champion, or history.
-        b.isMock=true;
-        resetMockBattle(b,now);
-      }
-    });
-  }
-  // One-time visual demo: two fictional contestants, BLUE wins after 3 seconds.
-  if(!demoVictoryPreviewDone && !arenaBattles.some(x=>!!x.userPhotoId) && arenaBattles.length){
-    const demo=arenaBattles.find(x=>x.id===1);
-    if(demo){
-      const now=Date.now();
-      demo.isMock=true;
-      demo.demoShowcase=true;
-      demo.redName="alex_demo";
-      demo.blueName="dan_blue";
-      demo.redVotes=12;
-      demo.blueVotes=99;
-      demo.stage="v";
-      demo.stageStarted=now;
-      demo.stageEnd=now+3000;
-      demo.totalStage=3;
-      demo.battleUid=newBattleUid();
-      demo._finalized=false;
-      demo.victoryPending=false;
-      demo.victoryShown=false;
-    }
-    saveState();
-  }
+  if(!loadState())arenaBattles=createDefaultArena();
+  const isDemoId=id=>/^(demo[_-]|mock[_-]|bot[_-])/i.test(String(id||""));
+  photos=photos.filter(p=>!isDemoId(p.id)&&!p.isDemo&&!p.demoOnly);
+  history=history.filter(h=>!isDemoId(h.photoId));
+  Object.keys(participantStats).forEach(id=>{if(isDemoId(id)||participantStats[id]?.isDemo||participantStats[id]?.demoOnly)delete participantStats[id]});
+  const byId=id=>photos.find(p=>String(p.id)===String(id));
+  arenaBattles=arenaBattles.map((b,i)=>{
+    const userPhoto=byId(b.userPhotoId),championIsDemo=isDemoId(b.championPhotoId);
+    if(userPhoto&&(b.isMock||b.demoShowcase||!b.championPhotoId))Object.assign(userPhoto,{status:"queued",battleId:null,battleUid:null,targetLaneId:null,matchedAt:null,matchDeadline:null,side:null,opponentName:null,opponentImg:null});
+    if(b.isMock||b.demoShowcase||championIsDemo||(!b.userPhotoId&&!b.championPhotoId)||(userPhoto&&!b.championPhotoId))return {id:b.id||i+1,laneId:b.id||i+1,battleUid:null,isMock:false,userPhotoId:null,redName:"—",blueName:"—",redVotes:0,blueVotes:0,stage:"empty",stageEnd:0,stageStarted:0,totalStage:STAGE_SEC,championPhotoId:null,championSide:null,championStreak:0,championName:null,championImg:null};
+    b.isMock=false;b.victoryPending=false;b.victoryShown=false;return b;
+  });
+  saveState();
 })();
 
 function activeCount(){return photos.filter(p=>ACTIVE_STATUSES.has(p.status)).length}
@@ -625,7 +578,7 @@ function renderTopArenaHTML(){
     rows.slice(0,10).map((r,i)=>`<div class="top-item ${i===0?"gold":""}">
       <div class="pos">${i+1}</div>
       <img src="${r.img}" alt="">
-      <div><div class="nm">${esc(r.name)} ${r.isChampion?'<span class="demo-tag" style="background:#3a3010;color:#f0d060">ЧЕМПИОН</span>':''}</div>
+      <div><div class="nm">${esc(r.name)} ${r.isChampion?'<span class="champion-tag">ЧЕМПИОН</span>':''}</div>
       <div class="meta">${r.isChampion&&r.laneId?"Линия "+r.laneId+" · ":""}Серия ${r.streak} · Защит ${r.defenses}</div></div>
       <div class="stats"><b>${r.wins}</b><div>побед</div><div style="margin-top:2px">${r.losses} пор.</div></div>
     </div>`).join("")+`</div></div>`;
@@ -713,20 +666,6 @@ function ensureStats(photoId, name, img){
   if(!participantStats[k]) participantStats[k]={wins:0,losses:0,defenses:0,bestStreak:0,currentStreak:0,name:name||"Участник",img:img||"",isChampion:false,laneId:null};
   return participantStats[k];
 }
-function resetMockBattle(b,now){
-  // Demo-only lanes are reusable; never recycle a real user's battle.
-  b.stage="w";
-  b.stageStarted=now;
-  b.stageEnd=now+STAGE_SEC*1000;
-  b.totalStage=STAGE_SEC;
-  b.redVotes=0;
-  b.blueVotes=0;
-  b.battleUid=newBattleUid();
-  b._finalized=false;
-  b.victoryPending=false;
-  b.victoryShown=false;
-  return true;
-}
 function cancelInactiveBattle(b,now){
   if(window.FaceArenaGameEngine){
     const cancelled=window.FaceArenaGameEngine.cancelBattle({photos,lanes:arenaBattles,history,participantStats},b.id,now);
@@ -752,14 +691,12 @@ function finishBattle(b,now){
   if(b.stage!=="w"&&b.stage!=="v")return false;
   if(b._finalized)return false;
   if(b.stage==="w"){
-    if(b.isMock&&!b.userPhotoId&&!b.demoShowcase)return resetMockBattle(b,now);
     if(!cancelInactiveBattle(b,now))return false;
     // The participant returns to FIFO; tickArena() immediately refills released lanes.
     return true;
   }
   const tot=b.redVotes+b.blueVotes;
   if(tot===0){
-    if(b.isMock&&!b.userPhotoId&&!b.demoShowcase)return resetMockBattle(b,now);
     if(!cancelInactiveBattle(b,now))return false;
     // The participant returns to FIFO; tickArena() immediately refills released lanes.
     return true;
@@ -769,39 +706,6 @@ function finishBattle(b,now){
   let winSide="draw";
   if(b.redVotes>b.blueVotes)winSide="R";
   else if(b.blueVotes>b.redVotes)winSide="B";
-
-  if(b.demoShowcase){
-    const redId="demo_alex";
-    const blueId="demo_dan";
-    const redImg=face(42,"R");
-    const blueImg=face(43,"B");
-    const redStats=ensureStats(redId,"ALEX",redImg);
-    const blueStats=ensureStats(blueId,"DAN",blueImg);
-    if(winSide==="B"){
-      blueStats.wins=(blueStats.wins||0)+1;
-      blueStats.currentStreak=(blueStats.currentStreak||0)+1;
-      blueStats.bestStreak=Math.max(blueStats.bestStreak||0,blueStats.currentStreak);
-      blueStats.defenses=(blueStats.defenses||0)+1;
-      blueStats.isChampion=true;blueStats.laneId=b.id;
-      redStats.losses=(redStats.losses||0)+1;redStats.currentStreak=0;redStats.isChampion=false;redStats.laneId=null;
-      b.championPhotoId=blueId;b.championSide="B";b.championStreak=blueStats.currentStreak;
-      b.championName="DAN";b.championImg=blueImg;
-      b.demoWinner="B";
-    } else {
-      redStats.wins=(redStats.wins||0)+1;
-      redStats.currentStreak=(redStats.currentStreak||0)+1;
-      redStats.bestStreak=Math.max(redStats.bestStreak||0,redStats.currentStreak);
-      redStats.isChampion=true;redStats.laneId=b.id;
-      blueStats.losses=(blueStats.losses||0)+1;blueStats.currentStreak=0;
-      b.championPhotoId=redId;b.championSide="R";b.championStreak=redStats.currentStreak;
-      b.championName="ALEX";b.championImg=redImg;
-      b.demoWinner="R";
-    }
-    b.stage="done";b._finalized=true;b.victoryPending=true;
-    window.FaceArenaAudio?.play("victory");
-    demoVictoryPreviewDone=true;
-    return true;
-  }
 
   const p=b.userPhotoId?photos.find(x=>String(x.id)===String(b.userPhotoId)):null;
   if(p&&p.status==="voting"&&window.FaceArenaGameEngine){
@@ -896,39 +800,12 @@ function tryFillSlots(){
       p.opponentName=lane.championName||"Чемпион";p.opponentImg=lane.championImg||face(1,"B");
       p.side=lane.championSide==="R"?"B":"R";
     }else{
-      const opp=MOCK_OPP[Math.floor(Math.random()*MOCK_OPP.length)];
-      p.opponentName=opp.name;p.opponentImg=face(opp.seed,"B");p.side="R";
+      p.status="queued";p.targetLaneId=null;p.matchedAt=null;p.matchDeadline=null;p._confirming=false;
+      break;
     }
     p._confirming=false;
     window.FaceArenaAudio?.play("matchFound");
   }
-}
-function showDemoVictory(b){
-  if(!b||!b.demoShowcase||!b.victoryPending||b.victoryShown)return;
-  b.victoryPending=false;b.victoryShown=true;
-  const blue=b.demoWinner==="B";
-  const winnerName=blue?"DAN":"ALEX";
-  const winnerImg=blue?face(43,"B"):face(42,"R");
-  const sideColor=blue?"var(--blue)":"var(--red)";
-  const overlay=document.createElement("div");
-  overlay.className="victory-overlay";
-  overlay.id="demoVictoryOverlay";
-  overlay.innerHTML=`<div class="victory-panel" role="dialog" aria-modal="true" aria-label="Результат демо-баттла">
-    <div class="victory-rays"></div>
-    <div class="victory-kicker">FACE ARENA · ЛИНИЯ 01</div>
-    <div class="victory-title" style="color:${blue?"#8bb4ff":"#ff7777"}">${blue?"BLUE ПОБЕЖДАЕТ":"RED ПОБЕЖДАЕТ"}</div>
-    <img class="victory-photo" src="${winnerImg}" alt="Демо-участник ${winnerName}" style="border-color:${sideColor}">
-    <div class="victory-name">${winnerName}</div>
-    <div class="victory-sub">${blue?"БОЛЬШАЯ ПОБЕДА":"ПОБЕДИТЕЛЬ БАТТЛА"}</div>
-    <button class="victory-close" type="button">В АРЕНУ</button>
-  </div>`;
-  document.body.appendChild(overlay);
-  requestAnimationFrame(()=>overlay.classList.add("on"));
-  const close=()=>{overlay.classList.remove("on");setTimeout(()=>overlay.remove(),350)};
-  overlay.querySelector(".victory-close").onclick=close;
-  overlay.onclick=e=>{if(e.target===overlay)close()};
-  b.victoryShown=true;
-  saveState();
 }
 function tickArena(){
   const now=Date.now();
@@ -961,13 +838,9 @@ function tickArena(){
     saveState();
     if(!$("av").hidden)renderArenaGrid();
     if(!$("qv").hidden)renderQueue();
-    const showcase=arenaBattles.find(x=>x.demoShowcase&&x.victoryPending&&!x.victoryShown);
-    if(showcase)showDemoVictory(showcase);
   }
 }
 
-const CM=["Мягкий свет и спокойный взгляд: на этом фото хочется задержаться.","Очень чёткий кадр и живая эмоция, выбираю эту сторону.","Композиция сильнее: лицо в фокусе, фон не отвлекает.","Больше характера в выражении лица, поэтому мой голос здесь.","Цвета и контраст сделаны аккуратно, выглядит профессионально.","Естественная улыбка выигрывает у постановочной позы."];
-const VN=["Ирина","Олег","Таня","Павел","Лена","Глеб"];
 function bview(n){
   const b=arenaBattles.find(x=>x.id===n);if(!b)return;
   if(!b.battleUid)b.battleUid=newBattleUid();
@@ -983,7 +856,6 @@ function bview(n){
   const myComments=MY[uid]||[];
   const k=Math.min(4,Math.max(0,tot-myComments.length));
   let cs=myComments.map((m,j)=>`<li class="cm ${m.s}" style="--i:${j}"><b>${t("you")}</b><span class="tg">${m.s==="R"?"RED":"BLUE"}</span><p>${esc(m.v)}</p></li>`).join("");
-  for(let j=0;j<k;j++){const s=(n+j)%2?"R":"B";cs+=`<li class="cm ${s}" style="--i:${j}"><b>${VN[(n+j)%6]}</b><span class="tg">${s==="R"?"RED":"BLUE"}</span><p>${CM[(n*2+j)%6]}</p></li>`}
   const closed=b.stage==="done"||b.stage==="cancelled"||b.stage==="empty";
   let redSrc=face((n-1)*2+1,"R"), blueSrc=face((n-1)*2+4,"B"), redNm=b.redName, blueNm=b.blueName;
   if(b.userPhotoId){
@@ -1009,7 +881,7 @@ ${VOTED.has(uid)?`<p class="done">${t("done")}</p>`:closed?`<p class="done">${b.
 <h2>${t("cm")}</h2>${cs?`<ul class="cms">${cs}</ul>`:`<div class="empty">${t("cmEmpty")}</div>`}</div>`;
   $("bk").onclick=()=>{location.hash=""};
   document.querySelectorAll(".pick").forEach(btn=>btn.onclick=()=>openV(n,btn.classList.contains("R")?"R":"B"));
-  document.querySelectorAll(".nk").forEach(btn=>btn.onclick=()=>toast(t("prDemo")));
+  document.querySelectorAll(".nk").forEach(btn=>btn.onclick=()=>toast(t("prLocal")));
   setTimeout(()=>{const bp=$("bp");if(bp){const p=bp.dataset.p||0;bp.style.transform=`scaleX(${p})`;const bar=bp.parentElement;if(bar){bar.style.setProperty("--sx",p);bar.style.setProperty("--p",String(Math.round((+p)*100)));}}},50);
 }
 function tick2(){
@@ -1185,11 +1057,9 @@ function renderMatch(photoId){
 function findFreeSlot(photo){
   if(photo&&photo.targetLaneId){
     const target=arenaBattles.find(b=>String(b.id)===String(photo.targetLaneId));
-    if(target&&!target.userPhotoId&&(target.stage==="done"||target.stage==="cancelled"||target.stage==="empty"||(target.isMock&&(!target.demoShowcase||target.stage==="done"))))return target;
+    if(target&&!target.userPhotoId&&(target.stage==="done"||target.stage==="cancelled"||target.stage==="empty"))return target;
   }
-  return arenaBattles.filter(b=>!b.demoShowcase&&!b.userPhotoId&&(
-    b.stage==="done"||b.stage==="cancelled"||b.stage==="empty"||(b.isMock&&(b.stage==="w"||b.stage==="v"))
-  )).sort((a,b)=>Number(a.id)-Number(b.id))[0]||null;
+  return arenaBattles.filter(b=>!b.userPhotoId&&(b.stage==="done"||b.stage==="cancelled"||b.stage==="empty")).sort((a,b)=>Number(a.id)-Number(b.id))[0]||null;
 }
 function clearSlot(slot, preserveChampion){
   // New battle identity — never reuse votes/comments
@@ -1240,7 +1110,6 @@ function confirmMatch(p){
   p.matchDeadline=null;
   p._confirming=false;
   slot.isMock=false;
-  slot.demoShowcase=false;
   slot.userPhotoId=p.id;
   slot.battleUid=uid;
   slot.stage="w";
@@ -1377,7 +1246,7 @@ function renderProfile(){
   const actives=photos.filter(p=>ACTIVE_STATUSES.has(p.status));
   const archived=photos.filter(p=>p.status==="completed"||p.status==="cancelled");
   const dispName=esc(profile.name||"Вы");
-  const dispHandle=esc(profile.handle||"demo_user");
+  const dispHandle=esc(profile.handle||"user");
 
   let activeHtml="";
   if(actives.length){
@@ -1454,7 +1323,7 @@ function renderProfile(){
 
 function renderSettings(){
   const dispName=esc(profile.name||"Вы");
-  const dispHandle=esc(profile.handle||"demo_user");
+  const dispHandle=esc(profile.handle||"user");
   $("sv").classList.add("settings-menu");
   $("sv").innerHTML=`
     <header>
@@ -1535,15 +1404,15 @@ function renderSettings(){
     <div id="setSubPrivacy" class="settings-sub">
       <button type="button" class="settings-back" id="backFromPrivacy">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Приватность и безопасность</h2>
-      <p class="set-info">Настройки видимости профиля, блокировок и жалоб пока не активны: в демо-версии нет серверных аккаунтов и системы модерации.</p>
+      <p class="set-info">Настройки видимости профиля, блокировок и жалоб пока не активны: серверные аккаунты и система модерации ещё не подключены.</p>
     </div>
 
     <div id="setSubData" class="settings-sub">
       <button type="button" class="settings-back" id="backFromData">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Данные</h2>
-      <p class="set-info">Это локальный демо-режим. Данные хранятся только в этом браузере (localStorage), не синхронизируются между устройствами и не связаны с реальным аккаунтом или сервером.</p>
+      <p class="set-info">Данные хранятся только в этом браузере и пока не синхронизируются между устройствами.</p>
       <p class="set-info">Сброс удалит фотографии, голоса, комментарии, историю и локальные настройки профиля только в этом браузере.</p>
-      <button type="button" class="menu-item danger" id="setResetBtn">Сбросить демо-данные</button>
+      <button type="button" class="menu-item danger" id="setResetBtn">Сбросить данные</button>
     </div>
 
     <div id="setSubSupport" class="settings-sub">
@@ -1588,7 +1457,7 @@ function renderSettings(){
   const ex=$("setExit");if(ex)ex.onclick=closeSettings;
 
   const resetBtn=$("setResetBtn");
-  if(resetBtn)resetBtn.onclick=resetDemo;
+  if(resetBtn)resetBtn.onclick=resetData;
 
   const audio=window.FaceArenaAudio;
   if(audio){
