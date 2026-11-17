@@ -59,6 +59,17 @@
 
     isOnline() { return !!this.client && !!this.user && this.ready; }
     serverNow() { return Date.now() + (Number.isFinite(this.serverTimeOffset) ? this.serverTimeOffset : 0); }
+    async fetchAllRows(makeQuery, pageSize = 500) {
+      const rows = [];
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await makeQuery().range(from, from + pageSize - 1);
+        if (error) throw error;
+        const page = data || [];
+        rows.push(...page);
+        if (page.length < pageSize) break;
+      }
+      return { data: rows, error: null };
+    }
     async syncServerClock() {
       if (!this.client || !this.user) return false;
       const startedAt = Date.now();
@@ -209,17 +220,21 @@
           console.warn("[FACE ARENA server clock]", error);
           return false;
         });
-        const [photoRes, profileRes, laneRes, battleRes, participantRes, voteRes, resultRes] = await Promise.all([
-          c.from("arena_photos").select("id,owner_id,object_path,status,created_at").order("created_at", { ascending: true }),
-          c.from("arena_profiles").select("user_id,display_name,handle"),
+        const [photoRes, profileRes, laneRes, battleRes, resultRes] = await Promise.all([
+          this.fetchAllRows(() => c.from("arena_photos").select("id,owner_id,object_path,status,created_at").order("created_at", { ascending: true }).order("id", { ascending: true })),
+          this.fetchAllRows(() => c.from("arena_profiles").select("user_id,display_name,handle").order("user_id", { ascending: true })),
           c.from("arena_lanes").select("lane_id,champion_photo_id,challenger_photo_id").order("lane_id"),
           c.from("arena_battles").select("id,lane_id,opening,stage,started_at,confirm_until,stage_ends_at,finished_at").in("stage", ["waiting","voting"]),
-          c.from("arena_battle_participants").select("battle_id,photo_id,owner_id,side"),
-          c.from("arena_votes").select("battle_id,voter_id,target_photo_id,comment,created_at"),
-          c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,completed_at").order("completed_at", { ascending: false }).limit(500)
+          this.fetchAllRows(() => c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,completed_at").order("completed_at", { ascending: false }).order("id", { ascending: false }))
         ]);
         await clockSync;
-        for (const r of [photoRes,profileRes,laneRes,battleRes,participantRes,voteRes,resultRes]) if (r.error) throw r.error;
+        for (const r of [photoRes,profileRes,laneRes,battleRes,resultRes]) if (r.error) throw r.error;
+
+        const activeBattleIds = battleRes.data.map(b => b.id);
+        const [participantRes, voteRes] = activeBattleIds.length ? await Promise.all([
+          this.fetchAllRows(() => c.from("arena_battle_participants").select("battle_id,photo_id,owner_id,side").in("battle_id", activeBattleIds).order("battle_id").order("photo_id")),
+          this.fetchAllRows(() => c.from("arena_votes").select("battle_id,voter_id,target_photo_id,comment,created_at").in("battle_id", activeBattleIds).order("battle_id").order("voter_id"))
+        ]) : [{ data: [] }, { data: [] }];
 
         const profiles = new Map(profileRes.data.map(x => [x.user_id, x]));
         const photoRows = photoRes.data;
