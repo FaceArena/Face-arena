@@ -1,0 +1,16 @@
+name = "face-arena"
+main = "src/index.ts"
+compatibility_date = "2026-11-18"
+workers_dev = true
+
+[vars]
+SUPABASE_URL = "https://nvvkmjeobnnxlrpiuisf.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_-a7Qjy5NL3ZUaKfLpIi4Dg_x2hzmNKE"
+
+[[durable_objects.bindings]]
+name = "ARENA"
+class_name = "ArenaCoordinator"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ArenaCoordinator"]
