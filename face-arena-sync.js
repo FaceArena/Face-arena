@@ -259,7 +259,7 @@
           return {
             resultId: result.id, photoId: result.left_photo_id, battleId: result.lane_id,
             battleUid: result.battle_id, laneId: result.lane_id,
-            result: result.is_draw ? "draw" : result.winner_photo_id === result.left_photo_id ? "win" : "lose",
+            result: result.is_draw ? "draw" : result.winner_photo_id === result.left_photo_id ? "red" : "blue",
             myVotes: result.left_votes, oppVotes: result.right_votes,
             myImg: leftPhoto ? c.storage.from("arena-photos").getPublicUrl(leftPhoto.object_path).data.publicUrl : "",
             opponentImg: rightPhoto ? c.storage.from("arena-photos").getPublicUrl(rightPhoto.object_path).data.publicUrl : "",
@@ -303,7 +303,7 @@
             const p = row ? profiles.get(row.owner_id) || {} : {};
             participantStats[photoId] = {
               wins: 0, losses: 0, defenses: 0, currentStreak: 0, bestStreak: 0,
-              name: p.display_name || "Участник",
+              name: p.display_name || "Участник", ownerId: row?.owner_id || null,
               img: row ? c.storage.from("arena-photos").getPublicUrl(row.object_path).data.publicUrl : "",
               isChampion: false, laneId: null
             };
