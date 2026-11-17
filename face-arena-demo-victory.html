@@ -498,6 +498,10 @@ window.applyFaceArenaCloudProfile=function(cloudProfile){
   const avatar=document.querySelector("#pv .pr-av img");
   if(avatar&&profile.avatarUrl)avatar.src=profile.avatarUrl;
 };
+window.clearFaceArenaCloudProfile=function(){
+  profile={name:"Вы",handle:"demo_user"};
+  saveState();
+};
 let prefAnim=true;
 let participantStats={}; // photoId -> {wins,losses,defenses,bestStreak,name,img}
 let demoVictoryPreviewDone=false; // one-time demo victory overlay state
