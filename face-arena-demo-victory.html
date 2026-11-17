@@ -1621,7 +1621,7 @@ function renderResults(){
         <img src="${h.opponentImg||face(2,"B")}" alt="">
       </div>
       <div style="text-align:right">
-        <div class="res ${esc(h.result)}">${h.result==="red"?"Победа RED":h.result==="blue"?"Победа BLUE":"Ничья"}</div>
+        <div class="res ${esc(h.result)}">${h.result==="red"?"Победа RED":h.result==="blue"?"Победа BLUE":h.result==="win"?t("prWin"):h.result==="lose"?t("prLose"):"Ничья"}</div>
         <div style="font-size:11px;color:var(--mu);margin-top:2px">${Number(h.myVotes)||0} : ${Number(h.oppVotes)||0}</div>
         <div style="font-size:10px;color:var(--mu);margin-top:3px">Баттл №${esc(h.battleId||h.laneId||"—")}</div>
       </div>
@@ -1650,7 +1650,7 @@ function renderResult(photoId){
         <div><img src="${h.myImg}" alt=""><div style="font-size:12px;margin-top:6px">RED · ${esc(h.myName||"Участник")}</div></div>
         <div><img src="${h.opponentImg}" alt=""><div style="font-size:12px;margin-top:6px">BLUE · ${esc(h.opponentName||"Участник")}</div></div>
       </div>
-      <div class="score" style="color:${h.result==="red"?"var(--red)":h.result==="blue"?"var(--blue)":"var(--mu)"}">${h.result==="red"?"Победа RED":h.result==="blue"?"Победа BLUE":"Ничья"}</div>
+      <div class="score" style="color:${h.result==="red"||h.result==="lose"?"var(--red)":h.result==="blue"||h.result==="win"?"var(--blue)":"var(--mu)"}">${h.result==="red"?"Победа RED":h.result==="blue"?"Победа BLUE":"Ничья"}</div>
       <div style="text-align:center;font:800 20px var(--hd)">${h.myVotes} : ${h.oppVotes}</div>
       <p class="note" style="text-align:center">Баттл №${h.battleId} · ${new Date(h.completedAt).toLocaleString("ru")}</p>
     </div>`;
