@@ -12,6 +12,7 @@
       this.ready = false;
       this.loading = false;
       this.lastSnapshot = null;
+      this.serverTimeOffset = 0;
     }
 
     async init() {
@@ -53,6 +54,7 @@
     }
 
     isOnline() { return !!this.client && !!this.user && this.ready; }
+    serverNow() { return Date.now() + (Number.isFinite(this.serverTimeOffset) ? this.serverTimeOffset : 0); }
     getUser() { return this.user; }
 
     mountAuthGate() {
@@ -178,7 +180,9 @@
       this.loading = true;
       try {
         const c = this.client;
-        const [photoRes, profileRes, laneRes, battleRes, participantRes, voteRes, resultRes] = await Promise.all([
+        const requestStartedAt = Date.now();
+        const [serverTimeRes, photoRes, profileRes, laneRes, battleRes, participantRes, voteRes, resultRes] = await Promise.all([
+          c.rpc("get_arena_server_time"),
           c.from("arena_photos").select("id,owner_id,object_path,status,created_at").order("created_at", { ascending: true }),
           c.from("arena_profiles").select("user_id,display_name,handle"),
           c.from("arena_lanes").select("lane_id,champion_photo_id,challenger_photo_id").order("lane_id"),
@@ -187,6 +191,11 @@
           c.from("arena_votes").select("battle_id,voter_id,target_photo_id,comment,created_at"),
           c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,completed_at").order("completed_at", { ascending: false }).limit(500)
         ]);
+        const requestFinishedAt = Date.now();
+        if (serverTimeRes.error) throw serverTimeRes.error;
+        const serverTimeMs = Number(serverTimeRes.data);
+        if (!Number.isFinite(serverTimeMs)) throw new Error("Supabase returned an invalid server clock");
+        this.serverTimeOffset = serverTimeMs - ((requestStartedAt + requestFinishedAt) / 2);
         for (const r of [photoRes,profileRes,laneRes,battleRes,participantRes,voteRes,resultRes]) if (r.error) throw r.error;
 
         const profiles = new Map(profileRes.data.map(x => [x.user_id, x]));
@@ -235,7 +244,7 @@
           const blueVotes = right ? votes.filter(v => v.target_photo_id === right.photo_id).length : 0;
           const champ = lane.champion_photo_id ? photoMap.get(lane.champion_photo_id) : null;
           const me = members.find(x => x.owner_id === this.user.id);
-          const confirming = !!battle && battle.stage === "waiting" && battle.confirm_until && Date.parse(battle.confirm_until) > Date.now();
+          const confirming = !!battle && battle.stage === "waiting" && battle.confirm_until && Date.parse(battle.confirm_until) > this.serverNow();
           const stage = !battle ? "empty" : (confirming ? "m" : battle.stage === "waiting" ? "w" : "v");
           return {
             id: lane.lane_id, laneId: lane.lane_id, battleUid: battle?.id || null, opening: !!battle?.opening,
