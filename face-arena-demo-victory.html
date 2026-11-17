@@ -1650,7 +1650,7 @@ function renderResult(photoId){
         <div><img src="${h.myImg}" alt=""><div style="font-size:12px;margin-top:6px">RED · ${esc(h.myName||"Участник")}</div></div>
         <div><img src="${h.opponentImg}" alt=""><div style="font-size:12px;margin-top:6px">BLUE · ${esc(h.opponentName||"Участник")}</div></div>
       </div>
-      <div class="score" style="color:${h.result==="red"||h.result==="lose"?"var(--red)":h.result==="blue"||h.result==="win"?"var(--blue)":"var(--mu)"}">${h.result==="red"?"Победа RED":h.result==="blue"?"Победа BLUE":"Ничья"}</div>
+      <div class="score" style="color:${h.result==="red"?"var(--red)":h.result==="blue"?"var(--blue)":h.result==="win"?"#4ade80":h.result==="lose"?"var(--red)":"var(--mu)"}">${h.result==="red"?"Победа RED":h.result==="blue"?"Победа BLUE":"Ничья"}</div>
       <div style="text-align:center;font:800 20px var(--hd)">${h.myVotes} : ${h.oppVotes}</div>
       <p class="note" style="text-align:center">Баттл №${h.battleId} · ${new Date(h.completedAt).toLocaleString("ru")}</p>
     </div>`;
