@@ -13,6 +13,7 @@
       this.loading = false;
       this.lastSnapshot = null;
       this.serverTimeOffset = 0;
+      this.clockSyncTimer = null;
     }
 
     async init() {
@@ -31,10 +32,12 @@
           this.renderAuthGate();
           if (this.user) {
             await this.loadSnapshot();
+            this.startClockSync();
             this.subscribe();
             const coordinator = await this.wakeSafely();
             if (!coordinator.ok) console.warn("[FACE ARENA coordinator unavailable]", coordinator.error);
           } else {
+            this.stopClockSync();
             this.unsubscribe();
             this.dispatch(null);
           }
@@ -47,6 +50,7 @@
       this.renderAuthGate();
       if (this.user) {
         await this.loadSnapshot();
+        this.startClockSync();
         this.subscribe();
         const coordinator = await this.wakeSafely();
         if (!coordinator.ok) console.warn("[FACE ARENA coordinator unavailable]", coordinator.error);
@@ -55,6 +59,27 @@
 
     isOnline() { return !!this.client && !!this.user && this.ready; }
     serverNow() { return Date.now() + (Number.isFinite(this.serverTimeOffset) ? this.serverTimeOffset : 0); }
+    async syncServerClock() {
+      if (!this.client || !this.user) return false;
+      const startedAt = Date.now();
+      const { data, error } = await this.client.rpc("get_arena_server_time");
+      const finishedAt = Date.now();
+      if (error) throw error;
+      const serverTimeMs = Number(data);
+      if (!Number.isFinite(serverTimeMs)) throw new Error("Supabase returned an invalid server clock");
+      this.serverTimeOffset = serverTimeMs - ((startedAt + finishedAt) / 2);
+      return true;
+    }
+    startClockSync() {
+      if (this.clockSyncTimer) return;
+      this.clockSyncTimer = setInterval(() => {
+        this.syncServerClock().catch(error => console.warn("[FACE ARENA server clock]", error));
+      }, 30000);
+    }
+    stopClockSync() {
+      if (this.clockSyncTimer) clearInterval(this.clockSyncTimer);
+      this.clockSyncTimer = null;
+    }
     getUser() { return this.user; }
 
     mountAuthGate() {
@@ -180,9 +205,11 @@
       this.loading = true;
       try {
         const c = this.client;
-        const requestStartedAt = Date.now();
-        const [serverTimeRes, photoRes, profileRes, laneRes, battleRes, participantRes, voteRes, resultRes] = await Promise.all([
-          c.rpc("get_arena_server_time"),
+        const clockSync = this.syncServerClock().catch(error => {
+          console.warn("[FACE ARENA server clock]", error);
+          return false;
+        });
+        const [photoRes, profileRes, laneRes, battleRes, participantRes, voteRes, resultRes] = await Promise.all([
           c.from("arena_photos").select("id,owner_id,object_path,status,created_at").order("created_at", { ascending: true }),
           c.from("arena_profiles").select("user_id,display_name,handle"),
           c.from("arena_lanes").select("lane_id,champion_photo_id,challenger_photo_id").order("lane_id"),
@@ -191,11 +218,7 @@
           c.from("arena_votes").select("battle_id,voter_id,target_photo_id,comment,created_at"),
           c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,completed_at").order("completed_at", { ascending: false }).limit(500)
         ]);
-        const requestFinishedAt = Date.now();
-        if (serverTimeRes.error) throw serverTimeRes.error;
-        const serverTimeMs = Number(serverTimeRes.data);
-        if (!Number.isFinite(serverTimeMs)) throw new Error("Supabase returned an invalid server clock");
-        this.serverTimeOffset = serverTimeMs - ((requestStartedAt + requestFinishedAt) / 2);
+        await clockSync;
         for (const r of [photoRes,profileRes,laneRes,battleRes,participantRes,voteRes,resultRes]) if (r.error) throw r.error;
 
         const profiles = new Map(profileRes.data.map(x => [x.user_id, x]));
