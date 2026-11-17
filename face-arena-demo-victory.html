@@ -241,7 +241,7 @@ html.no-anim .card{opacity:1}
 .hist-item .sides img{width:40px;height:50px;object-fit:cover;border-radius:8px}
 .hist-item .vs-s{font:800 10px var(--hd);color:var(--mu)}
 .hist-item .res{font:800 12px var(--hd);letter-spacing:.06em}
-.hist-item .res.win{color:#4ade80}.hist-item .res.lose{color:var(--red)}.hist-item .res.draw{color:var(--mu)}
+.hist-item .res.win{color:#4ade80}.hist-item .res.lose{color:var(--red)}.hist-item .res.draw{color:var(--mu)}.hist-item .res.red{color:var(--red)}.hist-item .res.blue{color:var(--blue)}
 .champion-tag{display:inline-block;font:700 9px var(--bd);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#3a3010;color:#f0d060;margin-left:6px;vertical-align:middle}
 .btn-main{width:100%;border:0;border-radius:14px;min-height:52px;font:800 13px var(--hd);letter-spacing:.06em;color:#fff;background:var(--blue);cursor:pointer;touch-action:manipulation;margin-top:12px}
 .btn-main:disabled{opacity:.5}
@@ -1650,7 +1650,7 @@ function renderResult(photoId){
         <div><img src="${h.myImg}" alt=""><div style="font-size:12px;margin-top:6px">RED · ${esc(h.myName||"Участник")}</div></div>
         <div><img src="${h.opponentImg}" alt=""><div style="font-size:12px;margin-top:6px">BLUE · ${esc(h.opponentName||"Участник")}</div></div>
       </div>
-      <div class="score" style="color:${h.result==="red"?"#4ade80":h.result==="blue"?"var(--red)":"var(--mu)"}">${h.result==="red"?"Победа RED":h.result==="blue"?"Победа BLUE":"Ничья"}</div>
+      <div class="score" style="color:${h.result==="red"?"var(--red)":h.result==="blue"?"var(--blue)":"var(--mu)"}">${h.result==="red"?"Победа RED":h.result==="blue"?"Победа BLUE":"Ничья"}</div>
       <div style="text-align:center;font:800 20px var(--hd)">${h.myVotes} : ${h.oppVotes}</div>
       <p class="note" style="text-align:center">Баттл №${h.battleId} · ${new Date(h.completedAt).toLocaleString("ru")}</p>
     </div>`;
