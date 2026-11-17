@@ -563,7 +563,13 @@ function createDefaultArena(){
       // Demo-only lanes must not remain as dead "Итоги" cards after their
       // previous preview round. Keep real/user lanes and the one-time
       // victory showcase untouched; restart completed or cancelled mock lanes.
-      if(b.isMock&&!b.userPhotoId&&!b.demoShowcase&&(b.stage==="cancelled"||b.stage==="done")){
+      const hasLaneHistory=(history||[]).some(h=>Number(h.laneId||h.battleId)===Number(b.id));
+      const hasLanePhoto=(photos||[]).some(p=>Number(p.battleId)===Number(b.id)&&p.status!=="completed"&&p.status!=="cancelled");
+      const isStaleDemoLane=!b.userPhotoId&&!b.championPhotoId&&!hasLaneHistory&&!hasLanePhoto&&!b.demoShowcase;
+      if(isStaleDemoLane&&(b.stage==="cancelled"||b.stage==="done")){
+        // Older LocalStorage snapshots may have lost the isMock flag.
+        // Only recycle lanes with no real photo, champion, or history.
+        b.isMock=true;
         resetMockBattle(b,now);
       }
     });
