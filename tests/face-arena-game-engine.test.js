@@ -86,3 +86,21 @@ for(const stage of ["w","v"]){
   assert.equal(state.lanes[0].userPhotoId,"challenger");
  });
 }
+
+test("timeout archives the missed participant when another participant is queued",()=>{
+ const state={photos:[
+  {id:"missed",status:"voting",queuedAt:1,battleId:1,battleUid:"old"},
+  {id:"next",status:"queued",queuedAt:2}
+ ],lanes:[lane(1,{stage:"v",userPhotoId:"missed",battleUid:"old"})],history:[],participantStats:{}};
+ const r=E.cancelBattle(state,1,200);
+ assert.equal(r.state.photos.find(p=>p.id==="missed").status,"cancelled");
+ assert.equal(r.state.photos.find(p=>p.id==="next").status,"queued");
+ assert.deepEqual(E.selectNextAssignment(r.state.photos,r.state.lanes),{photoId:"next",laneId:1});
+});
+test("timeout requeues the missed participant when nobody else is queued",()=>{
+ const state={photos:[{id:"missed",status:"voting",queuedAt:1,battleId:1,battleUid:"old"}],
+  lanes:[lane(1,{stage:"v",userPhotoId:"missed",battleUid:"old"})],history:[],participantStats:{}};
+ const r=E.cancelBattle(state,1,200);
+ assert.equal(r.state.photos[0].status,"queued");
+ assert.deepEqual(E.selectNextAssignment(r.state.photos,r.state.lanes),{photoId:"missed",laneId:1});
+});
