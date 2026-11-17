@@ -1,7 +1,7 @@
 (() => {
   const SUPABASE_URL = "https://nvvkmjeobnnxlrpiuisf.supabase.co";
   const SUPABASE_KEY = "sb_publishable_-a7Qjy5NL3ZUaKfLpIi4Dg_x2hzmNKE";
-  const WORKER_URL = "https://face-arena-preview.featuresfaded.workers.dev";
+  const WORKER_URL = "https://face-arena.featuresfaded.workers.dev";
   const EVENT = "face-arena-snapshot";
 
   class FaceArenaSync {
