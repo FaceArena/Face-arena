@@ -99,6 +99,14 @@ create policy "Users can upload their own FACE ARENA avatar"
     and (storage.foldername(name))[1] = (select auth.uid())::text
   );
 
+drop policy if exists "Users can read their own FACE ARENA avatar objects" on storage.objects;
+create policy "Users can read their own FACE ARENA avatar objects"
+  on storage.objects for select to authenticated
+  using (
+    bucket_id = 'face-arena-avatars'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
 drop policy if exists "Users can replace their own FACE ARENA avatar" on storage.objects;
 create policy "Users can replace their own FACE ARENA avatar"
   on storage.objects for update to authenticated
