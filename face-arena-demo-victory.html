@@ -959,7 +959,7 @@ async function submit(n){
   if(!b.battleUid)b.battleUid=newBattleUid();
   const uid=b.battleUid;
   if(VOTED.has(uid)){$("er").textContent=t("dup");return}
-  if(b.stageEnd<=Date.now()){toast(t("closed"));return}
+  if(b.stageEnd<=arenaNow()){toast(t("closed"));return}
   busy=true;$("sd").textContent=t("sending");$("sd").disabled=true;
   // Final validation immediately before mutation
   const b2=arenaBattles.find(x=>x.id===n);
