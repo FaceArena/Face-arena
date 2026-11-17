@@ -61,3 +61,28 @@ test("ranking excludes demo identities and has deterministic ID tie break",()=>{
  const rows=E.buildRanking({demo_alex:{wins:99},"z-user":{wins:2},"a-user":{wins:2}},[]);
  assert.deepEqual(rows.map(x=>x.id),["a-user","z-user"]);
 });
+
+for(const stage of ["w","v"]){
+ test("cancelling inactive "+stage+" battle requeues photo and releases lane",()=>{
+  const state={
+   photos:[{id:"challenger",status:stage==="w"?"confirmed":"voting",queuedAt:10,battleId:2,battleUid:"old-battle",targetLaneId:2,matchedAt:50,side:"B",opponentName:"champ",opponentImg:"champ-img"}],
+   lanes:[lane(2,{stage,userPhotoId:"challenger",championPhotoId:"champion",championSide:"R",championName:"champ",championImg:"champ-img",battleUid:"old-battle",redVotes:0,blueVotes:0})],
+   history:[],participantStats:{}
+  };
+  const r=E.cancelBattle(state,2,200);
+  assert.equal(r.changed,true);
+  const p=r.state.photos[0],l=r.state.lanes[0];
+  assert.equal(p.status,"queued");
+  assert.equal(p.battleId,null);
+  assert.equal(p.battleUid,null);
+  assert.equal(p.targetLaneId,null);
+  assert.equal(p.side,null);
+  assert.equal(l.userPhotoId,null);
+  assert.equal(l.stage,"done");
+  assert.equal(l.championPhotoId,"champion");
+  assert.equal(l.championSide,"R");
+  assert.deepEqual(E.selectNextAssignment(r.state.photos,r.state.lanes),{photoId:"challenger",laneId:2});
+  // The original state is not mutated.
+  assert.equal(state.lanes[0].userPhotoId,"challenger");
+ });
+}
