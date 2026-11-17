@@ -407,7 +407,7 @@ ok:"Голос и комментарий сохранены на этом уст
 done:"Ваш голос засчитан. Повторное голосование запрещено.",you:"Вы",
 qTitle:"Очередь",qLead:"Ваши фото ждут пары или уже участвуют в баттлах.",
 qPos:"Ваша позиция",qAhead:"фото впереди",
-stQueued:"В очереди",stMatched:"Пара найдена",stConfirmed:"Ожидание зрителя",stVoting:"Идёт голосование",
+stQueued:"В очереди",stMatched:"Пара найдена",stConfirmed:"Ожидание зрителя",stVoting:"Идёт голосование",stChampion:"Чемпион",
 stCompleted:"Завершён",stCancelled:"Отменён",
 qEmpty:"В очереди пока нет ваших фото. Загрузите портрет во вкладке «Загрузка».",
 qYours:"Ваши фото",
@@ -984,7 +984,7 @@ $("ov").onclick=e=>{if(e.target==$("ov"))closeV()};
 addEventListener("keydown",e=>{if(e.key==="Escape")closeV()});
 
 function statusLabel(st){
-  return t({queued:"stQueued",matched:"stMatched",confirmed:"stConfirmed",voting:"stVoting",completed:"stCompleted",cancelled:"stCancelled"}[st]||"stQueued");
+  return t({queued:"stQueued",matched:"stMatched",confirmed:"stConfirmed",voting:"stVoting",champion:"stChampion",completed:"stCompleted",cancelled:"stCancelled"}[st]||"stQueued");
 }
 function renderQueue(){
   // FIFO: only status===queued, ordered by queuedAt
@@ -1004,7 +1004,7 @@ function renderQueue(){
       const canCancel=p.status==="queued";
       const canFind=p.status==="queued"&&!window.FaceArenaSync?.isOnline();
       const canOpenMatch=p.status==="matched"&&!window.FaceArenaSync?.isOnline();
-      const canOpenBattle=p.status==="confirmed"||p.status==="voting"||p.status==="matched"||p.status==="champion";
+      const canOpenBattle=!!p.battleId;
       const frameCls=p.side?`frame-${p.side}`:"";
       const qIdx=qOrder.findIndex(x=>x.id===p.id);
       const posLabel=qIdx>=0?` · позиция ${qIdx+1} (впереди: ${qIdx})`:"";
@@ -1371,7 +1371,7 @@ function renderProfile(){
       <div class="stat"><b>${battles}</b><span>${t("prBattles")}</span></div>
     </div>
     ${(()=>{
-      const mine=Object.values(participantStats);
+      const mine=photos.filter(x=>x.ownerId===window.FaceArenaSync?.getUser()?.id).map(x=>participantStats[x.id]||{});
       const def=mine.reduce((s,x)=>s+(x.defenses||0),0);
       const champ=photos.some(x=>x.status==="champion");
       return `<div class="pr-stats" style="margin-top:8px">
