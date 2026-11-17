@@ -4,6 +4,14 @@ export class ArenaCoordinator {
     this.env = env;
   }
 
+  async scheduleRetry() {
+    const previous = (await this.state.storage.get("retryCount")) || 0;
+    const retryCount = Math.min(previous + 1, 7);
+    await this.state.storage.put("retryCount", retryCount);
+    const delay = Math.min(300000, 5000 * (2 ** (retryCount - 1)));
+    await this.state.storage.setAlarm(Date.now() + delay);
+  }
+
   async fetch(request) {
     if (new URL(request.url).pathname !== "/tick") {
       return new Response("Not found", { status: 404 });
@@ -12,7 +20,7 @@ export class ArenaCoordinator {
       const result = await this.tick();
       return Response.json({ ok: true, ...result });
     } catch (error) {
-      await this.state.storage.setAlarm(Date.now() + 5000);
+      await this.scheduleRetry();
       return Response.json(
         { ok: false, error: error instanceof Error ? error.message : "Coordinator failed" },
         { status: 502 },
@@ -24,7 +32,7 @@ export class ArenaCoordinator {
     try {
       await this.tick();
     } catch {
-      await this.state.storage.setAlarm(Date.now() + 5000);
+      await this.scheduleRetry();
     }
   }
 
@@ -43,6 +51,7 @@ export class ArenaCoordinator {
       throw new Error("Supabase worker_tick returned " + response.status + ": " + raw.slice(0, 240));
     }
     const result = JSON.parse(raw);
+    await this.state.storage.delete("retryCount");
     if (result.next_deadline) {
       const deadline = Date.parse(result.next_deadline);
       if (!Number.isFinite(deadline)) throw new Error("Invalid server deadline returned by Supabase");
