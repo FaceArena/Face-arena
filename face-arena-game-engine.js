@@ -144,17 +144,18 @@
     const next=clone(state),lane=next.lanes.find(x=>idEq(x.id,laneId));
     if(!lane||lane._finalized||!(lane.stage==="w"||lane.stage==="v"))return {state,changed:false};
     const p=next.photos.find(x=>idEq(x.id,lane.userPhotoId));
-    if(p){
-      // If another participant is already waiting, let FIFO advance and archive
-      // the timed-out entry. If nobody is waiting, keep this photo queued.
-      const hasNextQueued=next.photos.some(x=>!idEq(x.id,p.id)&&x.status==="queued");
-      p.status=hasNextQueued?"cancelled":"queued";
-      p.battleId=null;p.battleUid=null;p.targetLaneId=null;
-      p.matchedAt=null;p.matchDeadline=null;p.completedAt=null;
-      p.side=null;p.opponentName=null;p.opponentImg=null;
+    const openingOpponent=lane.openingOpponentPhotoId!=null?next.photos.find(x=>idEq(x.id,lane.openingOpponentPhotoId)):null;
+    const hasNextQueued=next.photos.some(x=>!idEq(x.id,p&&p.id)&&!idEq(x.id,openingOpponent&&openingOpponent.id)&&x.status==="queued");
+    for(const participant of [p,openingOpponent].filter(Boolean)){
+      // Release both members of an opening pair together; never strand one as confirmed.
+      participant.status=hasNextQueued?"cancelled":"queued";
+      participant.battleId=null;participant.battleUid=null;participant.targetLaneId=null;
+      participant.matchedAt=null;participant.matchDeadline=null;participant.completedAt=null;
+      participant.side=null;participant.opponentName=null;participant.opponentImg=null;
+      participant.openingOpponentPhotoId=null;participant.openingPairPrimaryId=null;
     }
     // Release the lane but preserve its incumbent champion.
-    lane.userPhotoId=null;lane.stage="done";lane._finalized=true;
+    lane.userPhotoId=null;lane.openingOpponentPhotoId=null;lane.openingOpponentName=null;lane.openingOpponentImg=null;lane.stage="done";lane._finalized=true;
     lane.redVotes=0;lane.blueVotes=0;
     return {state:next,changed:true};
   }
