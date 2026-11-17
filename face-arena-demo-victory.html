@@ -775,6 +775,15 @@ function finishBattle(b,now){
   }
 
   const p=b.userPhotoId?photos.find(x=>String(x.id)===String(b.userPhotoId)):null;
+  if(p&&p.status==="voting"&&window.FaceArenaGameEngine){
+    const wasChampion=String(b.championPhotoId||"")===String(p.id);
+    const resolved=window.FaceArenaGameEngine.resolveBattle({photos,lanes:arenaBattles,history,participantStats},b.id,now);
+    if(!resolved.changed)return false;
+    photos=resolved.state.photos;arenaBattles=resolved.state.lanes;history=resolved.state.history;participantStats=resolved.state.participantStats;
+    if(resolved.result.outcome==="win")window.FaceArenaAudio?.play(wasChampion?"victory":"champion");
+    else if(resolved.result.outcome==="lose")window.FaceArenaAudio?.play(wasChampion?"titleLost":"defeat");
+    return true;
+  }
   if(p&&(p.status==="voting"||p.status==="confirmed"||p.status==="champion")){
     const myV=p.side==="R"?b.redVotes:b.blueVotes, oppV=p.side==="R"?b.blueVotes:b.redVotes;
     let res="draw";if(myV>oppV)res="win";else if(myV<oppV)res="lose";
@@ -1226,7 +1235,7 @@ function confirmMatch(p){
   window.FaceArenaAudio?.play("impact");
   saveState();
   renderArenaGrid();
-  location.hash="queue";
+  if(location.hash==="#match-"+encodeURIComponent(p.id))location.hash="queue";
 }
 
 function renderUpload(){
@@ -1692,6 +1701,9 @@ const IC={
   };
   $("tabs").appendChild(b);
 });
+// Restore FIFO progression for queued photos from an existing LocalStorage session.
+tryFillSlots();
+saveState();
 </script>
 </body>
 </html>
