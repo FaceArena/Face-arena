@@ -27,6 +27,8 @@ jobs:
         run: node --check workers/arena-coordinator/src/index.js
       - name: Run engine tests
         run: node --test tests/face-arena-game-engine.test.js
+      - name: Ensure Cloudflare Pages entry point matches the preview app
+        run: cmp --silent index.html face-arena-demo-victory.html
       - name: Check inline browser script syntax
         run: |
           node -e "const fs=require('node:fs');const html=fs.readFileSync('face-arena-demo-victory.html','utf8');const scripts=[...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)].map(x=>x[1]).filter(x=>x.trim());if(!scripts.length)throw Error('No inline script found');fs.writeFileSync('/tmp/face-arena-inline.js',scripts[scripts.length-1]);"
