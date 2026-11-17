@@ -26,31 +26,52 @@
     return photos.filter(p=>ACTIVE.has(p.status)&&(p.userId??p.ownerId??"__local_user__")===owner).length;
   }
   function laneReady(lane){
-    if(!lane||!lane.championPhotoId||lane.userPhotoId)return false;
+    if(!lane||lane.userPhotoId||lane.openingOpponentPhotoId)return false;
     if(lane.stage==="w"||lane.stage==="v")return false;
     return lane.stage==="empty"||lane.stage==="done"||lane.stage==="cancelled"||lane.stage==null;
   }
+  function ownerOf(photo){return photo.userId??photo.ownerId??"__local_user__"}
   function selectNextAssignment(photos,lanes){
-    const ordered=normalizeQueue(photos).filter(p=>p.status==="queued"&&activeForOwner(photos,p)<=3).sort(queueCompare);
+    const normalized=normalizeQueue(photos);
+    const ordered=normalized.filter(p=>p.status==="queued"&&activeForOwner(normalized,p)<=3).sort(queueCompare);
     const occupied=new Set(),reservedLanes=new Set();
-    lanes.forEach(l=>{if(l.userPhotoId!=null)occupied.add(String(l.userPhotoId));if(l.championPhotoId!=null)occupied.add(String(l.championPhotoId))});
+    lanes.forEach(l=>{if(l.userPhotoId!=null)occupied.add(String(l.userPhotoId));if(l.championPhotoId!=null)occupied.add(String(l.championPhotoId));if(l.openingOpponentPhotoId!=null)occupied.add(String(l.openingOpponentPhotoId))});
     photos.forEach(p=>{if(p.status==="matched"&&p.targetLaneId!=null)reservedLanes.add(String(p.targetLaneId))});
-    const photo=ordered.find(p=>!occupied.has(String(p.id)));
-    if(!photo)return null;
     const lane=[...lanes].filter(l=>Number(l.id)>=1&&Number(l.id)<=10&&laneReady(l)&&!reservedLanes.has(String(l.id))).sort((a,b)=>Number(a.id)-Number(b.id))[0];
-    return lane?{photoId:photo.id,laneId:lane.id}:null;
+    if(!lane)return null;
+    if(lane.championPhotoId){
+      const photo=ordered.find(p=>!occupied.has(String(p.id)));
+      return photo?{photoId:photo.id,laneId:lane.id}:null;
+    }
+    // A vacant lane needs two queued photos owned by different real accounts.
+    const pair=ordered.filter(p=>!occupied.has(String(p.id))).reduce((found,p)=>{
+      if(found)return found;
+      const opponent=ordered.find(q=>!idEq(q.id,p.id)&&!occupied.has(String(q.id))&&ownerOf(q)!==ownerOf(p));
+      return opponent?{first:p,second:opponent}:null;
+    },null);
+    return pair?{photoId:pair.first.id,opponentPhotoId:pair.second.id,laneId:lane.id,opening:true}:null;
   }
   function assignChallenger(state,assignment,battleUid,now){
     const next=clone(state),p=next.photos.find(x=>idEq(x.id,assignment.photoId)),lane=next.lanes.find(x=>idEq(x.id,assignment.laneId));
     if(!p||p.status!=="queued"||!lane||!laneReady(lane)||activeForOwner(next.photos,p)>3)return {state,assigned:false,reason:"ineligible"};
-    if(next.lanes.some(l=>idEq(l.userPhotoId,p.id)||idEq(l.championPhotoId,p.id)))return {state,assigned:false,reason:"duplicate"};
-    p.status="confirmed";p.battleId=lane.id;p.battleUid=battleUid;p.side=lane.championSide? (lane.championSide==="R"?"B":"R") : (p.side||"R");
-    p.matchDeadline=null;p.matchedAt=now;
+    if(next.lanes.some(l=>idEq(l.userPhotoId,p.id)||idEq(l.championPhotoId,p.id)||idEq(l.openingOpponentPhotoId,p.id)))return {state,assigned:false,reason:"duplicate"};
+    let opponent=null;
+    if(assignment.opening){
+      opponent=next.photos.find(x=>idEq(x.id,assignment.opponentPhotoId));
+      if(lane.championPhotoId||!opponent||opponent.status!=="queued"||ownerOf(opponent)===ownerOf(p)||activeForOwner(next.photos,opponent)>3)return {state,assigned:false,reason:"invalid-opening-pair"};
+      if(next.lanes.some(l=>idEq(l.userPhotoId,opponent.id)||idEq(l.championPhotoId,opponent.id)||idEq(l.openingOpponentPhotoId,opponent.id)))return {state,assigned:false,reason:"duplicate"};
+      opponent.status="confirmed";opponent.battleId=lane.id;opponent.battleUid=battleUid;opponent.side="B";opponent.matchDeadline=null;opponent.matchedAt=now;
+      p.side="R";p.opponentName=opponent.name||"Участник";p.opponentImg=opponent.dataUrl||"";
+      lane.openingOpponentPhotoId=opponent.id;lane.openingOpponentName=opponent.name||"Участник";lane.openingOpponentImg=opponent.dataUrl||"";
+    }else{
+      p.side=lane.championSide==="R"?"B":"R";
+      p.opponentName=lane.championName;p.opponentImg=lane.championImg;
+    }
+    p.status="confirmed";p.battleId=lane.id;p.battleUid=battleUid;p.matchDeadline=null;p.matchedAt=now;
     lane.userPhotoId=p.id;lane.battleUid=battleUid;lane.stage="w";lane.stageStarted=now;lane.stageEnd=now+150000;lane.redVotes=0;lane.blueVotes=0;lane._finalized=false;lane.isMock=false;
-    if(lane.championPhotoId){p.opponentName=lane.championName;p.opponentImg=lane.championImg}
     if(p.side==="R"){lane.redName="you";lane.blueName=(p.opponentName||"opponent").replace("@","")}
     else{lane.blueName="you";lane.redName=(p.opponentName||"opponent").replace("@","")}
-    return {state:next,assigned:true,photoId:p.id,laneId:lane.id};
+    return {state:next,assigned:true,photoId:p.id,opponentPhotoId:opponent&&opponent.id,laneId:lane.id,opening:!!opponent};
   }
   function resolveBattle(state,laneId,now){
     const next=clone(state),lane=next.lanes.find(x=>idEq(x.id,laneId));
@@ -58,9 +79,33 @@
     const p=next.photos.find(x=>idEq(x.id,lane.userPhotoId));
     const uid=lane.battleUid;
     if(!p)return {state,changed:false,result:null};
+    const openingOpponent=lane.openingOpponentPhotoId!=null?next.photos.find(x=>idEq(x.id,lane.openingOpponentPhotoId)):null;
     const mine=p.side==="R"?Number(lane.redVotes)||0:Number(lane.blueVotes)||0;
     const theirs=p.side==="R"?Number(lane.blueVotes)||0:Number(lane.redVotes)||0;
     const outcome=mine>theirs?"win":mine<theirs?"lose":"draw";
+    if(openingOpponent&&!lane.championPhotoId){
+      const stats=next.participantStats||(next.participantStats={});
+      const pStats=stats[String(p.id)]||(stats[String(p.id)]={wins:0,losses:0,defenses:0,currentStreak:0,bestStreak:0,name:p.name||"Участник",img:p.dataUrl||"",isChampion:false,laneId:null});
+      const oStats=stats[String(openingOpponent.id)]||(stats[String(openingOpponent.id)]={wins:0,losses:0,defenses:0,currentStreak:0,bestStreak:0,name:openingOpponent.name||"Участник",img:openingOpponent.dataUrl||"",isChampion:false,laneId:null});
+      let winner=null,loser=null;
+      if(outcome==="win"){winner=p;loser=openingOpponent;pStats.wins++;pStats.currentStreak++;pStats.bestStreak=Math.max(pStats.bestStreak,pStats.currentStreak);oStats.losses++;oStats.currentStreak=0}
+      else if(outcome==="lose"){winner=openingOpponent;loser=p;oStats.wins++;oStats.currentStreak++;oStats.bestStreak=Math.max(oStats.bestStreak,oStats.currentStreak);pStats.losses++;pStats.currentStreak=0}
+      else{p.status="completed";p.result="draw";p.completedAt=now;p.battleId=null;openingOpponent.status="completed";openingOpponent.result="draw";openingOpponent.completedAt=now;openingOpponent.battleId=null}
+      if(winner){
+        winner.status="champion";winner.result="win";winner.completedAt=null;winner.battleId=lane.id;
+        loser.status="completed";loser.result="lose";loser.completedAt=now;loser.battleId=null;
+        const ws=stats[String(winner.id)],ls=stats[String(loser.id)];ws.isChampion=true;ws.laneId=lane.id;ls.isChampion=false;ls.laneId=null;
+        lane.championPhotoId=winner.id;lane.championSide=winner.side;lane.championName=ws.name;lane.championImg=winner.dataUrl||"";lane.championStreak=ws.currentStreak;
+      }
+      if(!next.history)next.history=[];
+      for(const [person,side,result,myVotes,oppVotes] of [[p,"R",outcome,mine,theirs],[openingOpponent,"B",outcome==="win"?"lose":outcome==="lose"?"win":"draw",theirs,mine]]){
+        if(!next.history.some(h=>String(h.battleUid)===String(uid)&&idEq(h.photoId,person.id))){
+          next.history.unshift({photoId:person.id,battleId:lane.id,battleUid:uid,laneId:lane.id,side,result,myVotes,oppVotes,opponentName:person.id===p.id?openingOpponent.name:p.name,opponentImg:person.id===p.id?openingOpponent.dataUrl:p.dataUrl,completedAt:now,myImg:person.dataUrl||"",championAfter:person.status==="champion"});
+        }
+      }
+      lane.userPhotoId=null;lane.openingOpponentPhotoId=null;lane.openingOpponentName=null;lane.openingOpponentImg=null;lane.stage="done";lane._finalized=true;lane.redVotes=0;lane.blueVotes=0;
+      return {state:next,changed:true,result:{laneId:lane.id,battleUid:uid,outcome,opening:true,championPhotoId:lane.championPhotoId,completedPhotoIds:[p.id,openingOpponent.id],wasChampion:false}};
+    }
     const stats=next.participantStats||(next.participantStats={});
     const st=stats[String(p.id)]||(stats[String(p.id)]={wins:0,losses:0,defenses:0,currentStreak:0,bestStreak:0,name:p.name||"Участник",img:p.dataUrl||"",isChampion:false,laneId:null});
     const oldId=lane.championPhotoId,wasChampion=oldId!=null&&idEq(oldId,p.id);
