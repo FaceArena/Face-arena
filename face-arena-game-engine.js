@@ -103,6 +103,7 @@
           next.history.unshift({photoId:person.id,battleId:lane.id,battleUid:uid,laneId:lane.id,side,result,myVotes,oppVotes,opponentName:person.id===p.id?openingOpponent.name:p.name,opponentImg:person.id===p.id?openingOpponent.dataUrl:p.dataUrl,completedAt:now,myImg:person.dataUrl||"",championAfter:person.status==="champion"});
         }
       }
+      p.openingOpponentPhotoId=null;openingOpponent.openingPairPrimaryId=null;
       lane.userPhotoId=null;lane.openingOpponentPhotoId=null;lane.openingOpponentName=null;lane.openingOpponentImg=null;lane.stage="done";lane._finalized=true;lane.redVotes=0;lane.blueVotes=0;
       return {state:next,changed:true,result:{laneId:lane.id,battleUid:uid,outcome,opening:true,championPhotoId:lane.championPhotoId,completedPhotoIds:[p.id,openingOpponent.id],wasChampion:false}};
     }
