@@ -71,14 +71,22 @@
       else if(oldId!=null){
         const old=next.photos.find(x=>idEq(x.id,oldId));
         if(old){old.status="completed";old.result="lose";old.completedAt=now;old.battleId=null;old.battleUid=uid;completed.push(old.id)}
-        const oldStats=stats[String(oldId)];if(oldStats){oldStats.isChampion=false;oldStats.laneId=null;oldStats.losses=(oldStats.losses||0)+1;oldStats.currentStreak=0}
+        const oldStats=stats[String(oldId)]||(stats[String(oldId)]={wins:0,losses:0,defenses:0,currentStreak:0,bestStreak:0,name:old&&old.name||"Участник",img:old&&old.dataUrl||"",isChampion:false,laneId:null});
+        oldStats.isChampion=false;oldStats.laneId=null;oldStats.losses=(oldStats.losses||0)+1;oldStats.currentStreak=0;
+        if(old&&!next.history.some(h=>String(h.battleUid)===String(uid)&&idEq(h.photoId,old.id))){
+          next.history.unshift({photoId:old.id,battleId:lane.id,battleUid:uid,laneId:lane.id,side:old.side,result:"lose",myVotes:theirs,oppVotes:mine,opponentName:p.name||"Участник",opponentImg:p.dataUrl||"",completedAt:now,myImg:old.dataUrl||"",championAfter:false});
+        }
       }
       lane.championPhotoId=p.id;lane.championSide=p.side;lane.championName=st.name;lane.championImg=p.dataUrl;lane.championStreak=st.currentStreak;
       st.isChampion=true;st.laneId=lane.id;p.status="champion";p.completedAt=null;p.result="win";p.battleId=lane.id;
-    }else{
-      if(outcome==="lose"){st.losses=(st.losses||0)+1;st.currentStreak=0}
+    }else if(outcome==="lose"){
+      st.losses=(st.losses||0)+1;st.currentStreak=0;
       p.status="completed";p.result=outcome;p.completedAt=now;p.battleId=null;completed.push(p.id);
       if(wasChampion){lane.championPhotoId=null;lane.championSide=null;lane.championName=null;lane.championImg=null;lane.championStreak=0;st.isChampion=false;st.laneId=null}
+    }else if(wasChampion){
+      p.status="champion";p.result="draw";p.completedAt=null;p.battleId=lane.id;
+    }else{
+      p.status="completed";p.result="draw";p.completedAt=now;p.battleId=null;completed.push(p.id);
     }
     if(!next.history)next.history=[];
     if(!next.history.some(h=>String(h.battleUid)===String(uid)&&idEq(h.photoId,p.id))){
