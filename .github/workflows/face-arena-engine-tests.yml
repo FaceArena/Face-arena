@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - audio-engine-preview
+      - server-sync-preview
+      - main
   pull_request:
     branches:
-      - audio-engine-preview
+      - main
+      - server-sync-preview
 
 jobs:
   test:
