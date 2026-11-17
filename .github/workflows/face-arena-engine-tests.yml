@@ -1,0 +1,26 @@
+name: FACE ARENA game engine tests
+
+on:
+  push:
+    branches:
+      - audio-engine-preview
+  pull_request:
+    branches:
+      - audio-engine-preview
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check engine syntax
+        run: node --check face-arena-game-engine.js
+      - name: Run engine tests
+        run: node --test tests/face-arena-game-engine.test.js
+      - name: Check inline browser script syntax
+        run: |
+          node -e "const fs=require('node:fs');const html=fs.readFileSync('face-arena-demo-victory.html','utf8');const scripts=[...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)].map(x=>x[1]).filter(x=>x.trim());if(!scripts.length)throw Error('No inline script found');fs.writeFileSync('/tmp/face-arena-inline.js',scripts[scripts.length-1]);"
+          node --check /tmp/face-arena-inline.js
