@@ -599,26 +599,15 @@ function updateArenaStats(){
 
 
 function buildTopRanking(){
-  // Only real participantStats (user photos), not mock names
-  const rows=Object.keys(participantStats).map(id=>{
-    const s=participantStats[id];
-    const photo=photos.find(x=>String(x.id)===String(id));
-    const isChamp=!!s.isChampion||(photo&&photo.status==="champion");
-    return {
-      id, name:s.name||profile.name||"Вы", img:s.img||(photo&&photo.dataUrl)||face(1,"R"),
-      wins:s.wins||0, losses:s.losses||0, defenses:s.defenses||0,
-      streak:s.currentStreak||0, best:s.bestStreak||0,
-      isChampion:isChamp, laneId:s.laneId||null
-    };
-  });
-  rows.sort((a,b)=>{
-    if(a.isChampion!==b.isChampion)return a.isChampion?-1:1;
-    if(b.defenses!==a.defenses)return b.defenses-a.defenses;
-    if(b.wins!==a.wins)return b.wins-a.wins;
-    if(b.streak!==a.streak)return b.streak-a.streak;
-    return String(a.id).localeCompare(String(b.id));
-  });
-  return rows;
+  if(window.FaceArenaGameEngine){
+    return window.FaceArenaGameEngine.buildRanking(participantStats,photos).map(r=>({
+      ...r,name:r.name||profile.name||"Вы",img:r.img||face(1,"R")
+    }));
+  }
+  return Object.keys(participantStats).filter(id=>!/^demo[_-]|^mock[_-]|^bot[_-]/i.test(id)).map(id=>{
+    const s=participantStats[id],photo=photos.find(x=>String(x.id)===String(id));
+    return {id,name:s.name||profile.name||"Вы",img:s.img||(photo&&photo.dataUrl)||face(1,"R"),wins:s.wins||0,losses:s.losses||0,defenses:s.defenses||0,streak:s.currentStreak||0,best:s.bestStreak||0,isChampion:!!s.isChampion||!!(photo&&photo.status==="champion"),laneId:s.laneId||null};
+  }).sort((a,b)=>Number(b.isChampion)-Number(a.isChampion)||b.defenses-a.defenses||b.wins-a.wins||b.streak-a.streak||String(a.id).localeCompare(String(b.id)));
 }
 function renderTopArenaHTML(){
   const rows=buildTopRanking();
@@ -799,7 +788,19 @@ function finishBattle(b,now){
         st.defenses=(st.defenses||0)+1;
         b.championStreak=(b.championStreak||0)+1;
       } else {
-        // New champion (was challenger or first title)
+        // Challenger takes the title; archive the former user champion exactly once.
+        if(b.championPhotoId!=null){
+          const former=photos.find(x=>String(x.id)===String(b.championPhotoId));
+          if(former&&String(former.id)!==String(p.id)&&former.status==="champion"){
+            former.status="completed";former.result="lose";former.completedAt=now;former.battleId=null;
+            former.myVotes=oppV;former.oppVotes=myV;
+            const formerStats=ensureStats(former.id,profile.name||"Вы",former.dataUrl);
+            formerStats.losses=(formerStats.losses||0)+1;formerStats.currentStreak=0;formerStats.isChampion=false;formerStats.laneId=null;
+            if(!history.some(h=>String(h.battleUid)===String(b.battleUid)&&String(h.photoId)===String(former.id))){
+              history.unshift({photoId:former.id,battleId:b.id,battleUid:b.battleUid,laneId:b.id,side:former.side,result:"lose",myVotes:oppV,oppVotes:myV,opponentName:profile.name||"Вы",opponentImg:p.dataUrl,completedAt:now,myImg:former.dataUrl,championAfter:false});
+            }
+          }
+        }
         b.championPhotoId=p.id;
         b.championSide=p.side;
         b.championStreak=1;
@@ -1601,7 +1602,7 @@ function renderSettings(){
 }
 
 function renderResult(photoId){
-  const h=history.find(x=>x.photoId===+photoId);
+  const h=history.find(x=>String(x.photoId)===String(photoId));
   if(!h){location.hash="profile";return}
   $("rv").innerHTML=`
     ${hdrHTML()}
