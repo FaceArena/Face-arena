@@ -99,8 +99,15 @@
     const next=clone(state),lane=next.lanes.find(x=>idEq(x.id,laneId));
     if(!lane||lane._finalized||!(lane.stage==="w"||lane.stage==="v"))return {state,changed:false};
     const p=next.photos.find(x=>idEq(x.id,lane.userPhotoId));
-    if(p){p.status="queued";p.battleId=null;p.battleUid=null;p.matchedAt=null;p.completedAt=null}
-    lane.userPhotoId=null;lane.stage="done";lane._finalized=true;lane.redVotes=0;lane.blueVotes=0;
+    if(p){
+      p.status="queued";
+      p.battleId=null;p.battleUid=null;p.targetLaneId=null;
+      p.matchedAt=null;p.matchDeadline=null;p.completedAt=null;
+      p.side=null;p.opponentName=null;p.opponentImg=null;
+    }
+    // Release the lane but preserve its incumbent champion.
+    lane.userPhotoId=null;lane.stage="done";lane._finalized=true;
+    lane.redVotes=0;lane.blueVotes=0;
     return {state:next,changed:true};
   }
   function buildRanking(participantStats,photos){
