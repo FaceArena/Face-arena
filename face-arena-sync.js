@@ -178,7 +178,7 @@
           c.from("arena_photos").select("id,owner_id,object_path,status,created_at").neq("status", "removed").order("created_at", { ascending: true }),
           c.from("arena_profiles").select("user_id,display_name,handle"),
           c.from("arena_lanes").select("lane_id,champion_photo_id,challenger_photo_id").order("lane_id"),
-          c.from("arena_battles").select("id,lane_id,opening,stage,started_at,stage_ends_at,finished_at").in("stage", ["waiting","voting"]),
+          c.from("arena_battles").select("id,lane_id,opening,stage,started_at,confirm_until,stage_ends_at,finished_at").in("stage", ["waiting","voting"]),
           c.from("arena_battle_participants").select("battle_id,photo_id,owner_id,side"),
           c.from("arena_votes").select("battle_id,voter_id,target_photo_id,comment,created_at"),
           c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,completed_at").order("completed_at", { ascending: false }).limit(500)
@@ -210,6 +210,7 @@
           if (battle && photo && member.owner_id === this.user.id) {
             photo.battleId = battle.lane_id;
             photo.battleUid = battle.id;
+            photo.confirmUntil = battle.confirm_until ? Date.parse(battle.confirm_until) : 0;
             photo.side = member.side === "left" ? "R" : "B";
           }
         }
@@ -230,10 +231,12 @@
           const blueVotes = right ? votes.filter(v => v.target_photo_id === right.photo_id).length : 0;
           const champ = lane.champion_photo_id ? photoMap.get(lane.champion_photo_id) : null;
           const me = members.find(x => x.owner_id === this.user.id);
-          const stage = !battle ? "empty" : (battle.stage === "waiting" ? "w" : "v");
+          const confirming = !!battle && battle.stage === "waiting" && battle.confirm_until && Date.parse(battle.confirm_until) > Date.now();
+          const stage = !battle ? "empty" : (confirming ? "m" : battle.stage === "waiting" ? "w" : "v");
           return {
             id: lane.lane_id, laneId: lane.lane_id, battleUid: battle?.id || null, opening: !!battle?.opening,
-            stage, stageEnd: battle ? Date.parse(battle.stage_ends_at) : 0,
+            stage, stageEnd: battle ? (confirming ? Date.parse(battle.confirm_until) : Date.parse(battle.stage_ends_at)) : 0,
+            confirmUntil: battle?.confirm_until ? Date.parse(battle.confirm_until) : 0,
             stageStarted: battle ? Date.parse(battle.started_at) : 0, totalStage: 70,
             redVotes, blueVotes,
             redName: leftPhoto?.name || "—", blueName: rightPhoto?.name || "—",
@@ -397,6 +400,13 @@
 
     async registerVisit(battleId) {
       const { error } = await this.client.rpc("register_arena_visit",{p_battle_id:battleId});
+      if (error) throw error;
+      await this.wake();
+      await this.loadSnapshot();
+    }
+
+    async cancelMatch(battleId) {
+      const { error } = await this.client.rpc("cancel_arena_match",{p_battle_id:battleId});
       if (error) throw error;
       await this.wake();
       await this.loadSnapshot();
