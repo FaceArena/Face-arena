@@ -544,7 +544,7 @@ function createDefaultArena(){
   const byId=id=>photos.find(p=>String(p.id)===String(id));
   arenaBattles=arenaBattles.map((b,i)=>{
     const userPhoto=byId(b.userPhotoId),championIsDemo=isDemoId(b.championPhotoId);
-    if(userPhoto&&(b.isMock||b.demoShowcase||!b.championPhotoId))Object.assign(userPhoto,{status:"queued",battleId:null,battleUid:null,targetLaneId:null,matchedAt:null,matchDeadline:null,side:null,opponentName:null,opponentImg:null});
+    if(userPhoto&&(b.isMock||b.demoShowcase||championIsDemo||!b.championPhotoId))Object.assign(userPhoto,{status:"queued",battleId:null,battleUid:null,targetLaneId:null,matchedAt:null,matchDeadline:null,side:null,opponentName:null,opponentImg:null});
     if(b.isMock||b.demoShowcase||championIsDemo||(!b.userPhotoId&&!b.championPhotoId)||(userPhoto&&!b.championPhotoId))return {id:b.id||i+1,laneId:b.id||i+1,battleUid:null,isMock:false,userPhotoId:null,redName:"—",blueName:"—",redVotes:0,blueVotes:0,stage:"empty",stageEnd:0,stageStarted:0,totalStage:STAGE_SEC,championPhotoId:null,championSide:null,championStreak:0,championName:null,championImg:null};
     b.isMock=false;b.victoryPending=false;b.victoryShown=false;return b;
   });
