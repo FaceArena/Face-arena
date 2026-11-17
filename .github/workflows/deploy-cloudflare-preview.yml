@@ -2,12 +2,6 @@ name: Deploy FACE ARENA Cloudflare Preview
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - server-sync-preview
-    paths:
-      - "workers/arena-coordinator/**"
-      - ".github/workflows/deploy-cloudflare-preview.yml"
 
 jobs:
   deploy:
