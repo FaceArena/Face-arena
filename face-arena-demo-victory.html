@@ -1146,7 +1146,7 @@ function renderMatch(photoId){
 function findFreeSlot(photo){
   if(photo&&photo.targetLaneId){
     const target=arenaBattles.find(b=>String(b.id)===String(photo.targetLaneId));
-    if(target&&!target.userPhotoId&&(target.stage==="done"||target.stage==="cancelled"||target.stage==="empty"||(target.isMock&&!target.demoShowcase)))return target;
+    if(target&&!target.userPhotoId&&(target.stage==="done"||target.stage==="cancelled"||target.stage==="empty"||(target.isMock&&(!target.demoShowcase||target.stage==="done"))))return target;
   }
   return arenaBattles.filter(b=>!b.demoShowcase&&!b.userPhotoId&&(
     b.stage==="done"||b.stage==="cancelled"||b.stage==="empty"||(b.isMock&&(b.stage==="w"||b.stage==="v"))
