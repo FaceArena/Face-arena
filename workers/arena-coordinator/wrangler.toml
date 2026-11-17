@@ -2,6 +2,7 @@ name = "face-arena"
 main = "src/index.js"
 compatibility_date = "2026-11-17"
 workers_dev = true
+preview_urls = false
 
 [vars]
 SUPABASE_URL = "https://nvvkmjeobnnxlrpiuisf.supabase.co"
