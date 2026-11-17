@@ -26,8 +26,8 @@
     return photos.filter(p=>ACTIVE.has(p.status)&&(p.userId??p.ownerId??"__local_user__")===owner).length;
   }
   function laneReady(lane){
-    if(!lane||(lane.demoShowcase&&lane.stage!=="done")||lane.userPhotoId)return false;
-    if(lane.stage==="w"||lane.stage==="v")return !!lane.isMock;
+    if(!lane||!lane.championPhotoId||lane.userPhotoId)return false;
+    if(lane.stage==="w"||lane.stage==="v")return false;
     return lane.stage==="empty"||lane.stage==="done"||lane.stage==="cancelled"||lane.stage==null;
   }
   function selectNextAssignment(photos,lanes){
