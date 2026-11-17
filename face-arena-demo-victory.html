@@ -503,7 +503,7 @@ function loadState(){
     arenaBattles=(data.arenaBattles||[]).map(b=>{
       b={...b};
       if(b.stage==="w"||b.stage==="v"){
-        const oldDuration=Number(b.totalStage)>0?Number(b.totalStage)*1000:150000;
+        const oldDuration=STAGE_SEC*1000;
         const started=typeof b.stageStarted==="number"&&b.stageStarted>0?b.stageStarted:(typeof b.stageEnd==="number"&&b.stageEnd>1e12?b.stageEnd-oldDuration:Date.now());
         b.stageStarted=started;
         b.stageEnd=Math.min(typeof b.stageEnd==="number"&&b.stageEnd>1e12?b.stageEnd:started+oldDuration,started+STAGE_SEC*1000);
