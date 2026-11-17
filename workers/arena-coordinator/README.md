@@ -25,3 +25,13 @@ After the first deployment, enable the account's `workers.dev` subdomain if it i
 - The publishable Supabase key is public by design; no service-role key is stored in the Worker.
 
 Do not deploy this preview Worker as the production Worker until the preview flow and CI checks pass.
+
+## Frontend hosting
+
+The static frontend entry point is the root `index.html`. Cloudflare Pages project `face-arena-site` is connected to this repository:
+- Pages hostname: `face-arena-site.pages.dev`
+- Preview deployments are enabled for branches.
+- Production deployments are deliberately disabled; do not enable them or promote `main` without explicit approval.
+- Vercel is optional preview-only tooling, not the backend or production source of truth.
+
+The Pages project serves the frontend only. Supabase owns accounts, photos, queue, votes, results and Realtime. The Cloudflare Durable Object Worker owns deadline wake-ups. The frontend remains usable as static assets even if Vercel is unavailable.
