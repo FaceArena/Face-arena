@@ -908,7 +908,7 @@ function bview(n){
 <div class="pct">${tot?`<span class="r ${lead==="R"?"lead":""}">RED ${rp}%</span><span class="m">${pl(tot,["голос","голоса","голосов"])}</span><span class="b ${lead==="B"?"lead":""}">${100-rp}% BLUE</span>`:`<span class="m">${t("noVotes")}</span>`}</div>
 <div class="tm"><small>${t(w?"tWait":"tVote")}</small><b id="bcd" data-id="${n}"></b></div><div class="tl"><u id="btl"></u></div>
 <p class="note">${t("srv")}</p>
-${VOTED.has(uid)?`<p class="done">${t("done")}</p>`:closed?`<p class="done">${b.stage==="cancelled"?"Баттл отменён":"Голосование завершено"}</p>`:`<div class="picks"><button class="pick R">${t("pickR")}</button><button class="pick B">${t("pickB")}</button></div><p class="note">${t("hint")}</p>`}
+${b.isParticipant?`<p class="done">Участники не голосуют в собственном баттле</p>`:VOTED.has(uid)?`<p class="done">${t("done")}</p>`:closed?`<p class="done">${b.stage==="cancelled"?"Баттл отменён":"Голосование завершено"}</p>`:`<div class="picks"><button class="pick R">${t("pickR")}</button><button class="pick B">${t("pickB")}</button></div><p class="note">${t("hint")}</p>`}
 <h2>${t("cm")}</h2>${cs?`<ul class="cms">${cs}</ul>`:`<div class="empty">${t("cmEmpty")}</div>`}</div>`;
   $("bk").onclick=()=>{location.hash=""};
   document.querySelectorAll(".pick").forEach(btn=>btn.onclick=()=>openV(n,btn.classList.contains("R")?"R":"B"));
@@ -930,6 +930,7 @@ function closeV(){$("ov").classList.remove("on")}
 function openV(n,s){
   const b=arenaBattles.find(x=>x.id===n);
   if(!b||b.stage!=="v"){toast(t("closed"));return}
+  if(window.FaceArenaSync?.isOnline()&&b.isParticipant){toast("Участники не голосуют в собственном баттле");return}
   if(!b.battleUid)b.battleUid=newBattleUid();
   if(VOTED.has(b.battleUid)){toast(t("dup"));return}
   if(b.stageEnd<=Date.now()){toast(t("closed"));return}
