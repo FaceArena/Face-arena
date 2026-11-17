@@ -24,3 +24,10 @@ Keep both values identical. Never use the service-role key in the browser or Wor
 - Vercel is only a preview/hosting surface; the game backend must continue operating without it.
 
 The 10-second match-cancellation window is separate. After that, the initial wait for a visitor is 70 seconds; once voting starts, voting lasts 70 seconds. Both deadlines are enforced against server time.
+
+## Cloudflare Pages frontend
+
+The independent static frontend is built from the repository root into `dist/` with:
+`mkdir -p dist && cp index.html face-arena-sync.js face-arena-audio.js face-arena-game-engine.js _headers dist/`
+
+Only these runtime files are published. The Pages project has automatic preview deployments enabled and production deployments disabled. Vercel is not required for the frontend runtime or backend.
