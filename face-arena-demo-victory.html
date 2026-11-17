@@ -1063,7 +1063,7 @@ function renderQueue(){
       else if(act==="del"){
         const p=photos.find(x=>String(x.id)===String(id));
         if(window.FaceArenaSync?.isOnline()){
-          window.FaceArenaSync.deletePhoto(id).then(()=>toast("Фото удалено")).catch(error=>toast(error?.message||"Не удалось удалить фото"));
+          window.FaceArenaSync.deletePhoto(id).then(result=>toast(result?.ok===false?"Фото удалено. Серверный таймер временно недоступен.":"Фото удалено")).catch(error=>toast(error?.message||"Не удалось удалить фото"));
         }else if(p&&p.status==="queued"){photos=photos.filter(x=>String(x.id)!==String(id));toast("Фото удалено из очереди");saveState();renderQueue();updateArenaStats()}
         else toast("Нельзя удалить: фото уже в баттле");
       }
