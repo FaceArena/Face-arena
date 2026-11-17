@@ -14,13 +14,13 @@ test("legacy queue order is retained when timestamps tie",()=>{
  assert.ok(p[0].queueSeq<p[1].queueSeq);
 });
 test("selects lowest available lane and oldest photo",()=>{
- assert.deepEqual(E.selectNextAssignment([photo("b",2),photo("a",1)],[lane(2),lane(1)]),{photoId:"a",laneId:1});
+ assert.deepEqual(E.selectNextAssignment([photo("b",2),photo("a",1)],[lane(2,{championPhotoId:"c2"}),lane(1,{championPhotoId:"c1"})]),{photoId:"a",laneId:1});
 });
 test("no free lane returns null",()=>{
  assert.equal(E.selectNextAssignment([photo("a")],[lane(1,{stage:"w",isMock:false,userPhotoId:"x"})]),null);
 });
-test("mock demo lane can be claimed but showcase lane cannot",()=>{
- assert.deepEqual(E.selectNextAssignment([photo("a")],[lane(1,{stage:"v",isMock:true}),lane(2,{stage:"v",isMock:true,demoShowcase:true})]),{photoId:"a",laneId:1});
+test("empty and mock lanes are never assigned without a real champion",()=>{
+ assert.equal(E.selectNextAssignment([photo("a")],[lane(1),lane(2,{stage:"v",isMock:true}),lane(3,{championPhotoId:"champ"})]).laneId,3);
 });
 test("duplicate photo assignment is rejected without mutation",()=>{
  const state={photos:[photo("x")],lanes:[lane(1,{userPhotoId:"x",stage:"w"})],history:[],participantStats:{}};
@@ -28,7 +28,7 @@ test("duplicate photo assignment is rejected without mutation",()=>{
  assert.equal(r.assigned,false);assert.equal(state.photos[0].status,"queued");
 });
 test("three active photo cap is enforced",()=>{
- const state={photos:[{id:"1",status:"champion"},{id:"2",status:"queued"},{id:"3",status:"voting"},{id:"4",status:"queued"}],lanes:[lane(1)],history:[],participantStats:{}};
+ const state={photos:[{id:"1",status:"champion"},{id:"2",status:"queued"},{id:"3",status:"voting"},{id:"4",status:"queued"}],lanes:[lane(1,{championPhotoId:"incumbent"})],history:[],participantStats:{}};
  assert.equal(E.assignChallenger(state,{photoId:"4",laneId:1},"b",1).assigned,false);
 });
 test("assignment preserves string IDs and starts battle",()=>{
@@ -91,7 +91,7 @@ test("timeout archives the missed participant when another participant is queued
  const state={photos:[
   {id:"missed",status:"voting",queuedAt:1,battleId:1,battleUid:"old"},
   {id:"next",status:"queued",queuedAt:2}
- ],lanes:[lane(1,{stage:"v",userPhotoId:"missed",battleUid:"old"})],history:[],participantStats:{}};
+ ],lanes:[lane(1,{stage:"v",userPhotoId:"missed",championPhotoId:"incumbent",battleUid:"old"})],history:[],participantStats:{}};
  const r=E.cancelBattle(state,1,200);
  assert.equal(r.state.photos.find(p=>p.id==="missed").status,"cancelled");
  assert.equal(r.state.photos.find(p=>p.id==="next").status,"queued");
@@ -99,7 +99,7 @@ test("timeout archives the missed participant when another participant is queued
 });
 test("timeout requeues the missed participant when nobody else is queued",()=>{
  const state={photos:[{id:"missed",status:"voting",queuedAt:1,battleId:1,battleUid:"old"}],
-  lanes:[lane(1,{stage:"v",userPhotoId:"missed",battleUid:"old"})],history:[],participantStats:{}};
+  lanes:[lane(1,{stage:"v",userPhotoId:"missed",championPhotoId:"incumbent",battleUid:"old"})],history:[],participantStats:{}};
  const r=E.cancelBattle(state,1,200);
  assert.equal(r.state.photos[0].status,"queued");
  assert.deepEqual(E.selectNextAssignment(r.state.photos,r.state.lanes),{photoId:"missed",laneId:1});
