@@ -86,6 +86,7 @@
     if (!configured()) {
       setStatus("Авторизация подготовлена, но Supabase-проект FACE ARENA ещё не подключён.", false);
       updateSession(null);
+      mount();
       return;
     }
     try {
