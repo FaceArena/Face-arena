@@ -30,10 +30,15 @@
       return context;
     }catch(_){return null}
   }
-  async function unlock(){
+  function unlock(){
     const ctx=getContext();
-    if(!ctx)return false;
-    try{if(ctx.state==="suspended")await ctx.resume();unlocked=ctx.state==="running";return unlocked}catch(_){return false}
+    if(!ctx)return Promise.resolve(false);
+    if(ctx.state==="running"){unlocked=true;return Promise.resolve(true)}
+    try{
+      // Call resume synchronously inside the user's pointer/key gesture (important on iOS Safari).
+      const resumed=ctx.resume();
+      return Promise.resolve(resumed).then(()=>{unlocked=ctx.state==="running";return unlocked}).catch(()=>false);
+    }catch(_){return Promise.resolve(false)}
   }
   function setEnabled(value){
     settings.enabled=!!value;
@@ -57,10 +62,10 @@
     osc.start(start);osc.stop(start+duration+.025);
   }
   const recipes={
-    click(ctx){tone(720,ctx.currentTime,.045,"sine",.055,520)},
-    switch(ctx){tone(510,ctx.currentTime,.055,"sine",.045,760)},
-    impact(ctx){tone(125,ctx.currentTime,.16,"triangle",.16,48);tone(680,ctx.currentTime+.012,.055,"sine",.035,240)},
-    error(ctx){tone(210,ctx.currentTime,.12,"triangle",.09,145);tone(155,ctx.currentTime+.09,.13,"sine",.06,115)}
+    click(ctx){tone(720,ctx.currentTime,.065,"sine",.16,520)},
+    switch(ctx){tone(510,ctx.currentTime,.075,"sine",.14,760)},
+    impact(ctx){tone(125,ctx.currentTime,.19,"triangle",.32,48);tone(680,ctx.currentTime+.012,.075,"sine",.12,240)},
+    error(ctx){tone(210,ctx.currentTime,.14,"triangle",.22,145);tone(155,ctx.currentTime+.09,.15,"sine",.16,115)}
   };
   function play(name,force){
     if(!force&&(!settings.enabled||settings.volume===0))return false;
@@ -73,14 +78,16 @@
     lastPlayed.set(name,now);
     try{recipe(ctx);return true}catch(_){return false}
   }
-  async function preview(){
-    if(!settings.enabled||settings.volume===0)return false;
-    const ok=await unlock();
-    if(!ok)return false;
-    play("click",true);
-    setTimeout(()=>play("switch",true),110);
-    setTimeout(()=>play("impact",true),260);
-    return true;
+  function preview(){
+    if(!settings.enabled||settings.volume===0)return Promise.resolve(false);
+    // Resume is invoked directly by the preview button's click handler, before any await.
+    return unlock().then(ok=>{
+      if(!ok)return false;
+      play("click",true);
+      setTimeout(()=>play("switch",true),150);
+      setTimeout(()=>play("impact",true),360);
+      return true;
+    });
   }
   document.addEventListener("pointerdown",unlock,{once:true,passive:true});
   document.addEventListener("keydown",unlock,{once:true});
