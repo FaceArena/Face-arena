@@ -21,6 +21,10 @@ jobs:
           node-version: 22
       - name: Check engine syntax
         run: node --check face-arena-game-engine.js
+      - name: Check Supabase sync client syntax
+        run: node --check face-arena-sync.js
+      - name: Check Cloudflare Worker syntax
+        run: node --check workers/arena-coordinator/src/index.js
       - name: Run engine tests
         run: node --test tests/face-arena-game-engine.test.js
       - name: Check inline browser script syntax
