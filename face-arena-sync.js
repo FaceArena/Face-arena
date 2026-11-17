@@ -1,7 +1,7 @@
 (() => {
   const SUPABASE_URL = "https://nvvkmjeobnnxlrpiuisf.supabase.co";
   const SUPABASE_KEY = "sb_publishable_-a7Qjy5NL3ZUaKfLpIi4Dg_x2hzmNKE";
-  const WORKER_URL = "https://face-arena-preview.9mmm77v2jj.workers.dev";
+  const WORKER_URL = "https://face-arena-preview.featuresfaded.workers.dev";
   const EVENT = "face-arena-snapshot";
 
   class FaceArenaSync {
@@ -369,16 +369,18 @@
     }
 
     async wake() {
-      try {
-        const response = await fetch(WORKER_URL + "/wake", { method: "POST" });
-        if (!response.ok) throw new Error("Coordinator returned " + response.status);
-        return await response.json();
-      } catch (error) {
-        console.warn("[FACE ARENA coordinator unavailable; using safe RPC fallback]", error);
-        const { data, error: rpcError } = await this.client.rpc("worker_tick");
-        if (rpcError) console.error("[FACE ARENA worker_tick]", rpcError);
-        return data || null;
+      const { data } = await this.client.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Сессия истекла. Войдите снова.");
+      const response = await fetch(WORKER_URL + "/wake", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token }
+      });
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error("Сервер арены недоступен (" + response.status + "): " + detail.slice(0, 160));
       }
+      return await response.json();
     }
 
     async uploadPhoto(file) {
