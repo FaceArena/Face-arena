@@ -1702,7 +1702,7 @@ window.addEventListener("face-arena-snapshot",event=>{
   const hash=location.hash.slice(1);
   if(hash==="results")renderResults();
   else if(hash.startsWith("result-"))renderResult(decodeURIComponent(hash.slice(7)));
-  else if(/^battle-\\d+$/.test(hash))bview(Number(hash.slice(7)));
+  else if(/^battle-\d+$/.test(hash))bview(Number(hash.slice(7)));
   else if(hash==="queue")renderQueue();
   else if(hash==="profile")renderProfile();
   else renderArenaGrid();
