@@ -881,7 +881,7 @@ function bview(n){
   const uid=b.battleUid;
   if(window.FaceArenaSync?.isOnline()&&b.stage==="w"&&!b._visitRequested){
     b._visitRequested=true;
-    window.FaceArenaSync.registerVisit(uid).catch(error=>{b._visitRequested=false;toast(error?.message||"Не удалось открыть голосование")});
+    window.FaceArenaSync.registerVisit(uid).then(result=>{if(result?.ok===false)toast("Голосование открыто, но серверный таймер временно недоступен")}).catch(error=>{b._visitRequested=false;toast(error?.message||"Не удалось открыть голосование")});
   }else if(!window.FaceArenaSync?.isOnline()&&b.stage==="w"){
     b.stage="v";b.stageEnd=Date.now()+STAGE_SEC*1000;b.stageStarted=Date.now();
     window.FaceArenaAudio?.play("votingStart");
@@ -969,9 +969,9 @@ async function submit(n){
     const targetPhotoId=side==="R"?b2.redPhotoId:b2.bluePhotoId;
     if(!targetPhotoId){busy=false;toast("Не удалось определить участника. Обновите арену.");return}
     try{
-      await window.FaceArenaSync.submitVote(b2.battleUid,targetPhotoId,v);
+      const result=await window.FaceArenaSync.submitVote(b2.battleUid,targetPhotoId,v);
       busy=false;closeV();window.FaceArenaAudio?.play("voteSuccess");
-      toast(t("ok"));
+      toast(result?.ok===false?"Голос принят. Серверный таймер временно недоступен.":t("ok"));
       if(location.hash==="#battle-"+n)bview(n);
     }catch(error){
       busy=false;
@@ -1058,7 +1058,7 @@ function renderQueue(){
       else if(act==="openbattle"){const p=photos.find(x=>String(x.id)===String(id));if(p&&p.battleId)location.hash="battle-"+p.battleId}
       else if(act==="cancelmatch"){
         const p=photos.find(x=>String(x.id)===String(id));
-        if(p?.battleUid)window.FaceArenaSync.cancelMatch(p.battleUid).then(()=>toast("Участие отменено, обе фотографии возвращены в очередь")).catch(error=>toast(error?.message||"Окно отмены уже закрыто"));
+        if(p?.battleUid)window.FaceArenaSync.cancelMatch(p.battleUid).then(result=>toast(result?.ok===false?"Участие отменено. Серверный таймер временно недоступен.":"Участие отменено, обе фотографии возвращены в очередь")).catch(error=>toast(error?.message||"Окно отмены уже закрыто"));
       }
       else if(act==="del"){
         const p=photos.find(x=>String(x.id)===String(id));
@@ -1310,9 +1310,9 @@ async function confirmAdd(){
   if(activeCount()>=MAX_ACTIVE){toast(t("upLimit"));return}
   if(window.FaceArenaSync?.isOnline()){
     try{
-      await window.FaceArenaSync.uploadPhoto(pendingFile);
+      const result=await window.FaceArenaSync.uploadPhoto(pendingFile);
       pendingFile=null;pendingUrl=null;
-      toast("Фото добавлено в общую очередь");
+      toast(result?.coordinatorAvailable===false?"Фото сохранено. Серверный таймер временно недоступен.":"Фото добавлено в общую очередь");
       location.hash="queue";
     }catch(error){toast(error?.message||"Не удалось загрузить фото");}
     return;
