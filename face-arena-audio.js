@@ -1,12 +1,12 @@
-/* FACE ARENA Audio Engine — hybrid UI/game SFX, no external audio assets. */
+/* FACE ARENA — victory-first game audio. No interface click sounds. */
 (function(){
   "use strict";
   const STORAGE_KEY="face_arena_audio_v1";
   const DEFAULTS={enabled:true,volume:65};
-  let settings={...DEFAULTS};
-  let context=null,master=null,unlocked=false;
+  let settings={...DEFAULTS},context=null,master=null,unlocked=false;
+  const buffers={};
   const lastPlayed=new Map();
-  const COOLDOWN={click:45,switch:90,impact:180,error:180,matchFound:350,votingStart:500,countdown:700,voteSuccess:180,victory:500,defeat:500,champion:700,titleLost:700};
+  const COOLDOWN={victory:1200,champion:1600,defeat:900,titleLost:1200};
   try{
     const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");
     if(saved&&typeof saved==="object"){
@@ -14,10 +14,7 @@
       settings.volume=Math.max(0,Math.min(100,Number.isFinite(Number(saved.volume))?Number(saved.volume):DEFAULTS.volume));
     }
   }catch(_){}
-
-  function persist(){
-    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(settings));}catch(_){}
-  }
+  function persist(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(settings));}catch(_){}}
   function getContext(){
     if(context)return context;
     const Ctx=window.AudioContext||window.webkitAudioContext;
@@ -35,83 +32,90 @@
     if(!ctx)return Promise.resolve(false);
     if(ctx.state==="running"){unlocked=true;return Promise.resolve(true)}
     try{
-      // Call resume synchronously inside the user's pointer/key gesture (important on iOS Safari).
       const resumed=ctx.resume();
       return Promise.resolve(resumed).then(()=>{unlocked=ctx.state==="running";return unlocked}).catch(()=>false);
     }catch(_){return Promise.resolve(false)}
   }
   function setEnabled(value){
     settings.enabled=!!value;
-    if(master&&context)master.gain.setTargetAtTime(settings.enabled?settings.volume/100:0,context.currentTime,.025);
+    if(master&&context)master.gain.setTargetAtTime(settings.enabled?settings.volume/100:0,context.currentTime,.04);
     persist();
   }
   function setVolume(value){
     settings.volume=Math.max(0,Math.min(100,Number(value)||0));
-    if(master&&context)master.gain.setTargetAtTime(settings.enabled?settings.volume/100:0,context.currentTime,.025);
+    if(master&&context)master.gain.setTargetAtTime(settings.enabled?settings.volume/100:0,context.currentTime,.04);
     persist();
   }
-  function tone(freq,start,duration,wave,gain,slide){
-    const osc=context.createOscillator(),amp=context.createGain();
-    osc.type=wave||"sine";
-    osc.frequency.setValueAtTime(freq,start);
-    if(slide)osc.frequency.exponentialRampToValueAtTime(Math.max(25,slide),start+duration);
-    amp.gain.setValueAtTime(.0001,start);
-    amp.gain.exponentialRampToValueAtTime(Math.max(.0002,gain),start+.012);
-    amp.gain.exponentialRampToValueAtTime(.0001,start+duration);
-    osc.connect(amp);amp.connect(master);
-    osc.start(start);osc.stop(start+duration+.025);
+
+  // Render a complete one-shot into an AudioBuffer: impact, airy rise, warm harmonic body and long tail.
+  // This avoids the short oscillator beeps used by the previous interface-sound prototype.
+  function renderBuffer(kind){
+    const ctx=getContext();if(!ctx)return null;
+    if(buffers[kind])return buffers[kind];
+    const rate=ctx.sampleRate,duration=kind==="defeat"||kind==="titleLost"?2.05:3.25;
+    const length=Math.ceil(rate*duration),buffer=ctx.createBuffer(1,length,rate),data=buffer.getChannelData(0);
+    const champion=kind==="champion",defeat=kind==="defeat"||kind==="titleLost";
+    let seed=kind==="champion"?731:kind==="victory"?419:kind==="titleLost"?283:157;
+    const rand=()=>{seed=(seed*16807)%2147483647;return seed/2147483647*2-1};
+    const notes=defeat?[{f:293.66,t:.12,d:.72,a:.16},{f:220,t:.68,d:.92,a:.13},{f:164.81,t:1.24,d:.62,a:.10}]:
+      champion?[{f:392,t:.20,d:1.65,a:.12},{f:493.88,t:.43,d:1.72,a:.12},{f:587.33,t:.68,d:1.78,a:.13},{f:783.99,t:.95,d:1.95,a:.12},{f:987.77,t:1.22,d:1.85,a:.085}]:
+      [{f:329.63,t:.20,d:1.45,a:.11},{f:392,t:.43,d:1.52,a:.12},{f:493.88,t:.68,d:1.62,a:.12},{f:659.25,t:.94,d:1.72,a:.105},{f:783.99,t:1.18,d:1.72,a:.075}];
+    for(let i=0;i<length;i++){
+      const t=i/rate;
+      let sample=0;
+      // Deep, soft cinematic hit with a falling sub-frequency tail.
+      if(!defeat){
+        const hitEnv=Math.exp(-t*7.5);
+        const hitFreq=92-34*Math.min(1,t/.42);
+        sample+=Math.sin(2*Math.PI*hitFreq*t)*hitEnv*(champion?.34:.25);
+      }else{
+        sample+=Math.sin(2*Math.PI*(72-28*Math.min(1,t/.9))*t)*Math.exp(-t*3.8)*.17;
+      }
+      // Airy noise swell; deliberately soft, not a sharp click.
+      const swell=Math.max(0,Math.min(1,t/.42))*Math.exp(-Math.pow((t-(defeat?.30:.62))/(defeat?.30:.46),2));
+      const noise=rand();
+      sample+=noise*swell*(defeat?.018:.026);
+      // Warm, layered chord tones with a slow attack and natural decay.
+      for(const n of notes){
+        const local=t-n.t;if(local<0||local>n.d)continue;
+        const attack=Math.min(1,local/.16);
+        const decay=Math.pow(Math.max(0,1-local/n.d),.72);
+        const env=attack*decay*n.a;
+        const fundamental=Math.sin(2*Math.PI*n.f*local);
+        const second=Math.sin(2*Math.PI*n.f*2.002*local)*.27;
+        const third=Math.sin(2*Math.PI*n.f*3.01*local)*.09;
+        const slowMotion=1+.0025*Math.sin(2*Math.PI*.8*local);
+        sample+=(fundamental+second+third)*env*slowMotion;
+      }
+      // A restrained high shimmer on the winning flourish.
+      if(!defeat&&t>.9){
+        const shimmerEnv=Math.exp(-(t-1.0)*1.35);
+        sample+=Math.sin(2*Math.PI*(champion?1568:1318.5)*t)*shimmerEnv*.018;
+      }
+      data[i]=Math.tanh(sample*1.55)*.88;
+    }
+    buffers[kind]=buffer;return buffer;
   }
-  const recipes={
-    click(ctx){tone(720,ctx.currentTime,.065,"sine",.16,520)},
-    switch(ctx){tone(510,ctx.currentTime,.075,"sine",.14,760)},
-    impact(ctx){tone(125,ctx.currentTime,.19,"triangle",.32,48);tone(680,ctx.currentTime+.012,.075,"sine",.12,240)},
-    error(ctx){tone(210,ctx.currentTime,.14,"triangle",.22,145);tone(155,ctx.currentTime+.09,.15,"sine",.16,115)},
-    matchFound(ctx){tone(560,ctx.currentTime,.10,"sine",.17,760);tone(820,ctx.currentTime+.105,.13,"sine",.18,1040)},
-    votingStart(ctx){tone(170,ctx.currentTime,.20,"triangle",.27,70);tone(520,ctx.currentTime+.035,.10,"sine",.14,680)},
-    countdown(ctx){tone(390,ctx.currentTime,.075,"sine",.17,330)},
-    voteSuccess(ctx){tone(660,ctx.currentTime,.075,"sine",.15,790);tone(990,ctx.currentTime+.085,.10,"sine",.17,1180)},
-    victory(ctx){tone(523.25,ctx.currentTime,.16,"sine",.16,659.25);tone(659.25,ctx.currentTime+.12,.17,"sine",.18,783.99);tone(783.99,ctx.currentTime+.25,.24,"sine",.20,1046.5)},
-    defeat(ctx){tone(330,ctx.currentTime,.16,"triangle",.18,247);tone(247,ctx.currentTime+.14,.23,"triangle",.19,165)},
-    champion(ctx){tone(523.25,ctx.currentTime,.17,"sine",.17,659.25);tone(783.99,ctx.currentTime+.13,.18,"sine",.19,987.77);tone(1046.5,ctx.currentTime+.27,.30,"sine",.21,1318.5)},
-    titleLost(ctx){tone(440,ctx.currentTime,.16,"triangle",.18,330);tone(294,ctx.currentTime+.14,.20,"triangle",.19,196);tone(196,ctx.currentTime+.30,.24,"sine",.15,130)}
-  };
   function play(name,force){
     if(!force&&(!settings.enabled||settings.volume===0))return false;
-    const now=Date.now(),cooldown=COOLDOWN[name]||100;
-    if(!force&&now-(lastPlayed.get(name)||0)<cooldown)return false;
-    const ctx=getContext();
-    if(!ctx||ctx.state!=="running")return false;
-    const recipe=recipes[name];
-    if(!recipe)return false;
-    lastPlayed.set(name,now);
-    try{recipe(ctx);return true}catch(_){return false}
+    if(!["victory","champion","defeat","titleLost"].includes(name))return false;
+    const now=Date.now();
+    if(!force&&now-(lastPlayed.get(name)||0)<(COOLDOWN[name]||900))return false;
+    const ctx=getContext();if(!ctx||ctx.state!=="running")return false;
+    const buffer=renderBuffer(name);if(!buffer)return false;
+    try{
+      const source=ctx.createBufferSource(),gain=ctx.createGain();
+      source.buffer=buffer;gain.gain.value=name==="champion"?1.0:name==="victory"?.92:.78;
+      source.connect(gain);gain.connect(master);source.start();
+      lastPlayed.set(name,now);return true;
+    }catch(_){return false}
   }
   function preview(){
     if(!settings.enabled||settings.volume===0)return Promise.resolve(false);
-    // Resume is invoked directly by the preview button's click handler, before any await.
-    return unlock().then(ok=>{
-      if(!ok)return false;
-      play("click",true);
-      setTimeout(()=>play("switch",true),150);
-      setTimeout(()=>play("impact",true),360);
-      return true;
-    });
+    return unlock().then(ok=>ok?play("victory",true):false);
   }
+  // Unlock audio only; never attach sound to ordinary interface interactions.
   document.addEventListener("pointerdown",unlock,{once:true,passive:true});
   document.addEventListener("keydown",unlock,{once:true});
-  document.addEventListener("click",function(event){
-    const target=event.target&&event.target.closest?event.target.closest("button,[role='button'],.card,.menu-item"):null;
-    if(!target||target.id==="soundPreview"||target.id==="togSound")return;
-    if(target.classList.contains("btn-gear")||target.closest(".tabs"))play("switch");
-    else if(target.classList.contains("card"))play("impact");
-    else play("click");
-  },true);
-  window.FaceArenaAudio={
-    play,
-    preview,
-    unlock,
-    getSettings(){return {...settings}},
-    setEnabled,
-    setVolume
-  };
+  window.FaceArenaAudio={play,preview,unlock,getSettings(){return {...settings}},setEnabled,setVolume};
 })();
