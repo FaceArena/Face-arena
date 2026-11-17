@@ -13,7 +13,7 @@ The Worker also requires the Cloudflare secret binding `WORKER_WAKE_SECRET`. Pro
 After the first deployment, enable the account's `workers.dev` subdomain if it is not enabled, then verify:
 
 - `GET https://face-arena-preview.featuresfaded.workers.dev/health`
-- `POST https://face-arena-preview.9mmm77v2jj.workers.dev/wake`
+- `POST https://face-arena-preview.featuresfaded.workers.dev/wake`
 
 ## Runtime behavior
 
