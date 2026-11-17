@@ -100,7 +100,10 @@
     if(!lane||lane._finalized||!(lane.stage==="w"||lane.stage==="v"))return {state,changed:false};
     const p=next.photos.find(x=>idEq(x.id,lane.userPhotoId));
     if(p){
-      p.status="queued";
+      // If another participant is already waiting, let FIFO advance and archive
+      // the timed-out entry. If nobody is waiting, keep this photo queued.
+      const hasNextQueued=next.photos.some(x=>!idEq(x.id,p.id)&&x.status==="queued");
+      p.status=hasNextQueued?"cancelled":"queued";
       p.battleId=null;p.battleUid=null;p.targetLaneId=null;
       p.matchedAt=null;p.matchDeadline=null;p.completedAt=null;
       p.side=null;p.opponentName=null;p.opponentImg=null;
