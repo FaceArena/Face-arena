@@ -169,7 +169,8 @@
     }
 
     async loadSnapshot() {
-      if (!this.isOnline() || this.loading) return this.lastSnapshot;
+      if (!this.isOnline()) return this.lastSnapshot;
+      if (this.loading) { this.pendingReload = true; return this.lastSnapshot; }
       this.loading = true;
       try {
         const c = this.client;
@@ -240,7 +241,7 @@
             redPhotoId: leftPhoto?.id || null, bluePhotoId: rightPhoto?.id || null,
             userPhotoId: me?.photo_id || null, userSide: me?.side === "left" ? "R" : me?.side === "right" ? "B" : null,
             championPhotoId: battle?.opening ? null : lane.champion_photo_id,
-            championSide: !battle?.opening && champ ? (leftPhoto?.id === champ.id ? "R" : rightPhoto?.id === champ.id ? "B" : null) : null,
+            championSide: !battle ? (champ ? "R" : null) : !battle.opening && champ ? (leftPhoto?.id === champ.id ? "R" : rightPhoto?.id === champ.id ? "B" : null) : null,
             championName: !battle?.opening ? champ?.name || null : null,
             championImg: !battle?.opening ? champ?.dataUrl || null : null,
             championStreak: 0, isMock: false, hasChampionWaiting: !battle && !!champ
@@ -287,6 +288,10 @@
         return null;
       } finally {
         this.loading = false;
+        if (this.pendingReload) {
+          this.pendingReload = false;
+          queueMicrotask(() => this.loadSnapshot());
+        }
       }
     }
 
@@ -314,8 +319,10 @@
         if (!response.ok) throw new Error("Coordinator returned " + response.status);
         return await response.json();
       } catch (error) {
-        console.warn("[FACE ARENA coordinator]", error);
-        return null;
+        console.warn("[FACE ARENA coordinator unavailable; using safe RPC fallback]", error);
+        const { data, error: rpcError } = await this.client.rpc("worker_tick");
+        if (rpcError) console.error("[FACE ARENA worker_tick]", rpcError);
+        return data || null;
       }
     }
 
