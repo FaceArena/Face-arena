@@ -5,9 +5,8 @@ create table if not exists private.arena_worker_config (
   updated_at timestamptz not null default now()
 );
 revoke all on table private.arena_worker_config from public, anon, authenticated, service_role;
-insert into private.arena_worker_config(singleton,wake_secret)
-values(true,'<INJECT_AT_DEPLOYMENT_FROM_SECRET_STORE>')
-on conflict(singleton) do update set wake_secret=excluded.wake_secret,updated_at=now();
+-- Provision the wake_secret out of band in private.arena_worker_config.
+-- The Worker secret must never be committed to this repository.
 
 create or replace function private.worker_tick()
 returns jsonb
