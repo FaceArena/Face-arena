@@ -104,3 +104,35 @@ test("timeout requeues the missed participant when nobody else is queued",()=>{
  assert.equal(r.state.photos[0].status,"queued");
  assert.deepEqual(E.selectNextAssignment(r.state.photos,r.state.lanes),{photoId:"missed",laneId:1});
 });
+
+
+test("empty lane pairs the two oldest queued photos from different users",()=>{
+ const photos=[photo("a",1,{userId:"u1"}),photo("b",2,{userId:"u2"}),photo("c",3,{userId:"u3"})];
+ assert.deepEqual(E.selectNextAssignment(photos,[lane(1)]),{photoId:"a",opponentPhotoId:"b",laneId:1,opening:true});
+});
+test("empty lane waits rather than matching a user against their own photo",()=>{
+ const photos=[photo("a",1,{userId:"u1"}),photo("b",2,{userId:"u1"})];
+ assert.equal(E.selectNextAssignment(photos,[lane(1)]),null);
+});
+test("opening battle assigns two different participants and winner becomes first champion",()=>{
+ const state={photos:[photo("a",1,{userId:"u1",dataUrl:"A"}),photo("b",2,{userId:"u2",dataUrl:"B"})],lanes:[lane(1)],history:[],participantStats:{}};
+ const assignment=E.selectNextAssignment(state.photos,state.lanes);
+ const assigned=E.assignChallenger(state,assignment,"opening-1",100);
+ assert.equal(assigned.assigned,true);
+ assert.equal(assigned.state.photos[1].status,"confirmed");
+ const battle=assigned.state; battle.lanes[0].stage="v";battle.lanes[0].redVotes=7;battle.lanes[0].blueVotes=3;
+ const result=E.resolveBattle(battle,1,200);
+ assert.equal(result.result.opening,true);
+ assert.equal(result.state.lanes[0].championPhotoId,"a");
+ assert.equal(result.state.photos.find(x=>x.id==="a").status,"champion");
+ assert.equal(result.state.photos.find(x=>x.id==="b").status,"completed");
+ assert.equal(result.state.history.length,2);
+});
+test("opening draw creates no champion and archives both participants",()=>{
+ const state={photos:[photo("a",1,{userId:"u1"}),photo("b",2,{userId:"u2"})],lanes:[lane(1)],history:[],participantStats:{}};
+ const assigned=E.assignChallenger(state,E.selectNextAssignment(state.photos,state.lanes),"opening-draw",100).state;
+ assigned.lanes[0].stage="v";assigned.lanes[0].redVotes=2;assigned.lanes[0].blueVotes=2;
+ const result=E.resolveBattle(assigned,1,200);
+ assert.equal(result.state.lanes[0].championPhotoId,null);
+ assert.equal(result.state.photos.every(x=>x.status==="completed"),true);
+});
