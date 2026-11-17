@@ -248,6 +248,23 @@
           };
         });
 
+        const arenaResults = resultRes.data.map(result => {
+          const leftPhoto = photosById.get(result.left_photo_id);
+          const rightPhoto = photosById.get(result.right_photo_id);
+          const leftProfile = profiles.get(leftPhoto?.owner_id) || {};
+          const rightProfile = profiles.get(rightPhoto?.owner_id) || {};
+          return {
+            resultId: result.id, photoId: result.left_photo_id, battleId: result.lane_id,
+            battleUid: result.battle_id, laneId: result.lane_id,
+            result: result.is_draw ? "draw" : result.winner_photo_id === result.left_photo_id ? "win" : "lose",
+            myVotes: result.left_votes, oppVotes: result.right_votes,
+            myImg: leftPhoto ? c.storage.from("arena-photos").getPublicUrl(leftPhoto.object_path).data.publicUrl : "",
+            opponentImg: rightPhoto ? c.storage.from("arena-photos").getPublicUrl(rightPhoto.object_path).data.publicUrl : "",
+            myName: leftProfile.display_name || "Участник",
+            opponentName: rightProfile.display_name || "Участник",
+            completedAt: Date.parse(result.completed_at), side: "RED"
+          };
+        });
         const history = [];
         for (const result of resultRes.data) {
           const leftPhoto = photosById.get(result.left_photo_id);
@@ -260,7 +277,8 @@
           history.push({
             resultId: result.id, photoId: myPhoto.id, battleId: result.lane_id, battleUid: result.battle_id,
             laneId: result.lane_id, result: result.is_draw ? "draw" : result.winner_photo_id === myPhoto.id ? "win" : "lose",
-            myVotes, oppVotes, myImg: c.storage.from("arena-photos").getPublicUrl(myPhoto.object_path).data.publicUrl,
+            myVotes, oppVotes, myName: profiles.get(myPhoto.owner_id)?.display_name || "Вы",
+            myImg: c.storage.from("arena-photos").getPublicUrl(myPhoto.object_path).data.publicUrl,
             opponentImg: opponent ? c.storage.from("arena-photos").getPublicUrl(opponent.object_path).data.publicUrl : "",
             opponentName: profiles.get(opponent?.owner_id)?.display_name || "Участник", completedAt: Date.parse(result.completed_at)
           });
@@ -310,7 +328,7 @@
         }
         const myProfile = profiles.get(this.user.id) || {};
         const snapshot = {
-          photos, arenaBattles, history, VOTED, MY, profiles: profileRes.data,
+          photos, arenaBattles, history, arenaResults, VOTED, MY, profiles: profileRes.data,
           profile: { name: myProfile.display_name || this.user.user_metadata?.display_name || "Участник", handle: myProfile.handle || "user" },
           participantStats
         };
