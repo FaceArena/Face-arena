@@ -34,6 +34,7 @@ export class ArenaCoordinator {
       headers: {
         apikey: this.env.SUPABASE_PUBLISHABLE_KEY,
         "Content-Type": "application/json",
+        "x-arena-worker-token": this.env.WORKER_WAKE_SECRET,
       },
       body: "{}",
     });
@@ -69,6 +70,16 @@ export default {
     }
     if (url.pathname !== "/wake" || request.method !== "POST") {
       return Response.json({ error: "Not found" }, { status: 404, headers: corsHeaders });
+    }
+    const authorization = request.headers.get("Authorization");
+    if (!authorization || !authorization.startsWith("Bearer ")) {
+      return Response.json({ error: "Authentication required" }, { status: 401, headers: corsHeaders });
+    }
+    const authCheck = await fetch(env.SUPABASE_URL + "/auth/v1/user", {
+      headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY, Authorization: authorization },
+    });
+    if (!authCheck.ok) {
+      return Response.json({ error: "Invalid session" }, { status: 401, headers: corsHeaders });
     }
     const id = env.ARENA.idFromName("global-arena");
     const coordinator = env.ARENA.get(id);
