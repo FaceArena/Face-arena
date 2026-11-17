@@ -1,0 +1,88 @@
+export interface Env {
+  ARENA: DurableObjectNamespace;
+  SUPABASE_URL: string;
+  SUPABASE_PUBLISHABLE_KEY: string;
+}
+
+export class ArenaCoordinator {
+  constructor(
+    private readonly state: DurableObjectState,
+    private readonly env: Env,
+  ) {}
+
+  async fetch(request: Request): Promise<Response> {
+    if (new URL(request.url).pathname !== "/tick") {
+      return new Response("Not found", { status: 404 });
+    }
+    try {
+      const result = await this.tick();
+      return Response.json({ ok: true, ...result });
+    } catch (error) {
+      await this.state.storage.setAlarm(Date.now() + 5_000);
+      return Response.json(
+        { ok: false, error: error instanceof Error ? error.message : "Coordinator failed" },
+        { status: 502 },
+      );
+    }
+  }
+
+  async alarm(): Promise<void> {
+    try {
+      await this.tick();
+    } catch {
+      await this.state.storage.setAlarm(Date.now() + 5_000);
+    }
+  }
+
+  private async tick(): Promise<Record<string, unknown>> {
+    const response = await fetch(`${this.env.SUPABASE_URL}/rest/v1/rpc/worker_tick`, {
+      method: "POST",
+      headers: {
+        apikey: this.env.SUPABASE_PUBLISHABLE_KEY,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    });
+    const raw = await response.text();
+    if (!response.ok) {
+      throw new Error(`Supabase worker_tick returned ${response.status}: ${raw.slice(0, 240)}`);
+    }
+
+    const result = JSON.parse(raw) as { next_deadline?: string | null };
+    if (result.next_deadline) {
+      const deadline = Date.parse(result.next_deadline);
+      if (!Number.isFinite(deadline)) throw new Error("Invalid server deadline returned by Supabase");
+      await this.state.storage.setAlarm(Math.max(Date.now() + 250, deadline));
+    } else {
+      await this.state.storage.deleteAlarm();
+    }
+    return result;
+  }
+}
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Cache-Control": "no-store",
+};
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+    if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+    if (url.pathname === "/health" && request.method === "GET") {
+      return Response.json({ ok: true, service: "face-arena-coordinator" }, { headers: corsHeaders });
+    }
+    if (url.pathname !== "/wake" || request.method !== "POST") {
+      return Response.json({ error: "Not found" }, { status: 404, headers: corsHeaders });
+    }
+
+    const id = env.ARENA.idFromName("global-arena");
+    const coordinator = env.ARENA.get(id);
+    const response = await coordinator.fetch("https://arena-coordinator/tick", { method: "POST" });
+    const headers = new Headers(response.headers);
+    for (const [key, value] of Object.entries(corsHeaders)) headers.set(key, value);
+    return new Response(response.body, { status: response.status, headers });
+  },
+};
