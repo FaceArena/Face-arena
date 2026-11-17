@@ -1389,6 +1389,10 @@ function renderProfile(){
   });
   $("pv").querySelectorAll(".rm").forEach(b=>b.onclick=()=>{
     const id=b.dataset.id;
+    if(window.FaceArenaSync?.isOnline()){
+      window.FaceArenaSync.deletePhoto(id).then(()=>toast("Фото удалено из архива (история сохранена)")).catch(error=>toast(error?.message||"Не удалось удалить фото"));
+      return;
+    }
     photos=photos.filter(x=>String(x.id)!==String(id));
     saveState();
     toast("Фото удалено из архива (история сохранена)");
@@ -1419,6 +1423,7 @@ function renderSettings(){
         <li><button type="button" class="menu-item" data-go="privacy">Приватность и безопасность</button></li>
         <li><button type="button" class="menu-item" data-go="data">Данные</button></li>
         <li><button type="button" class="menu-item" data-go="support">Поддержка</button></li>
+        <li><button type="button" class="menu-item danger" data-go="signout">Выйти из аккаунта</button></li>
       </ul>
       <div class="settings-menu-sep"></div>
       <div class="settings-menu-foot">
@@ -1485,9 +1490,9 @@ function renderSettings(){
     <div id="setSubData" class="settings-sub">
       <button type="button" class="settings-back" id="backFromData">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Данные</h2>
-      <p class="set-info">Данные хранятся только в этом браузере и пока не синхронизируются между устройствами.</p>
-      <p class="set-info">Сброс удалит фотографии, голоса, комментарии, историю и локальные настройки профиля только в этом браузере.</p>
-      <button type="button" class="menu-item danger" id="setResetBtn">Сбросить данные</button>
+      <p class="set-info">Аккаунт, фотографии, очередь, голоса и результаты хранятся на сервере и синхронизируются между устройствами.</p>
+      <p class="set-info">Очистка локального кэша не удаляет серверные фотографии и историю.</p>
+      <button type="button" class="menu-item danger" id="setResetBtn">Очистить локальный кэш</button>
     </div>
 
     <div id="setSubSupport" class="settings-sub">
@@ -1520,6 +1525,7 @@ function renderSettings(){
       else if(go==="privacy")showSub("setSubPrivacy");
       else if(go==="data")showSub("setSubData");
       else if(go==="support")showSub("setSubSupport");
+      else if(go==="signout")window.FaceArenaSync?.signOut();
     };
   });
 
