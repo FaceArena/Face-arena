@@ -776,6 +776,7 @@ function finishBattle(b,now){
 
   const p=b.userPhotoId?photos.find(x=>String(x.id)===String(b.userPhotoId)):null;
   if(p&&p.status==="voting"&&window.FaceArenaGameEngine){
+    if(!p.name)p.name=profile.name||"Вы";
     const wasChampion=String(b.championPhotoId||"")===String(p.id);
     const resolved=window.FaceArenaGameEngine.resolveBattle({photos,lanes:arenaBattles,history,participantStats},b.id,now);
     if(!resolved.changed)return false;
@@ -1210,6 +1211,7 @@ function confirmMatch(p){
   p.matchDeadline=null;
   p._confirming=false;
   slot.isMock=false;
+  slot.demoShowcase=false;
   slot.userPhotoId=p.id;
   slot.battleUid=uid;
   slot.stage="w";
