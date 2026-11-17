@@ -794,14 +794,22 @@ function tryFillSlots(){
     if(!assignment)break;
     const p=photos.find(x=>String(x.id)===String(assignment.photoId));
     const lane=arenaBattles.find(x=>String(x.id)===String(assignment.laneId));
-    if(!p||!lane||!lane.championPhotoId)break;
+    if(!p||!lane)break;
     p.status="matched";p.targetLaneId=lane.id;p.matchedAt=now;p.matchDeadline=now+MATCH_SEC*1000;
-    if(lane.championPhotoId){
+    if(assignment.opening){
+      const opponent=photos.find(x=>String(x.id)===String(assignment.opponentPhotoId));
+      if(!opponent||opponent.status!=="queued"||(opponent.userId||opponent.ownerId||"__local_user__")===(p.userId||p.ownerId||"__local_user__")){
+        p.status="queued";p.targetLaneId=null;p.matchedAt=null;p.matchDeadline=null;break;
+      }
+      p.side="R";p.opponentName=opponent.name||"Участник";p.opponentImg=opponent.dataUrl||"";
+      p.openingOpponentPhotoId=opponent.id;
+      opponent.status="matched";opponent.targetLaneId=lane.id;opponent.matchedAt=now;opponent.matchDeadline=p.matchDeadline;
+      opponent.openingPairPrimaryId=p.id;opponent.side="B";opponent.opponentName=p.name||profile.name||"Участник";opponent.opponentImg=p.dataUrl||"";
+    }else if(lane.championPhotoId){
       p.opponentName=lane.championName||"Чемпион";p.opponentImg=lane.championImg||face(1,"B");
       p.side=lane.championSide==="R"?"B":"R";
     }else{
-      p.status="queued";p.targetLaneId=null;p.matchedAt=null;p.matchDeadline=null;p._confirming=false;
-      break;
+      p.status="queued";p.targetLaneId=null;p.matchedAt=null;p.matchDeadline=null;p._confirming=false;break;
     }
     p._confirming=false;
     window.FaceArenaAudio?.play("matchFound");
@@ -1042,7 +1050,9 @@ function renderMatch(photoId){
   $("bkM").onclick=()=>{location.hash="queue"};
   $("cancelMatch").onclick=()=>{
     clearInterval(matchTimerId);
-    p.status="queued";p.matchedAt=null;p.matchDeadline=null;p.targetLaneId=null;p.opponentName=null;p.opponentImg=null;p.side=null;p._confirming=false;
+    const paired=p.openingOpponentPhotoId?photos.find(x=>String(x.id)===String(p.openingOpponentPhotoId)):null;
+    if(paired){paired.status="queued";paired.battleId=null;paired.battleUid=null;paired.targetLaneId=null;paired.matchedAt=null;paired.matchDeadline=null;paired.side=null;paired.opponentName=null;paired.opponentImg=null;paired.openingPairPrimaryId=null;}
+    p.status="queued";p.matchedAt=null;p.matchDeadline=null;p.targetLaneId=null;p.opponentName=null;p.opponentImg=null;p.side=null;p.openingOpponentPhotoId=null;p._confirming=false;
     toast(t("matchCancelOk"));saveState();location.hash="queue";
   };
   clearInterval(matchTimerId);
@@ -1071,6 +1081,7 @@ function clearSlot(slot, preserveChampion){
     championImg:slot.championImg
   };
   slot.userPhotoId=null;
+  slot.openingOpponentPhotoId=null;slot.openingOpponentName=null;slot.openingOpponentImg=null;
   slot.battleUid=null;
   slot.isMock=false;
   slot.redVotes=0;slot.blueVotes=0;
@@ -1101,6 +1112,10 @@ function confirmMatch(p){
     return;
   }
   const keepChamp=!!slot.championPhotoId;
+  const openingOpponent=p.openingOpponentPhotoId?photos.find(x=>String(x.id)===String(p.openingOpponentPhotoId)):null;
+  if(p.openingOpponentPhotoId&&!openingOpponent){
+    p.status="queued";p.targetLaneId=null;p.matchDeadline=null;p.matchedAt=null;p.openingOpponentPhotoId=null;p._confirming=false;saveState();return;
+  }
   clearSlot(slot, keepChamp);
   const uid=newBattleUid();
   p.status="confirmed";
@@ -1112,13 +1127,24 @@ function confirmMatch(p){
   slot.isMock=false;
   slot.userPhotoId=p.id;
   slot.battleUid=uid;
+  if(openingOpponent){
+    slot.openingOpponentPhotoId=openingOpponent.id;
+    slot.openingOpponentName=openingOpponent.name||"Участник";
+    slot.openingOpponentImg=openingOpponent.dataUrl||"";
+    openingOpponent.status="confirmed";openingOpponent.battleId=slot.id;openingOpponent.battleUid=uid;
+    openingOpponent.targetLaneId=null;openingOpponent.matchDeadline=null;openingOpponent.matchedAt=Date.now();
+    openingOpponent.side="B";openingOpponent.openingPairPrimaryId=null;
+  }
   slot.stage="w";
   slot.stageEnd=Date.now()+STAGE_SEC*1000;
   slot.stageStarted=Date.now();
   slot.redVotes=0;slot.blueVotes=0;
   slot._finalized=false;
   // If lane has champion, challenger is opposite side
-  if(slot.championPhotoId&&String(slot.championPhotoId)!==String(p.id)){
+  if(openingOpponent){
+    p.side="R";p.opponentName=openingOpponent.name||"Участник";p.opponentImg=openingOpponent.dataUrl||"";
+    slot.redName=profile.name||"Участник";slot.blueName=openingOpponent.name||"Участник";
+  }else if(slot.championPhotoId&&String(slot.championPhotoId)!==String(p.id)){
     p.side=slot.championSide==="R"?"B":"R";
     p.opponentName=slot.championName||p.opponentName;
     p.opponentImg=slot.championImg||p.opponentImg;
