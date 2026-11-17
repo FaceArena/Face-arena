@@ -4,7 +4,7 @@ This Worker is the server-side timer/matchmaking wake-up service. It is independ
 
 ## Preview deployment
 
-The preview branch deploys the Worker named `face-arena-preview` using `wrangler.toml`.
+The `server-sync-preview` branch deploys the dedicated backend Worker named `face-arena` using `wrangler.toml`. The Worker is not the public website; it only authenticates requests and coordinates server deadlines.
 
 The Worker is deployed independently of Vercel. If using GitHub Actions for future deployments, add a repository secret named `CLOUDFLARE_API_TOKEN` with permission to edit Workers scripts and Durable Objects. The account ID is configured in the workflow.
 
@@ -12,7 +12,7 @@ The Worker also requires the Cloudflare secret binding `WORKER_WAKE_SECRET`. Pro
 
 After the first deployment, enable the account's `workers.dev` subdomain if it is not enabled, then verify:
 
-- `GET https://face-arena-preview.featuresfaded.workers.dev/health`
+- `GET https://face-arena.featuresfaded.workers.dev/health`
 - `POST https://face-arena-preview.featuresfaded.workers.dev/wake`
 
 ## Runtime behavior
