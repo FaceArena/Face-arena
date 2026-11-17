@@ -181,7 +181,7 @@
           c.from("arena_battles").select("id,lane_id,opening,stage,started_at,stage_ends_at,finished_at").in("stage", ["waiting","voting"]),
           c.from("arena_battle_participants").select("battle_id,photo_id,owner_id,side"),
           c.from("arena_votes").select("battle_id,voter_id,target_photo_id,comment,created_at"),
-          c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,completed_at").order("completed_at", { ascending: false }).limit(500)
+          c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,completed_at").order("completed_at", { ascending: false }).limit(500)
         ]);
         for (const r of [photoRes,profileRes,laneRes,battleRes,participantRes,voteRes,resultRes]) if (r.error) throw r.error;
 
@@ -274,11 +274,45 @@
             return { s: member?.side === "left" ? "R" : "B", v: v.comment, author: profiles.get(v.voter_id)?.display_name || "Участник" };
           });
         }
+        const participantStats = {};
+        const getStats = (photoId) => {
+          if (!photoId) return null;
+          if (!participantStats[photoId]) {
+            const row = photosById.get(photoId);
+            const p = row ? profiles.get(row.owner_id) || {} : {};
+            participantStats[photoId] = {
+              wins: 0, losses: 0, defenses: 0, currentStreak: 0, bestStreak: 0,
+              name: p.display_name || "Участник",
+              img: row ? c.storage.from("arena-photos").getPublicUrl(row.object_path).data.publicUrl : "",
+              isChampion: false, laneId: null
+            };
+          }
+          return participantStats[photoId];
+        };
+        for (const result of [...resultRes.data].sort((a,b) => Date.parse(a.completed_at)-Date.parse(b.completed_at))) {
+          const leftStats = getStats(result.left_photo_id);
+          const rightStats = getStats(result.right_photo_id);
+          if (result.winner_photo_id === result.left_photo_id) {
+            leftStats.wins++; leftStats.currentStreak++; leftStats.bestStreak = Math.max(leftStats.bestStreak,leftStats.currentStreak);
+            rightStats.losses++; rightStats.currentStreak = 0;
+            if (!result.opening) leftStats.defenses++;
+          } else if (result.winner_photo_id === result.right_photo_id) {
+            rightStats.wins++; rightStats.currentStreak++; rightStats.bestStreak = Math.max(rightStats.bestStreak,rightStats.currentStreak);
+            leftStats.losses++; leftStats.currentStreak = 0;
+          }
+        }
+        for (const lane of laneRes.data) {
+          if (lane.champion_photo_id) {
+            const championStats = getStats(lane.champion_photo_id);
+            championStats.isChampion = true;
+            championStats.laneId = lane.lane_id;
+          }
+        }
         const myProfile = profiles.get(this.user.id) || {};
         const snapshot = {
           photos, arenaBattles, history, VOTED, MY, profiles: profileRes.data,
           profile: { name: myProfile.display_name || this.user.user_metadata?.display_name || "Участник", handle: myProfile.handle || "user" },
-          participantStats: {}
+          participantStats
         };
         this.dispatch(snapshot);
         return snapshot;
