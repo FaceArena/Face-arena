@@ -136,3 +136,15 @@ test("opening draw creates no champion and archives both participants",()=>{
  assert.equal(result.state.lanes[0].championPhotoId,null);
  assert.equal(result.state.photos.every(x=>x.status==="completed"),true);
 });
+
+test("cancelling an opening battle releases both participants together",()=>{
+ const state={photos:[
+  photo("first",1,{userId:"u1",status:"confirmed",side:"R",battleId:1,battleUid:"opening-cancel"}),
+  photo("second",2,{userId:"u2",status:"confirmed",side:"B",battleId:1,battleUid:"opening-cancel"})
+ ],lanes:[lane(1,{stage:"w",userPhotoId:"first",openingOpponentPhotoId:"second",battleUid:"opening-cancel"})],history:[],participantStats:{}};
+ const r=E.cancelBattle(state,1,500);
+ assert.equal(r.changed,true);
+ assert.deepEqual(r.state.photos.map(p=>p.status),["queued","queued"]);
+ assert.equal(r.state.lanes[0].openingOpponentPhotoId,null);
+ assert.deepEqual(E.selectNextAssignment(r.state.photos,r.state.lanes),{photoId:"first",opponentPhotoId:"second",laneId:1,opening:true});
+});
