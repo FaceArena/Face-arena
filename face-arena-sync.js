@@ -175,7 +175,7 @@
       try {
         const c = this.client;
         const [photoRes, profileRes, laneRes, battleRes, participantRes, voteRes, resultRes] = await Promise.all([
-          c.from("arena_photos").select("id,owner_id,object_path,status,created_at").neq("status", "removed").order("created_at", { ascending: true }),
+          c.from("arena_photos").select("id,owner_id,object_path,status,created_at").order("created_at", { ascending: true }),
           c.from("arena_profiles").select("user_id,display_name,handle"),
           c.from("arena_lanes").select("lane_id,champion_photo_id,challenger_photo_id").order("lane_id"),
           c.from("arena_battles").select("id,lane_id,opening,stage,started_at,confirm_until,stage_ends_at,finished_at").in("stage", ["waiting","voting"]),
@@ -188,7 +188,7 @@
         const profiles = new Map(profileRes.data.map(x => [x.user_id, x]));
         const photoRows = photoRes.data;
         const photosById = new Map(photoRows.map(p => [p.id,p]));
-        const photos = photoRows.map(p => {
+        const photos = photoRows.filter(p => p.status !== "removed").map(p => {
           const profile = profiles.get(p.owner_id) || {};
           return {
             id: p.id, ownerId: p.owner_id, userId: p.owner_id, name: profile.display_name || "Участник",
@@ -421,8 +421,13 @@
     }
 
     async deletePhoto(photoId) {
+      const photo = this.lastSnapshot?.photos?.find(p => p.id === photoId);
       const { error } = await this.client.rpc("delete_arena_photo",{p_photo_id:photoId});
       if (error) throw error;
+      if (photo?.status === "queued" && photo.objectPath) {
+        const { error: storageError } = await this.client.storage.from("arena-photos").remove([photo.objectPath]);
+        if (storageError) console.warn("[FACE ARENA storage cleanup]", storageError);
+      }
       await this.loadSnapshot();
     }
 
