@@ -628,8 +628,8 @@ function renderArenaGrid(){
   $("grid").innerHTML=arenaBattles.map((b,i)=>{
     const isActive=b.stage==="w"||b.stage==="v";
     const isEmpty=b.stage==="empty"||b.stage==="done"||b.stage==="cancelled";
-    if(isEmpty&&!b.isMock){
-      // Empty slot card
+    if(isEmpty&&!b.isMock&&!b.championPhotoId){
+      // Empty slot card; a waiting champion must remain visible on its lane.
       return `<article class="card" style="--i:${i};opacity:.55;pointer-events:none" data-id="${b.id}">
 <div class="top"><span class="num">${t("battle")}${String(b.id).padStart(2,"0")}</span><span class="chip">Свободен</span></div>
 <div class="duel"><div class="ph R" style="box-shadow:none;background:#111"></div><div class="ph B" style="box-shadow:none;background:#111"></div><div class="vs">VS</div></div>
