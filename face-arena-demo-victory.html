@@ -353,6 +353,25 @@ html.no-anim .victory-rays{animation:none}
 html.no-anim .victory-photo{animation:none}
 html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 
+
+/* Account auth controls — uses the existing FACE ARENA settings palette */
+.fa-auth-card{background:var(--c);border-radius:14px;padding:14px;margin:10px 0 16px}
+.fa-auth-title{font:800 12px var(--hd);letter-spacing:.08em;text-transform:uppercase;margin:0 0 6px}
+.fa-auth-muted{font-size:12px;color:var(--mu);line-height:1.45;margin:0 0 12px}
+.fa-auth-card input[type=email],.fa-auth-card input[type=password]{width:100%;box-sizing:border-box;background:var(--s);border:0;border-radius:10px;padding:12px;color:#fff;font:600 14px var(--bd);margin:5px 0}
+.fa-auth-card input:focus{outline:2px solid #fff}
+.fa-auth-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.fa-auth-actions button,.fa-auth-google,.fa-auth-avatar{border:0;border-radius:11px;min-height:44px;padding:10px;color:#fff;font:800 11px var(--hd);letter-spacing:.04em;background:var(--blue);cursor:pointer}
+.fa-auth-actions button:disabled,.fa-auth-google:disabled{opacity:.45;cursor:not-allowed}
+.fa-auth-google,.fa-auth-avatar{width:100%;margin-top:8px;background:var(--s);color:#fff}
+.fa-auth-status{font-size:12px;line-height:1.45;color:var(--mu);margin:10px 0 0;overflow-wrap:anywhere}
+.fa-auth-status[data-state=error]{color:#ffb454}
+.fa-auth-account{font-size:12px;color:#fff;margin:0 0 6px;overflow-wrap:anywhere}
+.fa-auth-logout{width:100%;border:0;background:none;color:var(--mu);padding:10px;font:700 12px var(--bd);cursor:pointer}
+.fa-auth-logout[hidden]{display:none}
+.fa-auth-avatar-wrap{display:flex;align-items:center;gap:10px;margin-top:8px}
+.fa-auth-avatar-wrap input{display:none}
+
 </style>
 </head>
 <body>
@@ -469,6 +488,24 @@ let MY={}; // { [battleUid]: [{s,v}] }
 let pendingUrl=null, pendingFile=null;
 let matchTimerId=null;
 let profile={name:"Вы",handle:"demo_user"};
+window.applyFaceArenaCloudProfile=function(cloudProfile){
+  if(!cloudProfile)return;
+  profile={...profile,name:cloudProfile.name||profile.name,handle:cloudProfile.handle||("player_"+String(cloudProfile.userId||"").slice(0,6)),avatarPath:cloudProfile.avatarPath||"",avatarUrl:cloudProfile.avatarUrl||""};
+  saveState();
+  const nameInput=$("setName"),handleInput=$("setHandle");
+  if(nameInput)nameInput.value=profile.name;
+  if(handleInput)handleInput.value=profile.handle;
+  const avatar=document.querySelector("#pv .pr-av img");
+  if(avatar&&profile.avatarUrl)avatar.src=profile.avatarUrl;
+  const profileName=document.querySelector("#pv .pr-name");
+  const profileHandle=document.querySelector("#pv .pr-handle");
+  if(profileName)profileName.textContent=profile.name;
+  if(profileHandle)profileHandle.textContent="@"+profile.handle;
+};
+window.clearFaceArenaCloudProfile=function(){
+  profile={name:"Вы",handle:"demo_user"};
+  saveState();
+};
 let prefAnim=true;
 let participantStats={}; // photoId -> {wins,losses,defenses,bestStreak,name,img}
 let demoVictoryPreviewDone=false; // one-time demo victory overlay state
@@ -1301,7 +1338,7 @@ function renderProfile(){
   const wins=history.filter(h=>h.result==="win").length;
   const losses=history.filter(h=>h.result==="lose").length;
   const battles=history.length;
-  const avSrc=photos[0]?photos[0].dataUrl:face(20,"R");
+  const avSrc=profile.avatarUrl|| (photos[0]?photos[0].dataUrl:face(20,"R"));
   const actives=photos.filter(p=>ACTIVE_STATUSES.has(p.status));
   const archived=photos.filter(p=>p.status==="completed"||p.status==="cancelled");
   const dispName=esc(profile.name||"Вы");
@@ -1413,6 +1450,24 @@ function renderSettings(){
     <div id="setSubProfile" class="settings-sub">
       <button type="button" class="settings-back" id="backFromProfile">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Профиль</h2>
+      <div class="fa-auth-card">
+        <div class="fa-auth-title">Аккаунт FACE ARENA</div>
+        <p class="fa-auth-muted">Войдите, чтобы сохранить профиль на сервере и использовать его на других устройствах. Гостевые демо-данные не переносятся автоматически.</p>
+        <div class="fa-auth-account" id="faAuthAccount">Проверяем подключение…</div>
+        <input type="email" id="faEmail" autocomplete="email" placeholder="Email" aria-label="Email">
+        <input type="password" id="faPassword" autocomplete="current-password" placeholder="Пароль (минимум 8 символов)" aria-label="Пароль">
+        <div class="fa-auth-actions">
+          <button type="button" id="faSignUp" data-fa-auth-action>Регистрация</button>
+          <button type="button" id="faSignIn" data-fa-auth-action>Войти</button>
+        </div>
+        <button type="button" class="fa-auth-google" id="faGoogle">Продолжить с Google</button>
+        <button type="button" class="fa-auth-logout" id="faSignOut" hidden>Выйти из аккаунта</button>
+        <div class="fa-auth-avatar-wrap">
+          <input type="file" id="faAvatarFile" accept="image/jpeg,image/png,image/webp">
+          <button type="button" class="fa-auth-avatar" id="faUploadAvatar">Загрузить аватар</button>
+        </div>
+        <p class="fa-auth-status" id="faAuthStatus" role="status" aria-live="polite"></p>
+      </div>
       <div class="set-row">
         <div><div class="lbl">Имя</div><div class="sub">Отображается в баттлах</div></div>
         <input type="text" id="setName" maxlength="24" value="${dispName}" placeholder="Имя">
@@ -1513,15 +1568,25 @@ function renderSettings(){
     toast(prefAnim?"Анимации включены":"Анимации отключены");
   };
 
+  if(window.FaceArenaAuth) window.FaceArenaAuth.mount();
+
   const sp=$("saveProfile");
   if(sp)sp.onclick=()=>{
     const name=($("setName").value||"").trim().slice(0,24);
     const handle=($("setHandle").value||"").trim().replace(/^@/,"").replace(/[^\w.]/g,"").slice(0,20);
     if(!name){toast("Укажите имя");return}
     if(!handle){toast("Укажите никнейм");return}
-    profile={name,handle};
+    profile={...profile,name,handle};
     saveState();
-    toast("Профиль сохранён");
+    if(window.FaceArenaAuth && window.FaceArenaAuth.getSession()){
+      window.FaceArenaAuth.saveProfile(profile).then(()=>{
+        toast("Профиль сохранён и синхронизирован");
+      }).catch(err=>{
+        toast("Локально сохранено; сервер не обновлён: "+String(err.message||err).slice(0,90));
+      });
+    } else {
+      toast("Профиль сохранён на этом устройстве");
+    }
     showMain();
   };
 }
@@ -1618,5 +1683,7 @@ const IC={
   $("tabs").appendChild(b);
 });
 </script>
+<script src="./face-arena-config.js"></script>
+<script src="./face-arena-auth.js"></script>
 </body>
 </html>
