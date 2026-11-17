@@ -1,6 +1,7 @@
 name: Deploy FACE ARENA Cloudflare Preview
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - server-sync-preview
