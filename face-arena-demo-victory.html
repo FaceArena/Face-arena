@@ -560,7 +560,10 @@ function createDefaultArena(){
     // Recover demo lanes that were cancelled by an older build.
     const now=Date.now();
     arenaBattles.forEach(b=>{
-      if(b.isMock&&!b.userPhotoId&&!b.demoShowcase&&b.stage==="cancelled"){
+      // Demo-only lanes must not remain as dead "Итоги" cards after their
+      // previous preview round. Keep real/user lanes and the one-time
+      // victory showcase untouched; restart completed or cancelled mock lanes.
+      if(b.isMock&&!b.userPhotoId&&!b.demoShowcase&&(b.stage==="cancelled"||b.stage==="done")){
         resetMockBattle(b,now);
       }
     });
