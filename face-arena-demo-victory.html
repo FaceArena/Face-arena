@@ -640,9 +640,9 @@ function renderArenaGrid(){
     if(isEmpty&&!b.isMock&&!b.championPhotoId){
       // Empty slot card; a waiting champion must remain visible on its lane.
       return `<article class="card" style="--i:${i};opacity:.55;pointer-events:none" data-id="${b.id}">
-<div class="top"><span class="num">${t("battle")}${String(b.id).padStart(2,"0")}</span><span class="chip">Свободен</span></div>
+<div class="top"><span class="num">${t("battle")}${String(b.id).padStart(2,"0")}</span><span class="chip">Слот свободен</span></div>
 <div class="duel"><div class="ph R" style="box-shadow:none;background:#111"></div><div class="ph B" style="box-shadow:none;background:#111"></div><div class="vs">VS</div></div>
-<div class="pct"><span class="m">Ожидает пару</span></div></article>`;
+<div class="pct"><span class="m">Слот свободен</span></div></article>`;
     }
     const tot=b.redVotes+b.blueVotes, w=b.stage==="w", rp=tot?Math.round(b.redVotes/tot*100):50;
     const left=isActive?Math.max(0,Math.ceil((b.stageEnd-now)/1000)):0;
