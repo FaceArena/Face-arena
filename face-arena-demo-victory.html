@@ -1532,7 +1532,19 @@ function renderSettings(){
     syncSound();
     if(togSound)togSound.onclick=()=>{audio.setEnabled(!audio.getSettings().enabled);syncSound();};
     if(soundVolume)soundVolume.oninput=()=>{audio.setVolume(Number(soundVolume.value));if(soundValue)soundValue.textContent=soundVolume.value+"%";};
-    if(soundPreview)soundPreview.onclick=()=>audio.preview();
+    if(soundPreview)soundPreview.onclick=()=>{
+      soundPreview.disabled=true;
+      const originalLabel="Прослушать";
+      audio.preview().then(ok=>{
+        soundPreview.disabled=false;
+        soundPreview.textContent=ok?originalLabel:"Звук недоступен";
+        if(!ok)setTimeout(()=>{soundPreview.textContent=originalLabel;},1800);
+      }).catch(()=>{
+        soundPreview.disabled=false;
+        soundPreview.textContent="Звук недоступен";
+        setTimeout(()=>{soundPreview.textContent=originalLabel;},1800);
+      });
+    };
   }
 
   const ta=$("togAnim");
