@@ -31,6 +31,8 @@
           if (this.user) {
             await this.loadSnapshot();
             this.subscribe();
+            const coordinator = await this.wakeSafely();
+            if (!coordinator.ok) console.warn("[FACE ARENA coordinator unavailable]", coordinator.error);
           } else {
             this.unsubscribe();
             this.dispatch(null);
@@ -45,6 +47,8 @@
       if (this.user) {
         await this.loadSnapshot();
         this.subscribe();
+        const coordinator = await this.wakeSafely();
+        if (!coordinator.ok) console.warn("[FACE ARENA coordinator unavailable]", coordinator.error);
       }
     }
 
@@ -383,6 +387,16 @@
       return await response.json();
     }
 
+    async wakeSafely() {
+      try {
+        await this.wake();
+        return { ok: true, error: null };
+      } catch (error) {
+        console.warn("[FACE ARENA coordinator]", error);
+        return { ok: false, error };
+      }
+    }
+
     async uploadPhoto(file) {
       if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
       if (!file) throw new Error("Не выбран файл фотографии.");
@@ -395,23 +409,25 @@
         await this.client.storage.from("arena-photos").remove([path]);
         throw enqueue.error;
       }
-      await this.wake();
+      const coordinator = await this.wakeSafely();
       await this.loadSnapshot();
-      return enqueue.data;
+      return { photoId: enqueue.data, coordinatorAvailable: coordinator.ok, coordinatorError: coordinator.error?.message || null };
     }
 
     async registerVisit(battleId) {
       const { error } = await this.client.rpc("register_arena_visit",{p_battle_id:battleId});
       if (error) throw error;
-      await this.wake();
+      const coordinator = await this.wakeSafely();
       await this.loadSnapshot();
+      return coordinator;
     }
 
     async cancelMatch(battleId) {
       const { error } = await this.client.rpc("cancel_arena_match",{p_battle_id:battleId});
       if (error) throw error;
-      await this.wake();
+      const coordinator = await this.wakeSafely();
       await this.loadSnapshot();
+      return coordinator;
     }
 
     async submitVote(battleId,targetPhotoId,comment) {
@@ -419,7 +435,9 @@
         p_battle_id:battleId,p_target_photo_id:targetPhotoId,p_comment:comment
       });
       if (error) throw error;
+      const coordinator = await this.wakeSafely();
       await this.loadSnapshot();
+      return coordinator;
     }
 
     async deletePhoto(photoId) {
