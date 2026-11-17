@@ -1599,7 +1599,7 @@ function historyResultKey(h,index){
   return String(h.resultId||(h.battleUid?String(h.battleUid)+":"+String(h.photoId):String(h.photoId)+":"+String(h.completedAt||index)));
 }
 function renderResults(){
-  const rows=history.map((h,i)=>({...h,_resultKey:historyResultKey(h,i)}));
+  const rows=(arenaResults.length?arenaResults:history).map((h,i)=>({...h,_resultKey:historyResultKey(h,i)}));
   const content=rows.length?'<div class="hist">'+rows.map(h=>`
     <div class="hist-item" role="button" tabindex="0" data-result="${esc(h._resultKey)}">
       <div class="sides">
@@ -1626,7 +1626,7 @@ function renderResults(){
 }
 
 function renderResult(photoId){
-  const h=history.find((x,i)=>historyResultKey(x,i)===String(photoId))||history.find(x=>String(x.photoId)===String(photoId));
+  const h=(arenaResults||[]).find((x,i)=>historyResultKey(x,i)===String(photoId))||history.find((x,i)=>historyResultKey(x,i)===String(photoId))||history.find(x=>String(x.photoId)===String(photoId));
   if(!h){location.hash="profile";return}
   $("rv").innerHTML=`
     ${hdrHTML()}
@@ -1634,8 +1634,8 @@ function renderResult(photoId){
     <h1 class="sec-h">${t("resTitle")}</h1>
 <div class="result-detail">
       <div class="match-duel">
-        <div><img src="${h.myImg}" alt=""><div style="font-size:12px;margin-top:6px">Вы · ${h.side}</div></div>
-        <div><img src="${h.opponentImg}" alt=""><div style="font-size:12px;margin-top:6px">${esc(h.opponentName||"opponent")}</div></div>
+        <div><img src="${h.myImg}" alt=""><div style="font-size:12px;margin-top:6px">RED · ${esc(h.myName||"Участник")}</div></div>
+        <div><img src="${h.opponentImg}" alt=""><div style="font-size:12px;margin-top:6px">BLUE · ${esc(h.opponentName||"Участник")}</div></div>
       </div>
       <div class="score" style="color:${h.result==="win"?"#4ade80":h.result==="lose"?"var(--red)":"var(--mu)"}">${t(h.result==="win"?"prWin":h.result==="lose"?"prLose":"prDraw")}</div>
       <div style="text-align:center;font:800 20px var(--hd)">${h.myVotes} : ${h.oppVotes}</div>
@@ -1701,6 +1701,7 @@ window.addEventListener("face-arena-snapshot",event=>{
   photos=snapshot.photos||[];
   arenaBattles=snapshot.arenaBattles||createDefaultArena();
   history=snapshot.history||[];
+  arenaResults=snapshot.arenaResults||[];
   VOTED=snapshot.VOTED||new Set();
   MY=snapshot.MY||{};
   profile=snapshot.profile||profile;
