@@ -376,6 +376,7 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 <div class="toast" id="toast" role="status"></div>
 <div class="ov" id="ov"><div class="sh" id="sh" role="dialog" aria-modal="true"></div></div>
 <script src="./face-arena-audio.js"></script>
+<script src="./face-arena-game-engine.js"></script>
 <script>
 (function(){
   var done=function(){document.documentElement.classList.add("fonts-ready")};
@@ -500,7 +501,7 @@ function loadState(){
     if(!raw)return false;
     const data=JSON.parse(raw);
     if(!data||!Array.isArray(data.photos)||!Array.isArray(data.arenaBattles))return false;
-    photos=data.photos||[];
+    photos=window.FaceArenaGameEngine?window.FaceArenaGameEngine.normalizeQueue(data.photos||[]):(data.photos||[]);
     history=data.history||[];
     arenaBattles=(data.arenaBattles||[]).map(b=>{
       b={...b};
@@ -839,14 +840,28 @@ function finishBattle(b,now){
   return true;
 }
 function tryFillSlots(){
-  // 1) Expired matched photos
-  const waitingMatched=photos.filter(p=>p.status==="matched"&&p.matchDeadline&&p.matchDeadline<=Date.now()&&!p._confirming);
-  for(const p of waitingMatched){
-    if(!findFreeSlot()&&!arenaBattles.some(b=>b.championPhotoId&&!b.userPhotoId&&(b.stage==="done"||b.stage==="cancelled"||b.stage==="empty"||b.stage==="w")))break;
-    confirmMatch(p);
+  const now=Date.now();
+  const waitingMatched=photos.filter(p=>p.status==="matched"&&p.matchDeadline&&p.matchDeadline<=now&&!p._confirming);
+  waitingMatched.forEach(p=>confirmMatch(p));
+  if(!window.FaceArenaGameEngine)return;
+  let guard=0;
+  while(guard++<MAX_BATTLES){
+    const assignment=window.FaceArenaGameEngine.selectNextAssignment(photos,arenaBattles);
+    if(!assignment)break;
+    const p=photos.find(x=>String(x.id)===String(assignment.photoId));
+    const lane=arenaBattles.find(x=>String(x.id)===String(assignment.laneId));
+    if(!p||!lane)break;
+    p.status="matched";p.targetLaneId=lane.id;p.matchedAt=now;p.matchDeadline=now+MATCH_SEC*1000;
+    if(lane.championPhotoId){
+      p.opponentName=lane.championName||"Чемпион";p.opponentImg=lane.championImg||face(1,"B");
+      p.side=lane.championSide==="R"?"B":"R";
+    }else{
+      const opp=MOCK_OPP[Math.floor(Math.random()*MOCK_OPP.length)];
+      p.opponentName=opp.name;p.opponentImg=face(opp.seed,"B");p.side="R";
+    }
+    p._confirming=false;
+    window.FaceArenaAudio?.play("matchFound");
   }
-  // 2) Lanes with champion waiting for challenger: pull next queued (demo: user must still press find pair)
-  // Automatic only for already-matched
 }
 function showDemoVictory(b){
   if(!b||!b.demoShowcase||!b.victoryPending||b.victoryShown)return;
@@ -1085,19 +1100,10 @@ function renderQueue(){
 function startMatch(photoId){
   const p=photos.find(x=>String(x.id)===String(photoId));
   if(!p||p.status!=="queued"){toast("Фото не в очереди");return}
-  if(p.status==="matched"||p.status==="confirmed"||p.status==="voting"){toast("Фото уже в процессе");return}
-  const opp=MOCK_OPP[Math.floor(Math.random()*MOCK_OPP.length)];
-  p.status="matched";
-  window.FaceArenaAudio?.play("matchFound");
-  p.matchedAt=Date.now();
-  p.matchDeadline=Date.now()+MATCH_SEC*1000;
-  p.opponentName=opp.name;
-  p.opponentImg=face(opp.seed,"B");
-  p.side=Math.random()>.5?"R":"B";
-  p._confirming=false;
+  tryFillSlots();
+  if(p.status==="matched"){saveState();location.hash="match-"+encodeURIComponent(p.id);return}
+  toast("Нет свободной линии. Фото останется в FIFO-очереди.");
   saveState();
-  toast("Пара найдена (демо). 10 секунд на отмену.");
-  location.hash="match-"+encodeURIComponent(p.id);
 }
 
 function renderMatch(photoId){
@@ -1124,7 +1130,7 @@ function renderMatch(photoId){
   $("bkM").onclick=()=>{location.hash="queue"};
   $("cancelMatch").onclick=()=>{
     clearInterval(matchTimerId);
-    p.status="queued";p.matchedAt=null;p.matchDeadline=null;p.opponentName=null;p.opponentImg=null;p.side=null;p._confirming=false;
+    p.status="queued";p.matchedAt=null;p.matchDeadline=null;p.targetLaneId=null;p.opponentName=null;p.opponentImg=null;p.side=null;p._confirming=false;
     toast(t("matchCancelOk"));saveState();location.hash="queue";
   };
   clearInterval(matchTimerId);
@@ -1136,25 +1142,14 @@ function renderMatch(photoId){
   },250);
 }
 
-function findFreeSlot(){
-  // Prefer lane where champion waits for challenger (no active user challenger)
-  const waitChamp=arenaBattles.find(b=>{
-    if(b.stage==="w"||b.stage==="v")return false;
-    if(b.userPhotoId){
-      const linked=photos.find(x=>String(x.id)===String(b.userPhotoId));
-      if(linked&&(linked.status==="confirmed"||linked.status==="voting"||linked.status==="champion"))return false;
-    }
-    return !!b.championPhotoId && (b.stage==="done"||b.stage==="cancelled"||b.stage==="empty");
-  });
-  if(waitChamp)return waitChamp;
-  return arenaBattles.find(b=>{
-    if(b.stage==="w"||b.stage==="v")return false;
-    if(b.userPhotoId){
-      const linked=photos.find(x=>String(x.id)===String(b.userPhotoId));
-      if(linked&&(linked.status==="confirmed"||linked.status==="voting"||linked.status==="champion"))return false;
-    }
-    return b.stage==="done"||b.stage==="cancelled"||b.stage==="empty";
-  });
+function findFreeSlot(photo){
+  if(photo&&photo.targetLaneId){
+    const target=arenaBattles.find(b=>String(b.id)===String(photo.targetLaneId));
+    if(target&&!target.userPhotoId&&(target.stage==="done"||target.stage==="cancelled"||target.stage==="empty"||(target.isMock&&!target.demoShowcase)))return target;
+  }
+  return arenaBattles.filter(b=>!b.demoShowcase&&!b.userPhotoId&&(
+    b.stage==="done"||b.stage==="cancelled"||b.stage==="empty"||(b.isMock&&(b.stage==="w"||b.stage==="v"))
+  )).sort((a,b)=>Number(a.id)-Number(b.id))[0]||null;
 }
 function clearSlot(slot, preserveChampion){
   // New battle identity — never reuse votes/comments
@@ -1184,10 +1179,10 @@ function confirmMatch(p){
   if(p._confirming)return; // prevent duplicate
   p._confirming=true;
   clearInterval(matchTimerId);
-  const slot=findFreeSlot();
+  const slot=findFreeSlot(p);
   if(!slot){
     p.status="queued";
-    p.matchedAt=null;p.matchDeadline=null;
+    p.matchedAt=null;p.matchDeadline=null;p.targetLaneId=null;
     p.opponentName=null;p.opponentImg=null;p.side=null;
     p._confirming=false;
     toast("Нет свободных слотов на арене. Фото вернулось в очередь.");
@@ -1200,6 +1195,7 @@ function confirmMatch(p){
   const uid=newBattleUid();
   p.status="confirmed";
   p.battleId=slot.id; // slot number for navigation
+  p.targetLaneId=null;
   p.battleUid=uid;    // immutable instance id
   p.matchDeadline=null;
   p._confirming=false;
@@ -1323,7 +1319,8 @@ function confirmAdd(){
   if(!pendingUrl){toast(t("upNoFile"));return}
   if(activeCount()>=MAX_ACTIVE){toast(t("upLimit"));return}
   const id=Date.now()+"_"+Math.random().toString(36).slice(2,8);
-  photos.push({id,dataUrl:pendingUrl,status:"queued",queuedAt:Date.now()});
+  photos.push({id,dataUrl:pendingUrl,status:"queued",queuedAt:Date.now(),queueSeq:photos.reduce((m,x)=>Math.max(m,Number.isFinite(x.queueSeq)?x.queueSeq:-1),-1)+1});
+  tryFillSlots();
   pendingFile=null;pendingUrl=null;
   toast(t("upOk")+" → смотрите во вкладке «Очередь»");
   try{saveState()}catch(e){toast("Фото добавлено, но сохранение не удалось");}
