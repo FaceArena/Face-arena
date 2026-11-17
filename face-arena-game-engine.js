@@ -26,17 +26,18 @@
     return photos.filter(p=>ACTIVE.has(p.status)&&(p.userId??p.ownerId??"__local_user__")===owner).length;
   }
   function laneReady(lane){
-    if(!lane||lane.demoShowcase||lane.userPhotoId)return false;
+    if(!lane||(lane.demoShowcase&&lane.stage!=="done")||lane.userPhotoId)return false;
     if(lane.stage==="w"||lane.stage==="v")return !!lane.isMock;
     return lane.stage==="empty"||lane.stage==="done"||lane.stage==="cancelled"||lane.stage==null;
   }
   function selectNextAssignment(photos,lanes){
     const ordered=normalizeQueue(photos).filter(p=>p.status==="queued"&&activeForOwner(photos,p)<=3).sort(queueCompare);
-    const occupied=new Set();
+    const occupied=new Set(),reservedLanes=new Set();
     lanes.forEach(l=>{if(l.userPhotoId!=null)occupied.add(String(l.userPhotoId));if(l.championPhotoId!=null)occupied.add(String(l.championPhotoId))});
+    photos.forEach(p=>{if(p.status==="matched"&&p.targetLaneId!=null)reservedLanes.add(String(p.targetLaneId))});
     const photo=ordered.find(p=>!occupied.has(String(p.id)));
     if(!photo)return null;
-    const lane=[...lanes].filter(l=>Number(l.id)>=1&&Number(l.id)<=10&&laneReady(l)).sort((a,b)=>Number(a.id)-Number(b.id))[0];
+    const lane=[...lanes].filter(l=>Number(l.id)>=1&&Number(l.id)<=10&&laneReady(l)&&!reservedLanes.has(String(l.id))).sort((a,b)=>Number(a.id)-Number(b.id))[0];
     return lane?{photoId:photo.id,laneId:lane.id}:null;
   }
   function assignChallenger(state,assignment,battleUid,now){
