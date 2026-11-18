@@ -1,0 +1,85 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+function reply(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" } });
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return reply({ error: "Method not allowed" }, 405);
+  try {
+    const authHeader = req.headers.get("Authorization") || "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!token || token === authHeader) return reply({ error: "Authentication required" }, 401);
+    const url = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url || !anonKey || !serviceKey) return reply({ error: "Server configuration is incomplete" }, 500);
+
+    const authClient = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { Authorization: `Bearer ${token}` } } });
+    const { data: authData, error: authError } = await authClient.auth.getUser();
+    if (authError || !authData.user) return reply({ error: "Invalid session" }, 401);
+    if (authData.user.app_metadata?.role !== "admin") return reply({ error: "Administrator access required" }, 403);
+
+    const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const body = await req.json().catch(() => ({}));
+    if (body?.action === "list") {
+      const { data: photos, error } = await admin.from("arena_photos").select("id,owner_id,object_path,status,created_at").order("created_at", { ascending: false }).limit(5000);
+      if (error) throw error;
+      const ownerIds = [...new Set((photos || []).map((p: any) => p.owner_id))];
+      const { data: profiles, error: profileError } = ownerIds.length
+        ? await admin.from("arena_profiles").select("user_id,display_name,handle").in("user_id", ownerIds)
+        : { data: [], error: null };
+      if (profileError) throw profileError;
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      const rows = await Promise.all((photos || []).map(async (p: any) => {
+        const { data } = await admin.storage.from("arena-photos").createSignedUrl(p.object_path, 300);
+        const owner: any = profileMap.get(p.owner_id);
+        return { ...p, display_name: owner?.display_name || "Участник", handle: owner?.handle || "user", image_url: data?.signedUrl || null };
+      }));
+      return reply({ photos: rows });
+    }
+
+    if (body?.action === "delete_one") {
+      const photoId = String(body?.photo_id || "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(photoId)) return reply({ error: "Invalid photo id" }, 400);
+      const { data: photo, error: findError } = await admin.from("arena_photos").select("id,object_path").eq("id", photoId).maybeSingle();
+      if (findError) throw findError;
+      if (!photo) return reply({ error: "Photo not found" }, 404);
+      const { error: storageError } = await admin.storage.from("arena-photos").remove([photo.object_path]);
+      if (storageError) throw storageError;
+      const { error: updateError } = await admin.from("arena_photos").update({ status: "removed", updated_at: new Date().toISOString() }).eq("id", photoId);
+      if (updateError) throw updateError;
+      return reply({ ok: true, deleted: 1, metadata_preserved: true });
+    }
+
+    if (body?.action === "delete_all") {
+      if (body?.confirmation !== "DELETE_ALL_ARENA_PHOTOS") return reply({ error: "Explicit confirmation required" }, 400);
+      const { data: photos, error: listError } = await admin.from("arena_photos").select("id,object_path").order("created_at", { ascending: true }).limit(5000);
+      if (listError) throw listError;
+      let deleted = 0;
+      for (let i = 0; i < (photos || []).length; i += 100) {
+        const batch = photos!.slice(i, i + 100);
+        const paths = [...new Set(batch.map((p: any) => p.object_path))];
+        if (paths.length) {
+          const { error: storageError } = await admin.storage.from("arena-photos").remove(paths);
+          if (storageError) return reply({ error: storageError.message, deleted, total: photos!.length, partial: true }, 502);
+        }
+        const { error: updateError } = await admin.from("arena_photos").update({ status: "removed", updated_at: new Date().toISOString() }).in("id", batch.map((p: any) => p.id));
+        if (updateError) return reply({ error: updateError.message, deleted, total: photos!.length, partial: true }, 502);
+        deleted += batch.length;
+      }
+      return reply({ ok: true, deleted, total: photos?.length || 0, metadata_preserved: true });
+    }
+    return reply({ error: "Unknown action" }, 400);
+  } catch (error) {
+    console.error("[admin-photos]", error);
+    return reply({ error: error instanceof Error ? error.message : "Internal server error" }, 500);
+  }
+});
