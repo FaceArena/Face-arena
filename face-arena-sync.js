@@ -161,11 +161,13 @@
       const snapshot = this.lastSnapshot;
       this.photoUrlRefreshInFlight = true;
       try {
-        const paths = (snapshot.photos || []).filter(photo =>
-          photo.objectPath &&
-          photo.status !== "removed" &&
-          (photo.ownerId === this.user.id || ["matched", "champion", "completed"].includes(photo.status))
-        ).map(photo => photo.objectPath);
+        const paths = [
+          ...(snapshot.photos || []).filter(photo =>
+            photo.objectPath && photo.status !== "removed" &&
+            (photo.ownerId === this.user.id || ["matched", "champion", "completed"].includes(photo.status))
+          ).map(photo => photo.objectPath),
+          snapshot.profile?.avatarPath
+        ].filter(Boolean);
         const [signed, rankingResult] = await Promise.all([
           this.createPhotoSignedUrlMap(paths, 900),
           this.client.rpc("get_top_arena_ranking")
@@ -176,6 +178,7 @@
           ...photo,
           dataUrl: photo.objectPath && photo.status !== "removed" ? signed.get(photo.objectPath) || "" : ""
         }));
+        const profile = { ...snapshot.profile, avatarUrl: snapshot.profile?.avatarPath ? signed.get(snapshot.profile.avatarPath) || "" : "" };
         const byId = new Map(photos.map(photo => [String(photo.id), photo]));
         const imageFor = (photoId, fallback) => {
           if (photoId == null) return fallback || "";
@@ -203,7 +206,7 @@
         ]));
         const topArenaRanking = this.mapTopArenaRanking(rankingResult.data || [], byId);
         this.photoUrlsExpiresAt = Date.now() + 900000;
-        this.dispatch({ ...snapshot, photos, arenaBattles, arenaResults, history, participantStats, topArenaRanking });
+        this.dispatch({ ...snapshot, profile, photos, arenaBattles, arenaResults, history, participantStats, topArenaRanking });
         window.dispatchEvent(new CustomEvent("face-arena-photo-urls-refreshed", { detail: { urls: Object.fromEntries(signed) } }));
         return true;
       } catch (error) {
@@ -509,14 +512,15 @@
           }
         }
         const signedPhotoUrls = new Map(previousUrls);
-        const pathsToSign = signedPhotoRows
-          .map(p => p.object_path)
+        const avatarPaths = profileRes.data.map(p => p.avatar_path).filter(Boolean);
+        const pathsToSign = [...signedPhotoRows.map(p => p.object_path), ...avatarPaths]
           .filter(path => path && !signedPhotoUrls.has(path));
         if (pathsToSign.length) {
           const freshUrls = await this.createPhotoSignedUrlMap(pathsToSign, 900);
           for (const [path, url] of freshUrls) signedPhotoUrls.set(path, url);
         }
-        const reusedAnyUrl = signedPhotoRows.some(p => previousUrls.has(p.object_path));
+        const reusedAnyUrl = signedPhotoRows.some(p => previousUrls.has(p.object_path)) ||
+          avatarPaths.some(path => previousUrls.has(path));
         this.photoUrlsExpiresAt = reusedAnyUrl
           ? Math.min(previousExpiry, Date.now() + 900000)
           : Date.now() + 900000;
@@ -728,7 +732,7 @@
         const snapshot = {
           userId: requestUserId,
           photos, arenaBattles, history, arenaResults, VOTED, MY, profiles: profileRes.data,
-          profile: { name: myProfile.display_name || this.user.user_metadata?.display_name || "Участник", handle: myProfile.handle || "user", isVerified: !!myProfile.is_verified, role: this.user.app_metadata?.role || "user" },
+          profile: { name: myProfile.display_name || this.user.user_metadata?.display_name || "Участник", handle: myProfile.handle || "user", isVerified: !!myProfile.is_verified, role: this.user.app_metadata?.role || "user", avatarPath: myProfile.avatar_path || null, avatarUrl: myProfile.avatar_path ? signedPhotoUrls.get(myProfile.avatar_path) || "" : "" },
           settings: snapshotSettings,
           participantStats,
           topArenaRanking
@@ -911,6 +915,34 @@
         this.loadSnapshot();
       });
       return { ok: true };
+    }
+
+    async uploadProfileAvatar(file) {
+      if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
+      if (!file) throw new Error("Не выбран файл фотографии.");
+      if (!["image/jpeg","image/png","image/webp"].includes(file.type)) throw new Error("Поддерживаются JPEG, PNG и WebP.");
+      if (file.size > 5 * 1024 * 1024) throw new Error("Размер фотографии не должен превышать 5 МБ.");
+      const ext = file.type === "image/jpeg" ? "jpg" : file.type.split("/")[1];
+      const path = this.user.id + "/profile/avatar-" + crypto.randomUUID() + "." + ext;
+      const upload = await this.client.storage.from("arena-photos").upload(path,file,{contentType:file.type,upsert:false,cacheControl:"60"});
+      if (upload.error) throw upload.error;
+      const oldPath = this.lastSnapshot?.profile?.avatarPath || null;
+      const { error } = await this.client.from("arena_profiles").update({ avatar_path:path, updated_at:new Date().toISOString() }).eq("user_id",this.user.id);
+      if (error) {
+        await this.client.storage.from("arena-photos").remove([path]);
+        throw error;
+      }
+      let avatarUrl = "";
+      try { avatarUrl = (await this.createPhotoSignedUrlMap([path],900)).get(path) || ""; }
+      catch (error) { console.warn("[FACE ARENA avatar URL]",error); }
+      const current = this.lastSnapshot || {};
+      this.dispatch({ ...current, profile:{ ...current.profile, avatarPath:path, avatarUrl } });
+      if (oldPath && oldPath !== path) {
+        const { error: removeError } = await this.client.storage.from("arena-photos").remove([oldPath]);
+        if (removeError) console.warn("[FACE ARENA old avatar cleanup]",removeError);
+      }
+      await this.loadSnapshot();
+      return true;
     }
 
     async updateProfile(name,handle) {
