@@ -239,6 +239,17 @@ html.no-anim .card{opacity:1}
 .preview-box .act button{flex:1;border:0;border-radius:12px;min-height:48px;font:800 12px var(--hd);letter-spacing:.05em;cursor:pointer;touch-action:manipulation}
 .preview-box .act .rep{background:var(--s);color:#fff}
 .preview-box .act .add{background:var(--blue);color:#fff}
+.preview-box{animation:faPreviewIn .24s cubic-bezier(.2,.75,.25,1) both}
+.preview-box .act .add{position:relative;overflow:hidden;transition:filter .18s,transform .18s,opacity .18s}
+.preview-box .act .add:active:not(:disabled){transform:scale(.97)}
+.preview-box .act .add.is-loading{opacity:.9;pointer-events:none;padding-left:34px}
+.preview-box .act .add.is-loading:before{content:"";position:absolute;left:13px;top:50%;width:13px;height:13px;margin-top:-7px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:faUploadSpin .7s linear infinite}
+.preview-box .act .add.is-loading:after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.13) 48%,transparent 70%);transform:translateX(-100%);animation:faUploadShimmer 1.15s ease-in-out infinite}
+@keyframes faUploadSpin{to{transform:rotate(360deg)}}
+@keyframes faUploadShimmer{to{transform:translateX(100%)}}
+@keyframes faPreviewIn{from{opacity:0;transform:translate3d(0,10px,0) scale(.985)}to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.preview-box,.preview-box .act .add.is-loading:before,.preview-box .act .add.is-loading:after{animation:none!important;transition:none!important}}
+
 .limit-note{font-size:12px;color:var(--mu);margin:8px 0 0;text-align:center}
 .my-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
 .my-photos .ph-card{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--s)}
@@ -490,7 +501,7 @@ let arenaResults=[];
 // Votes & comments keyed by immutable battleUid (NOT slot id)
 let VOTED=new Set(); // Set of battleUid strings
 let MY={}; // { [battleUid]: [{s,v}] }
-let pendingUrl=null, pendingFile=null;
+let pendingUrl=null, pendingFile=null, isPublishingPhoto=false;
 let matchTimerId=null;
 let profile={name:"Вы",handle:"user"}
 let prefAnim=true;
@@ -1263,7 +1274,7 @@ function renderUpload(){
     preview=`<div class="preview-box"><img src="${pendingUrl}" alt="preview">
       <div class="act">
         <button class="rep" id="repBtn">${t("upReplace")}</button>
-        <button class="add" id="addBtn" ${canAdd?"":"disabled"}>${t("upAdd")}</button>
+        <button class="add ${isPublishingPhoto?"is-loading":""}" id="addBtn" ${canAdd&&!isPublishingPhoto?"":"disabled"} ${isPublishingPhoto?'aria-busy="true"':""}>${isPublishingPhoto?"Публикуем…":t("upAdd")}</button>
       </div>
       <button class="btn-ghost" id="cancelPrev">${t("upCancel")}</button>
     </div>`;
@@ -1347,17 +1358,28 @@ function handleFile(f){
   reader.readAsDataURL(f);
 }
 async function confirmAdd(){
+  if(isPublishingPhoto)return;
   if(!pendingUrl){toast(t("upNoFile"));return}
   if(activeCount()>=MAX_ACTIVE){toast(t("upLimit"));return}
+  isPublishingPhoto=true;
+  const addButton=$("addBtn");
+  if(addButton){
+    addButton.disabled=true;
+    addButton.classList.add("is-loading");
+    addButton.setAttribute("aria-busy","true");
+    addButton.textContent="Публикуем…";
+  }
   if(window.FaceArenaSync?.isOnline()){
-    const addButton=$("addBtn");
-    if(addButton){addButton.disabled=true;addButton.dataset.originalText=addButton.textContent;addButton.textContent="Загружаем фото…"}
     try{
       const result=await window.FaceArenaSync.uploadPhoto(pendingFile);
       pendingFile=null;pendingUrl=null;
       toast(result?.coordinatorAvailable===false?"Фото сохранено. Серверный таймер временно недоступен.":"Фото добавлено в общую очередь");
       location.hash="queue";
-    }catch(error){toast(error?.message||"Не удалось загрузить фото");renderUpload();}
+    }catch(error){
+      isPublishingPhoto=false;
+      toast(error?.message||"Не удалось загрузить фото");
+      renderUpload();
+    }
     return;
   }
   const id=Date.now()+"_"+Math.random().toString(36).slice(2,8);
@@ -1368,6 +1390,7 @@ async function confirmAdd(){
   try{saveState()}catch(e){toast("Фото добавлено, но сохранение не удалось");}
   updateArenaStats();
   location.hash="queue";
+  isPublishingPhoto=false;
 }
 
 function renderProfile(){
@@ -1911,9 +1934,10 @@ window.addEventListener("face-arena-snapshot",event=>{
     photos=[];history=[];arenaResults=[];VOTED=new Set();MY={};participantStats={};
     arenaBattles=createDefaultArena();profile={name:"Вы",handle:"user"};
     updateArenaStats();
-    if(location.hash==="#queue")renderQueue();
-    else if(location.hash==="#profile")renderProfile();
-    else renderArenaGrid();
+    const activeHash=location.hash.slice(1);
+    if(activeHash==="queue")renderQueue();
+    else if(activeHash==="profile")renderProfile();
+    else if(activeHash==="")renderArenaGrid();
     return;
   }
   photos=snapshot.photos||[];
@@ -1931,7 +1955,9 @@ window.addEventListener("face-arena-snapshot",event=>{
   else if(/^battle-\d+$/.test(hash))bview(Number(hash.slice(7)));
   else if(hash==="queue")renderQueue();
   else if(hash==="profile")renderProfile();
-  else renderArenaGrid();
+  else if(hash==="")renderArenaGrid();
+  // Upload and settings views do not depend on arena snapshots; avoid rebuilding
+  // hidden arena DOM during auth hydration and realtime updates.
 });
 renderArenaGrid();
 show();
