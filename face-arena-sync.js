@@ -486,7 +486,7 @@
         let settingsRes = await c.from("arena_user_settings").select("profile_public,history_public,security_notifications,battle_notifications,updated_at").eq("user_id", requestUserId).maybeSingle();
         if (settingsRes.error) throw settingsRes.error;
         if (!settingsRes.data) {
-          settingsRes = await c.from("arena_user_settings").insert({ user_id: requestUserId }).select("profile_public,history_public,security_notifications,updated_at").single();
+          settingsRes = await c.from("arena_user_settings").insert({ user_id: requestUserId }).select("profile_public,history_public,security_notifications,battle_notifications,updated_at").single();
           if (settingsRes.error) throw settingsRes.error;
         }
         const clockSync = this.syncServerClock().catch(error => {
@@ -1033,7 +1033,7 @@
       }
       const { data, error } = await this.client.from("arena_user_settings")
         .upsert({ user_id: userId, ...update }, { onConflict: "user_id" })
-        .select("profile_public,history_public,security_notifications,updated_at")
+        .select("profile_public,history_public,security_notifications,battle_notifications,updated_at")
         .single();
       if (error || !data) {
         for (const key of allowed) {
