@@ -2,6 +2,7 @@ export class ArenaCoordinator {
   constructor(state, env) {
     this.state = state;
     this.env = env;
+    this.tickPromise = null;
   }
 
   async scheduleRetry() {
@@ -12,12 +13,36 @@ export class ArenaCoordinator {
     await this.state.storage.setAlarm(Date.now() + delay);
   }
 
+  async runTick(force = false) {
+    if (this.tickPromise) {
+      await this.state.storage.setAlarm(Date.now() + 1000);
+      return this.tickPromise;
+    }
+    const promise = (async () => {
+      const now = Date.now();
+      const lastTickAt = Number(await this.state.storage.get("lastTickAt")) || 0;
+      if (!force && now - lastTickAt < 1000) {
+        const retryAt = Math.max(now + 250, lastTickAt + 1000);
+        await this.state.storage.setAlarm(retryAt);
+        return { advanced: 0, matched: 0, next_deadline: new Date(retryAt).toISOString(), throttled: true };
+      }
+      await this.state.storage.put("lastTickAt", now);
+      return this.tick();
+    })();
+    this.tickPromise = promise;
+    try {
+      return await promise;
+    } finally {
+      if (this.tickPromise === promise) this.tickPromise = null;
+    }
+  }
+
   async fetch(request) {
     if (new URL(request.url).pathname !== "/tick") {
       return new Response("Not found", { status: 404 });
     }
     try {
-      const result = await this.tick();
+      const result = await this.runTick(false);
       return Response.json({ ok: true, ...result });
     } catch (error) {
       await this.scheduleRetry();
@@ -30,7 +55,7 @@ export class ArenaCoordinator {
 
   async alarm() {
     try {
-      await this.tick();
+      await this.runTick(true);
     } catch {
       await this.scheduleRetry();
     }
