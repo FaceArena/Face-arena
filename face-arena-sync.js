@@ -99,6 +99,7 @@
       if (!Array.isArray(rows)) return null;
       return rows.map(row => ({
         name: row.name || "Участник",
+        isVerified: !!(row.photo_id && photosById.get(String(row.photo_id))?.isVerified),
         wins: Number(row.wins) || 0,
         losses: Number(row.losses) || 0,
         defenses: Number(row.defenses) || 0,
@@ -471,7 +472,7 @@
         });
         const [photoRes, profileRes, laneRes, battleRes, resultRes, topRankingRows] = await Promise.all([
           this.fetchAllRows(() => c.from("arena_photos").select("id,owner_id,object_path,status,created_at").order("created_at", { ascending: true }).order("id", { ascending: true })),
-          this.fetchAllRows(() => c.from("arena_profiles").select("user_id,display_name,handle").order("user_id", { ascending: true })),
+          this.fetchAllRows(() => c.from("arena_profiles").select("user_id,display_name,handle,is_verified").order("user_id", { ascending: true })),
           c.from("arena_lanes").select("lane_id,champion_photo_id,challenger_photo_id").order("lane_id"),
           c.from("arena_battles").select("id,lane_id,opening,stage,started_at,confirm_until,stage_ends_at,finished_at").in("stage", ["waiting","voting"]),
           this.fetchAllRows(() => c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,no_contest,completed_at").order("completed_at", { ascending: false }).order("id", { ascending: false })),
@@ -527,7 +528,7 @@
           const profile = profiles.get(p.owner_id) || {};
           return {
             id: p.id, ownerId: p.owner_id, userId: p.owner_id, name: profile.display_name || "Участник",
-            handle: profile.handle || "", dataUrl: photosById.get(p.id)?.dataUrl || "",
+            handle: profile.handle || "", isVerified: !!profile.is_verified, dataUrl: photosById.get(p.id)?.dataUrl || "",
             objectPath: p.object_path, status: p.status, queuedAt: Date.parse(p.created_at)
           };
         });
@@ -724,7 +725,7 @@
         const snapshot = {
           userId: requestUserId,
           photos, arenaBattles, history, arenaResults, VOTED, MY, profiles: profileRes.data,
-          profile: { name: myProfile.display_name || this.user.user_metadata?.display_name || "Участник", handle: myProfile.handle || "user" },
+          profile: { name: myProfile.display_name || this.user.user_metadata?.display_name || "Участник", handle: myProfile.handle || "user", isVerified: !!myProfile.is_verified, role: this.user.app_metadata?.role || "user" },
           settings: snapshotSettings,
           participantStats,
           topArenaRanking
