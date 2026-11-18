@@ -15,9 +15,8 @@
 color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html{scroll-padding-top:env(safe-area-inset-top,0px);background:var(--bg)}
 *,*::before,*::after{box-sizing:inherit}
-/* Hide text until webfonts ready — prevents system→web font flash */
-html:not(.fonts-ready) body{opacity:0}
-html.fonts-ready body{opacity:1;transition:opacity .15s ease}
+/* Keep content visible while web fonts load; avoid full-page opacity flash */
+html,body{opacity:1}
 body{margin:0;background:var(--bg);color:var(--tx);font:400 14px/1.45 var(--bd);padding-bottom:88px;overflow-x:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 .wrap{max-width:1180px;margin:0 auto;padding:0 12px}
 header{display:flex;align-items:center;justify-content:space-between;padding:14px 0 6px;gap:8px}
@@ -40,7 +39,7 @@ h1{font:800 clamp(28px,8.5vw,72px)/.95 var(--hd);letter-spacing:-.02em;margin:16
 .grid{display:grid;gap:12px;grid-template-columns:repeat(2,1fr);contain:content}
 @media(min-width:640px){.grid{gap:16px}}
 @media(min-width:1000px){.grid{grid-template-columns:repeat(3,1fr)}}
-.card{background:var(--c);border-radius:16px;padding:10px;cursor:pointer;opacity:0;animation:in .22s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:calc(min(var(--i),5)*20ms);transition:transform .18s cubic-bezier(.2,.7,.2,1);-webkit-tap-highlight-color:transparent;touch-action:manipulation;will-change:transform,opacity;transform:translateZ(0);contain:layout style}
+.card{background:var(--c);border-radius:16px;padding:10px;cursor:pointer;opacity:1;animation:none;transition:transform .18s cubic-bezier(.2,.7,.2,1);-webkit-tap-highlight-color:transparent;touch-action:manipulation;will-change:auto;transform:translateZ(0);contain:layout style}
 @keyframes in{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
 .card:hover{transform:translateY(-2px)}.card:active{transform:scale(.97)}
 .card:focus-visible{outline:2px solid #fff;outline-offset:2px}
@@ -202,6 +201,8 @@ html.no-anim .card{opacity:1}
 .my-photos .ph-card.frame-B{box-shadow:inset 0 0 0 3px var(--blue)}
 .q-item .info b{display:block;font-size:13px;margin-bottom:2px}
 .q-item .info span{font-size:11px;color:var(--mu)}
+.queue-wait{display:block;margin-top:5px;color:#ffb454;font-size:10px;font-variant-numeric:tabular-nums}
+.queue-explain{margin:0 0 14px;padding:11px 13px;border-radius:12px;background:var(--c);color:var(--mu);font-size:11px;line-height:1.45}
 .q-item .st{font:700 10px var(--bd);letter-spacing:.08em;text-transform:uppercase;color:var(--mu)}
 .q-item .acts{display:flex;flex-direction:column;gap:4px}
 .q-item .acts button{border:0;border-radius:8px;padding:6px 10px;font:700 10px var(--bd);cursor:pointer;touch-action:manipulation}
@@ -242,7 +243,7 @@ html.no-anim .card{opacity:1}
 .hist-item .vs-s{font:800 10px var(--hd);color:var(--mu)}
 .hist-item .res{font:800 12px var(--hd);letter-spacing:.06em}
 .hist-item .res.win{color:#4ade80}.hist-item .res.lose{color:var(--red)}.hist-item .res.draw{color:var(--mu)}.hist-item .res.red{color:var(--red)}.hist-item .res.blue{color:var(--blue)}
-.champion-tag{display:inline-block;font:700 9px var(--bd);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#3a3010;color:#f0d060;margin-left:6px;vertical-align:middle}
+.champion-tag{display:inline-block;font:700 9px var(--bd);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#3a3010;color:#f0d060;margin-left:6px;vertical-align:middle}.legendary-tag{background:linear-gradient(135deg,#4a3410,#8a6818);color:#ffe89a}
 .btn-main{width:100%;border:0;border-radius:14px;min-height:52px;font:800 13px var(--hd);letter-spacing:.06em;color:#fff;background:var(--blue);cursor:pointer;touch-action:manipulation;margin-top:12px}
 .btn-main:disabled{opacity:.5}
 .btn-ghost{width:100%;border:0;border-radius:14px;min-height:48px;font:700 13px var(--bd);color:var(--mu);background:none;cursor:pointer;margin-top:6px}
@@ -437,6 +438,8 @@ const pl=(n,f)=>{const m=n%10,h=n%100;return n+" "+(m==1&&h!=11?f[0]:m>=2&&m<=4&
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const fmt=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(Math.max(0,s%60)).padStart(2,"0");
+const elapsedQueue=ms=>{const sec=Math.max(0,Math.floor((Date.now()-Number(ms||Date.now()))/1000));return sec>=3600?String(Math.floor(sec/3600)).padStart(2,"0")+":"+String(Math.floor(sec%3600/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0"):fmt(sec)};
+function tickQueueWaits(){document.querySelectorAll("[data-queued-at]").forEach(el=>{el.textContent="В очереди · "+elapsedQueue(el.dataset.queuedAt)})}
 const toast=m=>{const e=$("toast");e.textContent=m;e.classList.add("show");clearTimeout(toast.h);toast.h=setTimeout(()=>e.classList.remove("show"),2400)};
 const GEAR_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
 function hdrHTML(showGear=true){
@@ -478,6 +481,8 @@ let _uidSeq=0;
 function newBattleUid(){return "b_"+Date.now().toString(36)+"_"+((++_uidSeq)%1e6).toString(36)+"_"+Math.random().toString(36).slice(2,7)}
 
 function saveState(){
+  // Authenticated arena state is server-owned; never persist it under a shared browser key.
+  if(window.FaceArenaSync)return;
   try{
     const data={
       v:3,
@@ -493,6 +498,8 @@ function saveState(){
   }
 }
 function loadState(){
+  // Wait for Supabase; do not restore legacy unscoped demo data before account identity is known.
+  if(window.FaceArenaSync)return false;
   try{
     // migrate from v1 if needed
     let raw=localStorage.getItem(LS_KEY);
@@ -560,7 +567,15 @@ function createDefaultArena(){
   saveState();
 })();
 
-function activeCount(){return photos.filter(p=>ACTIVE_STATUSES.has(p.status)).length}
+function getMyPhotos(){
+  const sync=window.FaceArenaSync;
+  if(sync?.isOnline?.()){
+    const userId=sync.getUser?.()?.id;
+    return userId?photos.filter(p=>String(p.ownerId||p.userId)===String(userId)):[];
+  }
+  return photos;
+}
+function activeCount(){return getMyPhotos().filter(p=>ACTIVE_STATUSES.has(p.status)).length}
 function queuedPhotos(){return photos.filter(p=>p.status==="queued")}
 function updateArenaStats(){
   const activePairs=arenaBattles.filter(b=>b.stage==="w"||b.stage==="v").length;
@@ -571,23 +586,27 @@ function updateArenaStats(){
 
 function buildTopRanking(){
   if(window.FaceArenaGameEngine){
-    return window.FaceArenaGameEngine.buildRanking(participantStats,photos).map(r=>({
-      ...r,name:r.name||profile.name||"Вы",img:r.img||face(1,"R")
-    }));
+    return window.FaceArenaGameEngine.buildRanking(participantStats,photos)
+      .filter(r=>Number(r?.wins)>=5&&Number(r?.best)>=5)
+      .map(r=>({
+        ...r,name:r.name||profile.name||"Вы",img:r.img||face(1,"R")
+      }));
   }
   return Object.keys(participantStats).filter(id=>!/^demo[_-]|^mock[_-]|^bot[_-]/i.test(id)).map(id=>{
-    const s=participantStats[id],photo=photos.find(x=>String(x.id)===String(id));
-    return {id,name:s.name||profile.name||"Вы",img:s.img||(photo&&photo.dataUrl)||face(1,"R"),wins:s.wins||0,losses:s.losses||0,defenses:s.defenses||0,streak:s.currentStreak||0,best:s.bestStreak||0,isChampion:!!s.isChampion||!!(photo&&photo.status==="champion"),laneId:s.laneId||null};
-  }).sort((a,b)=>Number(b.isChampion)-Number(a.isChampion)||b.defenses-a.defenses||b.wins-a.wins||b.streak-a.streak||String(a.id).localeCompare(String(b.id)));
+    const s=participantStats[id]||{},best=Number(s.bestStreak)||0,streak=Number(s.currentStreak)||0;
+    if(Number(s.wins||0)<5||best<5)return null;
+    return {id,name:s.name||profile.name||"Вы",img:s.img||face(1,"R"),wins:Number(s.wins)||0,losses:Number(s.losses)||0,defenses:Number(s.defenses)||0,streak,best,isChampion:!!s.isChampion,isLegendary:streak>=10,laneId:s.laneId||null};
+  }).filter(Boolean).sort((a,b)=>b.wins-a.wins||b.streak-a.streak||b.best-a.best||String(a.id).localeCompare(String(b.id)));
 }
 function renderTopArenaHTML(){
-  const rows=buildTopRanking();
-  if(!rows.length)return `<div class="top-arena"><h2><span>★</span> TOP ARENA</h2><div class="empty-box"><p>Пока нет чемпионов. Победите в баттле, чтобы попасть в рейтинг.</p></div></div>`;
+  // Final UI guard: stale cached engines or malformed snapshots cannot bypass qualification.
+  const rows=buildTopRanking().filter(r=>Number(r?.wins)>=5&&Number(r?.best)>=5);
+  if(!rows.length)return `<div class="top-arena"><h2><span>★</span> TOP ARENA</h2><div class="empty-box"><p>Для входа в TOP ARENA нужно одержать 5 побед подряд.</p></div></div>`;
   return `<div class="top-arena"><h2><span>★</span> TOP ARENA</h2><div class="top-list">`+
     rows.slice(0,10).map((r,i)=>`<div class="top-item ${i===0?"gold":""}">
       <div class="pos">${i+1}</div>
       <img src="${r.img}" alt="">
-      <div><div class="nm">${esc(r.name)} ${r.isChampion?'<span class="champion-tag">ЧЕМПИОН</span>':''}</div>
+      <div><div class="nm">${esc(r.name)} ${r.isLegendary?'<span class="champion-tag legendary-tag">ЛЕГЕНДАРНЫЙ ЧЕМПИОН</span>':r.isChampion?'<span class="champion-tag">ЧЕМПИОН</span>':''}</div>
       <div class="meta">${r.isChampion&&r.laneId?"Линия "+r.laneId+" · ":""}Серия ${r.streak} · Защит ${r.defenses}</div></div>
       <div class="stats"><b>${r.wins}</b><div>побед</div><div style="margin-top:2px">${r.losses} пор.</div></div>
     </div>`).join("")+`</div></div>`;
@@ -996,17 +1015,19 @@ function statusLabel(st){
   return t({queued:"stQueued",matched:"stMatched",confirmed:"stConfirmed",voting:"stVoting",champion:"stChampion",completed:"stCompleted",cancelled:"stCancelled"}[st]||"stQueued");
 }
 function renderQueue(){
-  // FIFO: only status===queued, ordered by queuedAt
+  // FIFO positions are global, but the personal queue contains only this account's photos.
+  const myPhotos=getMyPhotos();
   const qOrder=photos.filter(p=>p.status==="queued").sort((a,b)=>(a.queuedAt||0)-(b.queuedAt||0));
-  const active=photos.filter(p=>ACTIVE_STATUSES.has(p.status));
+  const active=myPhotos.filter(p=>ACTIVE_STATUSES.has(p.status));
   // Summary: position of the earliest queued photo in local FIFO
   let posHtml="—", aheadHtml="—";
-  if(qOrder.length){posHtml="1";aheadHtml="0"}
+  const myQueued=qOrder.filter(p=>myPhotos.some(m=>String(m.id)===String(p.id)));
+  if(myQueued.length){const firstPos=qOrder.findIndex(p=>String(p.id)===String(myQueued[0].id))+1;posHtml=String(firstPos);aheadHtml=String(Math.max(0,firstPos-1))}
   let statusHtml=`<span class="status-pill queued">${t("stQueued")}</span>`;
   if(active.length){const top=active.sort((a,b)=>(a.queuedAt||0)-(b.queuedAt||0))[0];statusHtml=`<span class="status-pill ${top.status}">${statusLabel(top.status)}</span>`}
 
   let list="";
-  const show=photos.filter(p=>ACTIVE_STATUSES.has(p.status)||p.status==="completed"||p.status==="cancelled")
+  const show=myPhotos.filter(p=>ACTIVE_STATUSES.has(p.status)||p.status==="completed"||p.status==="cancelled")
     .sort((a,b)=>(a.queuedAt||0)-(b.queuedAt||0));
   if(show.length){
     list+=`<h2>${t("qYours")}</h2><div class="q-list">`+show.map(p=>{
@@ -1018,9 +1039,10 @@ function renderQueue(){
       const frameCls=p.side?`frame-${p.side}`:"";
       const qIdx=qOrder.findIndex(x=>x.id===p.id);
       const posLabel=qIdx>=0?` · позиция ${qIdx+1} (впереди: ${qIdx})`:"";
+      const waitLabel=p.status==="queued"?`<small class="queue-wait" data-queued-at="${Number(p.queuedAt)||Date.now()}">В очереди · ${elapsedQueue(p.queuedAt)}</small>`:"";
       return `<div class="q-item" style="--i:${show.indexOf(p)}">
         <img class="${frameCls}" src="${p.dataUrl}" alt="">
-        <div class="info"><b>Фото #${String(p.id).slice(-4)}</b><span>${statusLabel(p.status)}${p.side?` · ${p.side}`:""}${posLabel}</span></div>
+        <div class="info"><b>Фото #${String(p.id).slice(-4)}</b><span>${statusLabel(p.status)}${p.side?` · ${p.side}`:""}${posLabel}</span>${waitLabel}</div>
         <div class="acts">
           ${canFind?`<button class="btn-sm-blue" data-act="find" data-id="${p.id}">${t("findPair")}</button>`:""}
           ${canOpenMatch?`<button class="btn-sm-blue" data-act="openmatch" data-id="${p.id}">Открыть таймер</button>`:""}
@@ -1034,10 +1056,6 @@ function renderQueue(){
     list=`<div class="empty-box"><div style="font-size:28px;opacity:.5">📷</div><p>${t("qEmpty")}</p>
       <button class="btn-main" id="goUp">${t("upTitle")}</button></div>`;
   }
-  // Update summary position from FIFO
-  if(qOrder.length){
-    posHtml="1"; aheadHtml="0";
-  }
   
 
   $("qv").innerHTML=`
@@ -1049,6 +1067,7 @@ function renderQueue(){
       <div class="stat"><b>${aheadHtml}</b><span>${t("qAhead")}</span></div>
       <div class="stat" style="display:flex;align-items:center;justify-content:center">${statusHtml}</div>
     </div>
+    ${qOrder.length?`<p class="queue-explain">Фото уже принято сервером. Поиск соперника идёт автоматически — время зависит от свободной линии и появления подходящего соперника.</p>`:""}
     ${list}`;
   const go=$("goUp");if(go)go.onclick=()=>{location.hash="upload"};
   $("qv").querySelectorAll("[data-act]").forEach(btn=>{
@@ -1238,7 +1257,7 @@ function renderUpload(){
       <span>${t("upHint")}</span>
     </div>`;
   }
-  const actives=photos.filter(p=>ACTIVE_STATUSES.has(p.status));
+  const actives=getMyPhotos().filter(p=>ACTIVE_STATUSES.has(p.status));
   let my="";
   if(actives.length){
     my=`<h2>${t("upMy")} (${actives.length}/${MAX_ACTIVE})</h2>
@@ -1292,9 +1311,13 @@ function handleFile(f){
         const ctx=c.getContext("2d");
         if(!ctx){pendingUrl=e.target.result;pendingFile=f;renderUpload();return}
         ctx.drawImage(img,0,0,w,h);
-        pendingUrl=c.toDataURL("image/jpeg",0.85);
-        pendingFile=f;
-        renderUpload();
+        c.toBlob(blob=>{
+          if(!blob){pendingUrl=e.target.result;pendingFile=f;renderUpload();return}
+          pendingUrl=c.toDataURL("image/jpeg",0.82);
+          const base=(f.name||"photo").replace(/\\.[^.]+$/,"");
+          pendingFile=new File([blob],base+".jpg",{type:"image/jpeg",lastModified:Date.now()});
+          renderUpload();
+        },"image/jpeg",0.82);
       }catch(err){
         toast("Не удалось обработать изображение");
         pendingUrl=null;pendingFile=null;renderUpload();
@@ -1305,17 +1328,18 @@ function handleFile(f){
   };
   reader.readAsDataURL(f);
 }
-
 async function confirmAdd(){
   if(!pendingUrl){toast(t("upNoFile"));return}
   if(activeCount()>=MAX_ACTIVE){toast(t("upLimit"));return}
   if(window.FaceArenaSync?.isOnline()){
+    const addButton=$("addBtn");
+    if(addButton){addButton.disabled=true;addButton.dataset.originalText=addButton.textContent;addButton.textContent="Загружаем фото…"}
     try{
       const result=await window.FaceArenaSync.uploadPhoto(pendingFile);
       pendingFile=null;pendingUrl=null;
       toast(result?.coordinatorAvailable===false?"Фото сохранено. Серверный таймер временно недоступен.":"Фото добавлено в общую очередь");
       location.hash="queue";
-    }catch(error){toast(error?.message||"Не удалось загрузить фото");}
+    }catch(error){toast(error?.message||"Не удалось загрузить фото");renderUpload();}
     return;
   }
   const id=Date.now()+"_"+Math.random().toString(36).slice(2,8);
@@ -1329,12 +1353,13 @@ async function confirmAdd(){
 }
 
 function renderProfile(){
+  const myPhotos=getMyPhotos();
   const wins=history.filter(h=>h.result==="win").length;
   const losses=history.filter(h=>h.result==="lose").length;
   const battles=history.length;
-  const avSrc=photos[0]?photos[0].dataUrl:face(20,"R");
-  const actives=photos.filter(p=>ACTIVE_STATUSES.has(p.status));
-  const archived=photos.filter(p=>p.status==="completed"||p.status==="cancelled");
+  const avSrc=myPhotos[0]?myPhotos[0].dataUrl:face(20,"R");
+  const actives=myPhotos.filter(p=>ACTIVE_STATUSES.has(p.status));
+  const archived=myPhotos.filter(p=>p.status==="completed"||p.status==="cancelled");
   const dispName=esc(profile.name||"Вы");
   const dispHandle=esc(profile.handle||"user");
 
@@ -1711,7 +1736,15 @@ function show(){
 addEventListener("hashchange",show);
 window.addEventListener("face-arena-snapshot",event=>{
   const snapshot=event.detail;
-  if(!snapshot)return;
+  if(!snapshot){
+    photos=[];history=[];arenaResults=[];VOTED=new Set();MY={};participantStats={};
+    arenaBattles=createDefaultArena();profile={name:"Вы",handle:"user"};
+    updateArenaStats();
+    if(location.hash==="#queue")renderQueue();
+    else if(location.hash==="#profile")renderProfile();
+    else renderArenaGrid();
+    return;
+  }
   photos=snapshot.photos||[];
   arenaBattles=snapshot.arenaBattles||createDefaultArena();
   history=snapshot.history||[];
@@ -1731,7 +1764,7 @@ window.addEventListener("face-arena-snapshot",event=>{
 });
 renderArenaGrid();
 show();
-setInterval(()=>{tickArena();tick2()},1000);
+setInterval(()=>{tickArena();tick2();tickQueueWaits()},1000);
 
 const IC={
   results:'<path d="M4 5h16M4 12h16M4 19h16"/><path d="m7 9 2 2 4-4"/>',
