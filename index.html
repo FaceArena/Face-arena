@@ -227,12 +227,21 @@ html.no-anim .card{opacity:1}
 .btn-sm-muted{background:var(--s);color:var(--mu)}
 .empty-box{background:var(--c);border-radius:16px;padding:28px 16px;text-align:center;color:var(--mu)}
 .empty-box p{margin:8px 0 0;font-size:13px;line-height:1.4}
-.up-zone{background:var(--c);border:0;border-radius:16px;padding:28px 16px;text-align:center;cursor:pointer;transition:background .2s;touch-action:manipulation}
+.up-zone{background:var(--c);border:0;border-radius:14px;padding:17px 14px;text-align:center;cursor:pointer;transition:background .2s;touch-action:manipulation;min-height:112px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
 .up-zone:active{background:#0a1220}
 .up-zone input{display:none}
-.up-zone .ic{font-size:28px;margin-bottom:8px;opacity:.7}
-.up-zone b{display:block;font:700 14px var(--bd);margin-bottom:4px}
-.up-zone span{font-size:12px;color:var(--mu)}
+.up-zone .ic{font-size:23px;line-height:1;margin:0 0 3px;opacity:.75}
+.up-zone b{display:block;font:700 13px var(--bd);margin:0}
+.up-zone span{font-size:11px;color:var(--mu)}
+#uv .sec-h{margin:4px 0 3px}
+#uv .sec-lead{font-size:12px;margin:0 0 11px;line-height:1.3}
+.upload-check{font-size:11px;color:var(--mu);margin:7px 2px 0;text-align:center;line-height:1.35}
+.upload-count{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:15px 0 9px}
+.upload-count strong{font:700 14px var(--bd)}
+.upload-count span{font-size:12px;color:var(--mu);font-variant-numeric:tabular-nums}
+.upload-slots{display:flex;gap:5px;margin:0 0 10px}
+.upload-slots i{display:block;height:4px;flex:1;border-radius:5px;background:#292929}
+.upload-slots i.filled{background:var(--blue)}
 .preview-box{background:var(--c);border-radius:16px;overflow:hidden;margin-bottom:14px}
 .preview-box img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;max-height:360px}
 .preview-box .act{display:flex;gap:8px;padding:12px}
@@ -251,7 +260,7 @@ html.no-anim .card{opacity:1}
 @media(prefers-reduced-motion:reduce){.preview-box,.preview-box .act .add.is-loading:before,.preview-box .act .add.is-loading:after{animation:none!important;transition:none!important}}
 
 .limit-note{font-size:12px;color:var(--mu);margin:8px 0 0;text-align:center}
-.my-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.my-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:0}
 .my-photos .ph-card{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--s)}
 .my-photos .ph-card img{width:100%;height:100%;object-fit:cover}
 .my-photos .ph-card .rm{position:absolute;top:6px;right:6px;width:28px;height:28px;border:0;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;font-size:16px;cursor:pointer;display:grid;place-items:center}
@@ -476,7 +485,7 @@ stCompleted:"Завершён",stCancelled:"Отменён",
 qEmpty:"В очереди пока нет ваших фото. Загрузите портрет во вкладке «Загрузка».",
 qYours:"Ваши фото",
 findPair:"Найти пару",cancelMatch:"Отменить участие",
-upTitle:"Загрузка",upLead:"Выберите портрет из галереи. Максимум 3 активных фото (очередь + баттлы).",
+upTitle:"Загрузка",upLead:"До 3 активных фотографий одновременно.",
 upTap:"Нажмите, чтобы выбрать фото",upHint:"JPEG, PNG, WebP · до 5 МБ",
 upReplace:"Заменить",upAdd:"Добавить в очередь",upCancel:"Отменить",
 upOk:"Фото добавлено в локальную очередь",upLimit:"Лимит: максимум 3 активных фото",
@@ -1372,25 +1381,25 @@ function renderUpload(){
     </div>`;
   }
   const actives=getMyPhotos().filter(p=>ACTIVE_STATUSES.has(p.status));
-  let my="";
-  if(actives.length){
-    my=`<h2>${t("upMy")} (${actives.length}/${MAX_ACTIVE})</h2>
-      <div class="my-photos">${actives.map(p=>`
+  const usedSlots=Math.min(actives.length,MAX_ACTIVE);
+  const slotBars=Array.from({length:MAX_ACTIVE},(_,i)=>`<i class="${i<usedSlots?"filled":""}"></i>`).join("");
+  const my=`
+    <div class="upload-count"><strong>Ваши фото</strong><span>${actives.length} из ${MAX_ACTIVE} · очередь и баттлы</span></div>
+    <div class="upload-slots" aria-label="Занято ${actives.length} из ${MAX_ACTIVE} мест">${slotBars}</div>
+    ${actives.length?`<div class="my-photos">${actives.map(p=>`
         <div class="ph-card ${p.side?`frame-${p.side}`:""}"><img src="${p.dataUrl}" alt="">
           ${p.status==="queued"?`<button class="rm" data-id="${p.id}">×</button>`:""}
         </div>`).join("")}</div>
-      <p class="limit-note">Удалять можно только фото со статусом «В очереди»</p>`;
-  } else my=`<p class="limit-note">${t("upEmptyMy")}</p>`;
+      <p class="limit-note" style="text-align:left">Удалить можно фото, которое ещё в очереди.</p>`:`<p class="limit-note" style="text-align:left">${t("upEmptyMy")}</p>`}`;
 
   $("uv").innerHTML=`
     ${hdrHTML()}
     <h1 class="sec-h">${t("upTitle")}</h1>
     <p class="sec-lead">${t("upLead")}</p>
-    <p class="limit-note">Перед публикацией фото проверяется ИИ. Допускаются только реальные фотографии людей. Рисунки, мультфильмы и изображения без людей не принимаются.</p>
-${preview}
+    ${preview}
+    <p class="upload-check">ИИ пропускает только реальные фотографии людей.</p>
     ${!canAdd&&!pendingUrl?`<p class="limit-note" style="color:#ffb454">${t("upLimit")}</p>`:""}
     ${my}`;
-
   const zone=$("upZone"),fin=$("fileIn");
   if(zone&&fin){
     zone.onclick=()=>fin.click();
