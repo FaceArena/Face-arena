@@ -449,16 +449,17 @@
       if (!file) throw new Error("Не выбран файл фотографии.");
       const ext = (file.type.split("/")[1] || "jpg").replace("jpeg","jpg");
       const path = this.user.id + "/" + crypto.randomUUID() + "." + ext;
-      const upload = await this.client.storage.from("arena-photos").upload(path,file,{contentType:file.type,upsert:false});
+      const upload = await this.client.storage.from("arena-photos").upload(path,file,{contentType:file.type,upsert:false,cacheControl:"31536000"});
       if (upload.error) throw upload.error;
       const enqueue = await this.client.rpc("enqueue_arena_photo",{p_object_path:path});
       if (enqueue.error) {
         await this.client.storage.from("arena-photos").remove([path]);
         throw enqueue.error;
       }
-      const coordinator = await this.wakeSafely();
-      await this.loadSnapshot();
-      return { photoId: enqueue.data, coordinatorAvailable: coordinator.ok, coordinatorError: coordinator.error?.message || null };
+      // Do not keep the upload UI waiting for the coordinator wake-up and full snapshot.
+      // Realtime will deliver the queue update; this refresh is a background fallback.
+      this.wakeSafely().finally(() => this.loadSnapshot());
+      return { photoId: enqueue.data, coordinatorAvailable: null, coordinatorError: null };
     }
 
     async registerVisit(battleId) {
