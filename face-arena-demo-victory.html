@@ -2116,6 +2116,7 @@ function finishFaBoot(){
   setTimeout(()=>faBootLoader?.remove(),350);
 }
 window.addEventListener("face-arena-sync-failed",finishFaBoot,{once:true});
+window.addEventListener("face-arena-critical-images-ready",finishFaBoot,{once:true});
 setTimeout(finishFaBoot,12000);
 addEventListener("hashchange",show);
 window.addEventListener("face-arena-snapshot",event=>{
@@ -2166,8 +2167,8 @@ window.addEventListener("face-arena-snapshot",event=>{
   else if(hash==="profile")renderProfile();
   else if(hash==="upload")renderUpload();
   else if(hash==="")renderArenaGrid();
-  // Reveal the arena only after the snapshot has been applied to the active view.
-  requestAnimationFrame(()=>requestAnimationFrame(finishFaBoot));
+  // The boot screen is dismissed by face-arena-critical-images-ready after
+  // the first screen's battle photos have loaded and decoded.
   // Settings has its own focused snapshot listener; do not rebuild it on every arena update.
 });
 renderArenaGrid();
