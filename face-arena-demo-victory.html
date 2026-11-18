@@ -1701,7 +1701,9 @@ function renderSettings(){
     ["privacySecurityToggle","security_notifications"]
   ];
   const syncPrivacy=()=>{
-    const settings=window.FaceArenaSync?.lastSnapshot?.settings||{};
+    const sync=window.FaceArenaSync;
+    const online=!!sync?.isOnline?.();
+    const settings=sync?.lastSnapshot?.settings||{};
     for(const [id,key] of privacyKeys){
       const el=$(id);if(!el)continue;
       const value=settings[key]!==false;
