@@ -130,7 +130,7 @@ h2{font:800 15px var(--hd);letter-spacing:.08em;text-transform:uppercase;margin:
 .big .nm{display:flex;align-items:center;gap:8px}
 .av{width:28px;height:28px;border-radius:50%;overflow:hidden;flex:none;position:relative;background:var(--s)}
 .av img{width:100%;height:100%;object-fit:cover;transform:scale(2.4);transform-origin:50% 42%}
-.nk{background:none;border:0;color:#fff;font:700 14px var(--bd);padding:4px 0;min-height:40px;cursor:pointer;transition:opacity .2s;touch-action:manipulation}.nk:hover{opacity:.7}
+.nk{background:none;border:0;color:#fff;font:700 14px var(--bd);padding:4px 0;min-height:40px;cursor:pointer;transition:opacity .2s;touch-action:manipulation}.nk:hover{opacity:.7}.nk[data-profile-user]{text-decoration:underline;text-decoration-color:#ffffff55;text-underline-offset:4px}.public-profile-photos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.public-profile-photos .ph-card{aspect-ratio:1;overflow:hidden;border-radius:13px;background:#111}.public-profile-photos img{width:100%;height:100%;object-fit:cover}.profile-loading{padding:28px 12px;text-align:center;color:var(--mu)}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.75);opacity:0;pointer-events:none;transition:opacity .28s;z-index:10}
 .ov.on{opacity:1;pointer-events:auto}
 .sh{position:absolute;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:var(--s);border-radius:20px 20px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom,0px));transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.7,.2,1)}
@@ -671,7 +671,9 @@ function renderArenaGrid(){
     const crownR=b.championSide==="R"&&b.championPhotoId?`<span class="champ-badge">👑</span>`:"";
     const crownB=b.championSide==="B"&&b.championPhotoId?`<span class="champ-badge">👑</span>`:"";
     const streak=b.championStatus==="initial"?`<div class="streak">Начальный чемпион</div>`:b.championStreak?`<div class="streak">Серия: ${b.championStreak}</div>`:"";
-    const lead=tot?(rp>55?"R":(rp<45?"B":"eq")):"eq";
+    const redOwnerId=photos.find(p=>String(p.id)===String(b.redPhotoId))?.ownerId||null;
+  const blueOwnerId=photos.find(p=>String(p.id)===String(b.bluePhotoId))?.ownerId||null;
+  const lead=tot?(rp>55?"R":(rp<45?"B":"eq")):"eq";
     const rCls=lead==="R"?"dom":(lead==="B"?"weak":"");
     const bCls=lead==="B"?"dom":(lead==="R"?"weak":"");
     const vsCls=lead==="R"?"push-b":(lead==="B"?"push-r":"");
@@ -958,8 +960,8 @@ function bview(n){
   const vsCls=lead==="R"?"push-b":(lead==="B"?"push-r":"");
   $("bv").innerHTML=`<div class="big"><button class="back" id="bk">← ${t("back")}</button>
 <div class="top"><span class="num">${t("battle")}${String(n).padStart(2,"0")}</span><span class="chip ${w?"":"v"}">${closed?(b.stage==="done"?"Итоги":"Отменён"):t(w?"wait":"vote")}</span></div>
-<div class="duel"><div class="ph R ${rCls}"><img alt="" src="${redSrc}"><span class="side">RED</span><div class="nm"><span class="av"><img alt="" src="${redSrc}"></span><button class="nk">@${esc(redNm)}</button></div></div>
-<div class="ph B ${bCls}"><img alt="" src="${blueSrc}"><span class="side">BLUE</span><div class="nm"><span class="av"><img alt="" src="${blueSrc}"></span><button class="nk">@${esc(blueNm)}</button></div></div><div class="vs ${vsCls}">VS</div></div>
+<div class="duel"><div class="ph R ${rCls}"><img alt="" src="${redSrc}"><span class="side">RED</span><div class="nm"><span class="av"><img alt="" src="${redSrc}"></span><button class="nk" data-profile-user="${esc(redOwnerId||"")}">@${esc(redNm)}</button></div></div>
+<div class="ph B ${bCls}"><img alt="" src="${blueSrc}"><span class="side">BLUE</span><div class="nm"><span class="av"><img alt="" src="${blueSrc}"></span><button class="nk" data-profile-user="${esc(blueOwnerId||"")}">@${esc(blueNm)}</button></div></div><div class="vs ${vsCls}">VS</div></div>
 <div class="bar ${tot?"":"zero"} ${lead!=="eq"?"fight":""}" style="--p:${rp};--sx:${rp/100}"><u id="bp" data-p="${rp/100}"></u>${lead!=="eq"?`<i class="clash"></i>`:""}</div>
 <div class="pct">${tot?`<span class="r ${lead==="R"?"lead":""}">RED ${rp}%</span><span class="m">${pl(tot,["голос","голоса","голосов"])}</span><span class="b ${lead==="B"?"lead":""}">${100-rp}% BLUE</span>`:`<span class="m">${t("noVotes")}</span>`}</div>
 <div class="tm"><small>${confirming?"Отмена участия":t(w?"tWait":"tVote")}</small><b id="bcd" data-id="${n}"></b></div><div class="tl"><u id="btl"></u></div>
@@ -968,7 +970,12 @@ ${confirming?`<p class="done">Можно отменить участие во в
 <h2>${t("cm")}</h2>${cs?`<ul class="cms">${cs}</ul>`:`<div class="empty">${t("cmEmpty")}</div>`}</div>`;
   $("bk").onclick=()=>{location.hash=""};
   document.querySelectorAll(".pick").forEach(btn=>btn.onclick=()=>openV(n,btn.classList.contains("R")?"R":"B"));
-  document.querySelectorAll(".nk").forEach(btn=>btn.onclick=()=>toast(t("prLocal")));
+  document.querySelectorAll(".nk").forEach(btn=>btn.onclick=()=>{
+    const userId=btn.dataset.profileUser;
+    if(!userId){toast("Профиль этого участника недоступен");return;}
+    if(userId===window.FaceArenaSync?.getUser()?.id){location.hash="profile";return;}
+    location.hash="profile-"+encodeURIComponent(userId);
+  });
   setTimeout(()=>{const bp=$("bp");if(bp){const p=bp.dataset.p||0;bp.style.transform=`scaleX(${p})`;const bar=bp.parentElement;if(bar){bar.style.setProperty("--sx",p);bar.style.setProperty("--p",String(Math.round((+p)*100)));}}},50);
 }
 function tick2(){
@@ -1482,6 +1489,38 @@ function renderProfile(){
   });
 }
 
+async function renderPublicProfile(userId){
+  const host=$("pv");
+  host.innerHTML=`${hdrHTML()}<h1 class="sec-h">Профиль участника</h1><div class="profile-loading">Загружаем профиль…</div>`;
+  if(!window.FaceArenaSync?.isOnline?.()){
+    host.querySelector(".profile-loading").textContent="Войдите в аккаунт, чтобы просматривать профили участников.";
+    return;
+  }
+  try{
+    const data=await window.FaceArenaSync.getPublicProfile(userId);
+    if(location.hash.slice(1)!=="profile-"+encodeURIComponent(userId))return;
+    if(!data){
+      host.innerHTML=`${hdrHTML()}<h1 class="sec-h">Профиль закрыт</h1><div class="empty-box"><p>Владелец отключил публичный профиль. Его фотографии и данные профиля недоступны.</p><button class="btn" id="publicProfileBack" type="button">Вернуться к баттлам</button></div>`;
+      $("publicProfileBack").onclick=()=>location.hash="";
+      return;
+    }
+    const photosList=Array.isArray(data.photos)?data.photos:[];
+    const photoCards=photosList.length?photosList.map(p=>`<div class="ph-card"><img src="${esc(window.FaceArenaSync.getPhotoPublicUrl(p.object_path))}" alt="Фото участника" loading="lazy"></div>`).join(""):`<div class="empty-box"><p>У участника пока нет опубликованных фотографий.</p></div>`;
+    host.innerHTML=`
+      ${hdrHTML()}<h1 class="sec-h">Профиль участника</h1><p class="sec-lead">Публичный профиль FACE ARENA</p>
+      <div class="pr-head"><div class="pr-av">${photosList[0]?`<img src="${esc(window.FaceArenaSync.getPhotoPublicUrl(photosList[0].object_path))}" alt="">`:""}</div>
+      <div><div class="pr-name">${esc(data.display_name||"Участник")}</div><div class="pr-handle">@${esc(data.handle||"user")}</div></div></div>
+      <div class="pr-stats"><div class="stat"><b>${photosList.length}</b><span>Фото в профиле</span></div>
+      <div class="stat"><b>${photosList.filter(p=>p.status==="completed"||p.status==="cancelled").length}</b><span>В архиве</span></div>
+      <div class="stat"><b>${photosList.filter(p=>["queued","matched","confirmed","voting","champion"].includes(p.status)).length}</b><span>Активные</span></div></div>
+      <h2>Фотографии</h2><div class="public-profile-photos">${photoCards}</div>`;
+  }catch(error){
+    if(location.hash.slice(1)!=="profile-"+encodeURIComponent(userId))return;
+    host.innerHTML=`${hdrHTML()}<h1 class="sec-h">Не удалось открыть профиль</h1><div class="empty-box"><p>${esc(error?.message||"Ошибка загрузки профиля")}</p><button class="btn" id="publicProfileBack" type="button">Назад</button></div>`;
+    $("publicProfileBack").onclick=()=>history.back();
+  }
+}
+
 function renderSettings(){
   const dispName=esc(profile.name||"Вы");
   const dispHandle=esc(profile.handle||"user");
@@ -1940,6 +1979,7 @@ function show(){
       renderResult(decodeURIComponent(RegExp.$1));target=views.rv;setTab(3);
     } else if(hash==="queue"){renderQueue();target=views.qv;setTab(1)}
     else if(hash==="upload"){renderUpload();target=views.uv;setTab(2)}
+    else if(/^profile-[0-9a-f-]{36}$/i.test(hash)){renderPublicProfile(decodeURIComponent(hash.slice(8)));target=views.pv;setTab(3)}
     else if(hash==="profile"){renderProfile();target=views.pv;setTab(3)}
     else if(hash==="results"){renderResults();target=views.iv;setTab(4)}
     else if(hash==="settings"){renderSettings();target=views.sv;setTab(3)}
@@ -1985,6 +2025,7 @@ window.addEventListener("face-arena-snapshot",event=>{
   else if(hash.startsWith("result-"))renderResult(decodeURIComponent(hash.slice(7)));
   else if(/^battle-\d+$/.test(hash))bview(Number(hash.slice(7)));
   else if(hash==="queue")renderQueue();
+  else if(/^profile-[0-9a-f-]{36}$/i.test(hash))renderPublicProfile(decodeURIComponent(hash.slice(8)));
   else if(hash==="profile")renderProfile();
   else if(hash==="")renderArenaGrid();
   // Upload and settings views do not depend on arena snapshots; avoid rebuilding
