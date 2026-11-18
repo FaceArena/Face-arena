@@ -975,7 +975,8 @@ ${confirming?`<p class="done">Можно отменить участие во в
   document.querySelectorAll(".nk").forEach(btn=>btn.onclick=()=>{
     const userId=btn.dataset.profileUser;
     if(!userId){toast("Профиль этого участника недоступен");return;}
-    if(userId===window.FaceArenaSync?.getUser()?.id){location.hash="profile";return;}
+    // Always load the participant through the server-backed public profile route,
+    // including our own account; the local profile view is not a public profile.
     location.hash="profile-"+encodeURIComponent(userId);
   });
   setTimeout(()=>{const bp=$("bp");if(bp){const p=bp.dataset.p||0;bp.style.transform=`scaleX(${p})`;const bar=bp.parentElement;if(bar){bar.style.setProperty("--sx",p);bar.style.setProperty("--p",String(Math.round((+p)*100)));}}},50);
