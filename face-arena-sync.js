@@ -1080,7 +1080,7 @@
         this.dispatch({
           ...snapshot,
           notifications,
-          unreadNotificationsCount: notifications.filter(item => !item.read_at).length
+          unreadNotificationsCount: Math.max(0, Number(snapshot.unreadNotificationsCount) - (notifications.some(item => item.id === id && !item.read_at) ? 1 : 0))
         });
       }
       return true;
