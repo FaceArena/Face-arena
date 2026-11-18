@@ -258,6 +258,10 @@ html.no-anim .card{opacity:1}
 .pr-head{display:flex;align-items:center;gap:14px;margin-bottom:18px}
 .pr-av{width:72px;height:72px;border-radius:50%;overflow:hidden;background:var(--s);flex:none}
 .pr-av img{width:100%;height:100%;object-fit:cover}
+.profile-avatar-tools{display:flex;align-items:center;gap:12px;margin:12px 0 18px}
+.profile-avatar-preview{width:64px;height:64px;border-radius:50%;overflow:hidden;background:#202020;border:1px solid #333;flex:none}
+.profile-avatar-preview img{width:100%;height:100%;object-fit:cover}
+.profile-avatar-tools .btn-ghost{width:auto;padding:10px 14px}
 .pr-name{font:800 18px var(--hd)}
 .verified-badge{display:inline-grid;place-items:center;vertical-align:middle;margin-left:5px;width:16px;height:16px;border-radius:50%;background:#2589ff;color:#fff;font:800 11px/1 var(--bd);box-shadow:0 0 0 1.5px rgba(37,137,255,.2);flex:0 0 auto}
 .pr-handle{font-size:13px;color:var(--mu);margin-top:2px}
@@ -1497,7 +1501,7 @@ function renderProfile(){
   const wins=history.filter(h=>h.result==="win").length;
   const losses=history.filter(h=>h.result==="lose").length;
   const battles=history.length;
-  const avSrc=myPhotos[0]?myPhotos[0].dataUrl:face(20,"R");
+  const avSrc=profile.avatarUrl|| (myPhotos[0]?myPhotos[0].dataUrl:face(20,"R"));
   const actives=myPhotos.filter(p=>ACTIVE_STATUSES.has(p.status));
   const archived=myPhotos.filter(p=>p.status==="completed"||p.status==="cancelled");
   const dispName=esc(profile.name||"Вы");
@@ -1539,7 +1543,7 @@ function renderProfile(){
     <h1 class="sec-h">${t("prTitle")}</h1>
     <p class="sec-lead">${t("prLead")}</p>
 <div class="pr-head">
-      <div class="pr-av"><img src="${avSrc}" alt=""></div>
+      <div class="pr-av"><img src="${avSrc}" alt="Аватар профиля"></div>
       <div>
         <div class="pr-name">${dispName}${verifiedBadge(profile.isVerified)}</div>
         <div class="pr-handle">@${dispHandle}</div>
@@ -1598,9 +1602,10 @@ async function renderPublicProfile(userId){
       return;
     }
     const photosList=Array.isArray(data.photos)?data.photos:[];
-    const signedPhotoUrls=await window.FaceArenaSync.getPhotoSignedUrls(photosList.map(p=>p.object_path));
+    const signedPhotoUrls=await window.FaceArenaSync.getPhotoSignedUrls([...photosList.map(p=>p.object_path),data.avatar_path].filter(Boolean));
     if(renderPublicProfile._requestId!==renderToken||location.hash.slice(1)!=="profile-"+encodeURIComponent(userId))return;
     const photoUrl=p=>signedPhotoUrls.get(p.object_path)||"";
+    const avatarUrl=data.avatar_path?signedPhotoUrls.get(data.avatar_path)||"":"";
     if(!window.__faceArenaSignedPhotoRefreshBound){
       window.__faceArenaSignedPhotoRefreshBound=true;
       window.addEventListener("face-arena-photo-urls-refreshed",event=>{
@@ -1614,7 +1619,7 @@ async function renderPublicProfile(userId){
     const photoCards=photosList.length?photosList.map(p=>`<div class="ph-card"><img data-photo-path="${esc(p.object_path)}" src="${esc(photoUrl(p))}" alt="Фото участника" loading="lazy"></div>`).join(""):`<div class="empty-box"><p>У участника пока нет опубликованных фотографий.</p></div>`;
     host.innerHTML=`
       ${hdrHTML()}<h1 class="sec-h">Профиль участника</h1><p class="sec-lead">Публичный профиль FACE ARENA</p>
-      <div class="pr-head"><div class="pr-av">${photosList[0]?`<img data-photo-path="${esc(photosList[0].object_path)}" src="${esc(photoUrl(photosList[0]))}" alt="">`:""}</div>
+      <div class="pr-head"><div class="pr-av">${avatarUrl?`<img data-photo-path="${esc(data.avatar_path)}" src="${esc(avatarUrl)}" alt="Аватар участника">`:photosList[0]?`<img data-photo-path="${esc(photosList[0].object_path)}" src="${esc(photoUrl(photosList[0]))}" alt="">`:""}</div>
       <div><div class="pr-name">${esc(data.display_name||"Участник")}${verifiedBadge(data.is_verified)}</div><div class="pr-handle">@${esc(data.handle||"user")}</div></div></div>
       <div class="pr-stats"><div class="stat"><b>${photosList.length}</b><span>Фото в профиле</span></div>
       <div class="stat"><b>${photosList.filter(p=>p.status==="completed"||p.status==="cancelled").length}</b><span>В архиве</span></div>
@@ -1661,6 +1666,13 @@ function renderSettings(){
     <div id="setSubProfile" class="settings-sub">
       <button type="button" class="settings-back" id="backFromProfile">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Профиль</h2>
+      <div class="profile-avatar-tools">
+        <div class="profile-avatar-preview"><img id="profileAvatarPreview" src="${esc(profile.avatarUrl||"")}" alt="Аватар профиля" ${profile.avatarUrl?"":"hidden"}></div>
+        <div style="flex:1;min-width:0"><div class="lbl">Фотография профиля</div><div class="sub">Отдельно от фотографий для баттлов · JPEG, PNG или WebP до 5 МБ</div>
+          <input type="file" id="profileAvatarFile" accept="image/jpeg,image/png,image/webp" style="display:none">
+          <button type="button" class="btn-ghost" id="chooseProfileAvatar" style="margin-top:8px">Добавить фото</button>
+        </div>
+      </div>
       <div class="set-row">
         <div><div class="lbl">Имя</div><div class="sub">Отображается в баттлах</div></div>
         <input type="text" id="setName" maxlength="24" value="${dispName}" placeholder="Имя">
@@ -1984,6 +1996,25 @@ function renderSettings(){
   };
   const deletionInfo=$("accountDeletionInfo");
   if(deletionInfo)deletionInfo.onclick=()=>toast("Удаление будет включено после безопасного переноса исторических результатов в обезличенный архив");
+
+  const avatarInput=$("profileAvatarFile"),avatarChoose=$("chooseProfileAvatar"),avatarPreview=$("profileAvatarPreview");
+  if(avatarChoose&&avatarInput)avatarChoose.onclick=()=>avatarInput.click();
+  if(avatarInput)avatarInput.onchange=async()=>{
+    const file=avatarInput.files?.[0];avatarInput.value="";
+    if(!file)return;
+    if(!window.FaceArenaSync?.isOnline?.()){toast("Войдите в аккаунт, чтобы добавить фото профиля");return}
+    if(!["image/jpeg","image/png","image/webp"].includes(file.type)){toast("Поддерживаются JPEG, PNG и WebP");return}
+    if(file.size>5*1024*1024){toast("Размер фотографии не должен превышать 5 МБ");return}
+    avatarChoose.disabled=true;avatarChoose.textContent="Загружаем…";
+    try{
+      await window.FaceArenaSync.uploadProfileAvatar(file);
+      profile=window.FaceArenaSync.getSnapshot?.()?.profile||profile;
+      if(avatarPreview){avatarPreview.src=profile.avatarUrl||"";avatarPreview.hidden=!profile.avatarUrl}
+      toast("Фотография профиля обновлена");
+      renderProfile();
+    }catch(error){toast(error?.message||"Не удалось загрузить фотографию")}
+    finally{avatarChoose.disabled=false;avatarChoose.textContent="Изменить фото"}
+  };
 
   const sp=$("saveProfile");
   if(sp)sp.onclick=async()=>{
