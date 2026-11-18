@@ -34,6 +34,7 @@
       this.user = null;
       this.channel = null;
       this.visibilityChannel = null;
+      this.notifications = [];
       this.ready = false;
       this.loading = false;
       this.lastSnapshot = null;
@@ -80,6 +81,8 @@
         this.stopPhotoUrlRefresh();
         this.photoUrlsExpiresAt = 0;
         this.lastSnapshot = null;
+        this.notifications = [];
+        window.dispatchEvent(new CustomEvent("face-arena-notifications", { detail: [] }));
         this.initialArenaImagesReadyStarted = false;
         this.serverTimeOffset = 0;
         this.pendingReload = !!this.loading;
@@ -112,6 +115,7 @@
       if (this.lastSnapshot?.userId === nextId) this.startPhotoUrlRefresh();
       this.startClockSync();
       this.subscribe();
+      await this.refreshNotifications().catch(error => console.warn("[FACE ARENA notifications]", error));
       const coordinator = await this.wakeSafely();
       if (!coordinator.ok) console.warn("[FACE ARENA coordinator unavailable]", coordinator.error);
     }
@@ -483,10 +487,10 @@
       const requestGeneration = this.authGeneration;
       try {
         const c = this.client;
-        let settingsRes = await c.from("arena_user_settings").select("profile_public,history_public,security_notifications,updated_at").eq("user_id", requestUserId).maybeSingle();
+        let settingsRes = await c.from("arena_user_settings").select("profile_public,history_public,security_notifications,battle_notifications,updated_at").eq("user_id", requestUserId).maybeSingle();
         if (settingsRes.error) throw settingsRes.error;
         if (!settingsRes.data) {
-          settingsRes = await c.from("arena_user_settings").insert({ user_id: requestUserId }).select("profile_public,history_public,security_notifications,updated_at").single();
+          settingsRes = await c.from("arena_user_settings").insert({ user_id: requestUserId }).select("profile_public,history_public,security_notifications,battle_notifications,updated_at").single();
           if (settingsRes.error) throw settingsRes.error;
         }
         const clockSync = this.syncServerClock().catch(error => {
@@ -748,7 +752,7 @@
         // Keep a just-committed local privacy value if this snapshot read began
         // before Supabase returned the updated row; newer remote rows win.
         const snapshotSettings = { ...settingsRes.data };
-        for (const key of ["profile_public","history_public","security_notifications"]) {
+        for (const key of ["profile_public","history_public","security_notifications","battle_notifications"]) {
           const local = this.privacyOverrides.get(key);
           if (!local) continue;
           const serverUpdatedAt = Date.parse(snapshotSettings.updated_at || 0) || 0;
@@ -802,6 +806,9 @@
           .on("postgres_changes", { event: "*", schema: "public", table: "arena_votes" }, () => this.scheduleSnapshotReload())
           .on("postgres_changes", { event: "*", schema: "public", table: "arena_results" }, () => this.scheduleSnapshotReload())
           .on("postgres_changes", { event: "*", schema: "public", table: "arena_profiles" }, () => this.scheduleSnapshotReload())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_notifications", filter: "user_id=eq." + this.user.id }, () => {
+            this.refreshNotifications().catch(error => console.warn("[FACE ARENA notifications realtime]", error));
+          })
           .subscribe();
       }
       if (!this.visibilityChannel) {
@@ -1010,10 +1017,49 @@
       await this.loadSnapshot();
     }
 
+    async refreshNotifications() {
+      if (!this.isOnline()) return [];
+      const userId = this.user.id;
+      const { data, error } = await this.client.from("arena_notifications")
+        .select("id,kind,title,body,payload,created_at,read_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      if (this.user?.id !== userId) return [];
+      this.notifications = Array.isArray(data) ? data : [];
+      window.dispatchEvent(new CustomEvent("face-arena-notifications", { detail: this.notifications }));
+      return this.notifications;
+    }
+
+    async markNotificationRead(notificationId) {
+      if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
+      const userId = this.user.id;
+      const { error } = await this.client.from("arena_notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("id", notificationId)
+        .eq("user_id", userId)
+        .is("read_at", null);
+      if (error) throw error;
+      return this.refreshNotifications();
+    }
+
+    async markAllNotificationsRead() {
+      if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
+      const userId = this.user.id;
+      const { error } = await this.client.from("arena_notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .is("read_at", null);
+      if (error) throw error;
+      return this.refreshNotifications();
+    }
+
     async updatePrivacySettings(patch) {
       if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
       const userId = this.user.id;
-      const allowed = ["profile_public","history_public","security_notifications"];
+      const allowed = ["profile_public","history_public","security_notifications","battle_notifications"];
       const update = {};
       for (const key of allowed) {
         if (typeof patch?.[key] === "boolean") {
@@ -1029,7 +1075,7 @@
       }
       const { data, error } = await this.client.from("arena_user_settings")
         .upsert({ user_id: userId, ...update }, { onConflict: "user_id" })
-        .select("profile_public,history_public,security_notifications,updated_at")
+        .select("profile_public,history_public,security_notifications,battle_notifications,updated_at")
         .single();
       if (error || !data) {
         for (const key of allowed) {

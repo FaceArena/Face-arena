@@ -25,6 +25,18 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .logo i b:first-child{background:var(--red);transform:skewX(-14deg)}.logo i b:last-child{background:var(--blue);transform:skewX(-14deg)}
 .hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0;height:28px}
 .btn-gear{width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:var(--mu);display:grid;place-items:center;cursor:pointer;touch-action:manipulation;padding:0;-webkit-tap-highlight-color:transparent;flex-shrink:0}
+.btn-notifications{position:relative;width:30px;height:30px;border:0;border-radius:50%;background:transparent;color:var(--mu);display:grid;place-items:center;cursor:pointer;padding:0;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+.btn-notifications:active{color:#fff;background:var(--s)}
+.btn-notifications svg{width:17px;height:17px;display:block}
+.notification-count{position:absolute;right:-3px;top:-2px;min-width:15px;height:15px;padding:0 4px;border-radius:99px;background:var(--red);color:#fff;font:800 9px/15px var(--bd);text-align:center}
+.notification-list{display:grid;gap:8px;margin-top:12px}
+.notification-item{width:100%;text-align:left;border:0;border-radius:13px;background:var(--c);padding:13px 14px;color:#fff;display:grid;grid-template-columns:8px minmax(0,1fr);gap:10px;cursor:pointer}
+.notification-item.unread{background:#171717}
+.notification-dot{width:7px;height:7px;border-radius:50%;background:var(--blue);margin-top:5px}
+.notification-item.read .notification-dot{background:#444}
+.notification-item strong{display:block;font-size:13px;line-height:1.35}
+.notification-item p{margin:4px 0 0;color:#b8b8b8;font-size:12px;line-height:1.4}
+.notification-item time{display:block;margin-top:7px;color:var(--mu);font-size:10px}
 .btn-gear:active{color:#fff;background:var(--s)}
 .btn-gear svg{width:16px;height:16px;display:block}
 .live{font:600 11px var(--bd);letter-spacing:.14em;text-transform:uppercase;color:var(--mu);display:flex;align-items:center;gap:6px;height:28px;line-height:1}
@@ -427,7 +439,7 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
   </div>
 </div>
 <div class="wrap" id="av">
-<header><div class="logo"><i><b></b><b></b></i>FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span data-i="live"></span></div><button type="button" class="btn-gear"  aria-label="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
+<header><div class="logo"><i><b></b><b></b></i>FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span data-i="live"></span></div><button type="button" class="btn-notifications" aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span class="notification-count" hidden></span></button><button type="button" class="btn-gear"  aria-label="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
 <h1 data-i="title"></h1>
 <p class="lead" data-i="lead"></p>
 <div class="stats" id="stats"></div>
@@ -443,12 +455,13 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 <div class="wrap view" id="mv" hidden></div>
 <div class="wrap view" id="rv" hidden></div>
 <div class="wrap view" id="iv" hidden></div>
+<div class="wrap view" id="nv" hidden></div>
 <div class="wrap view" id="nfv" hidden></div>
 <nav><div class="tabs" id="tabs"><span class="ind" id="ind"></span></div></nav>
 <div class="toast" id="toast" role="status"></div>
 <div class="ov" id="ov"><div class="sh" id="sh" role="dialog" aria-modal="true"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./face-arena-sync.js?v=20261119-friendly-errors-v1"></script>
+<script src="./face-arena-sync.js?v=20261119-in-app-notifications-v1"></script>
 <script src="./face-arena-audio.js"></script>
 <script src="./face-arena-game-engine.js"></script>
 <script>
@@ -516,7 +529,7 @@ function tickQueueWaits(){document.querySelectorAll("[data-queued-at]").forEach(
 const toast=m=>{const e=$("toast");e.textContent=m;e.classList.add("show");clearTimeout(toast.h);toast.h=setTimeout(()=>e.classList.remove("show"),2400)};
 const GEAR_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
 function hdrHTML(showGear=true){
-  return `<header><div class="logo"><i><b></b><b></b></i>FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span>${t("live")}</span></div>${showGear?`<button type="button" class="btn-gear"  aria-label="Настройки">${GEAR_SVG}</button>`:""}</div></header>`;
+  return `<header><div class="logo"><i><b></b><b></b></i>FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span>${t("live")}</span></div>${showGear?`<button type="button" class="btn-notifications" aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span class="notification-count" hidden></span></button><button type="button" class="btn-gear"  aria-label="Настройки">${GEAR_SVG}</button>`:""}</div></header>`;
 }
 function bindGear(){
   document.querySelectorAll(".btn-gear").forEach(g=>{
@@ -525,9 +538,23 @@ function bindGear(){
 }
 // Global capture: works even if header re-rendered
 document.addEventListener("click",function(e){
+  const n=e.target.closest&&e.target.closest(".btn-notifications");
+  if(n){e.preventDefault();location.hash="notifications";return}
   const g=e.target.closest&&e.target.closest(".btn-gear");
   if(g){e.preventDefault();location.hash="settings"}
 },true);
+function updateNotificationBadges(){
+  const rows=window.FaceArenaSync?.notifications||[];
+  const unread=rows.reduce((count,row)=>count+(!row.read_at?1:0),0);
+  document.querySelectorAll(".btn-notifications .notification-count").forEach(el=>{
+    el.hidden=unread===0;
+    el.textContent=unread>99?"99+":String(unread);
+  });
+}
+window.addEventListener("face-arena-notifications",()=>{
+  updateNotificationBadges();
+  if(location.hash==="#notifications")renderNotifications(false);
+});
 
 const SK=["#f1c9a5","#d9a47c","#b97d57","#8d5a3b","#f6d9c0"],HR=["#1a1209","#3b2414","#8a5a2b","#c9a15a","#222"],CL=["#2b2b2b","#3a3f4a","#4a2f2f","#1f3a2f","#555"];
 function face(s,tm){const g=tm=="R"?["#4a1010","#140404"]:["#0f2a5c","#040a18"],sk=SK[s%5],hr=HR[(s*3)%5],cl=CL[(s*2)%5],long=s%2;
@@ -1744,7 +1771,9 @@ function renderSettings(){
     <div id="setSubNotifications" class="settings-sub">
       <button type="button" class="settings-back" id="backFromNotifications">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Уведомления</h2>
-      <p class="set-info">Доставка push-уведомлений о битвах, результатах и чемпионских вызовах пока не подключена.</p>
+      <div class="set-row"><div><div class="lbl">Уведомления о баттлах</div><div class="sub">Начало баттла, победа, поражение и чемпионский титул</div></div><button type="button" class="set-toggle" id="battleNotificationsToggle" aria-label="Уведомления о баттлах"></button></div>
+      <p class="set-info">Уведомления сохраняются в приложении и синхронизируются между устройствами. Push-уведомления на экран телефона пока не подключены.</p>
+      <button type="button" class="menu-item" id="openNotificationsInbox" style="padding:10px 0;color:#9bbcff">Открыть все уведомления</button>
     </div>
 
     <div id="setSubPrivacy" class="settings-sub">
@@ -1907,7 +1936,8 @@ function renderSettings(){
   const privacyKeys=[
     ["privacyProfileToggle","profile_public"],
     ["privacyHistoryToggle","history_public"],
-    ["privacySecurityToggle","security_notifications"]
+    ["privacySecurityToggle","security_notifications"],
+    ["battleNotificationsToggle","battle_notifications"]
   ];
   const privacyOptimistic={};
   const privacyConfirmed={};
@@ -2012,6 +2042,8 @@ function renderSettings(){
       if(sessionInfo)sessionInfo.textContent="Не удалось получить список сеансов";
     }
   };
+  const openInbox=$("openNotificationsInbox");
+  if(openInbox)openInbox.onclick=()=>{location.hash="notifications"};
   loadActiveSessions();
   const revokeBtn=$("revokeOtherSessions");
   if(revokeBtn)revokeBtn.onclick=async()=>{
@@ -2090,6 +2122,42 @@ function renderSettings(){
   };
 }
 
+function renderNotifications(refresh=true){
+  const host=$("nv");
+  const sync=window.FaceArenaSync;
+  const rows=sync?.notifications||[];
+  const unread=rows.filter(row=>!row.read_at).length;
+  const content=rows.length
+    ? '<div class="notification-list">'+rows.map(row=>
+      '<button type="button" class="notification-item '+(row.read_at?"read":"unread")+'" data-notification-id="'+esc(row.id)+'">'+
+      '<span class="notification-dot" aria-hidden="true"></span><span><strong>'+esc(row.title)+'</strong><p>'+esc(row.body)+'</p><time>'+new Date(row.created_at).toLocaleString("ru")+'</time></span></button>').join("")+'</div>'
+    : '<div class="empty-box"><p>Пока нет уведомлений. Здесь появятся сообщения о начале баттлов и их результатах.</p></div>';
+  host.innerHTML=hdrHTML()+'<h1 class="sec-h">Уведомления</h1><p class="sec-lead">События твоих фотографий и чемпионских баттлов.</p>'+
+    (unread?'<button type="button" class="menu-item" id="markAllNotificationsRead" style="padding:8px 0;color:#9bbcff">Отметить всё прочитанным</button>':"")+content;
+  const markAll=$("markAllNotificationsRead");
+  if(markAll)markAll.onclick=async()=>{
+    markAll.disabled=true;
+    try{await sync.markAllNotificationsRead();renderNotifications(false);}
+    catch(error){markAll.disabled=false;toast(window.FaceArenaErrors.message(error,"Не удалось обновить уведомления."));}
+  };
+  host.querySelectorAll("[data-notification-id]").forEach(button=>{
+    button.onclick=async()=>{
+      const row=rows.find(item=>item.id===button.dataset.notificationId);
+      if(!row)return;
+      button.disabled=true;
+      try{
+        if(!row.read_at)await sync.markNotificationRead(row.id);
+        const payload=row.payload||{};
+        if(payload.result_id)location.hash="result-"+encodeURIComponent(payload.result_id);
+        else if(payload.lane_id)location.hash="battle-"+Number(payload.lane_id);
+        else location.hash="";
+      }catch(error){button.disabled=false;toast(window.FaceArenaErrors.message(error,"Не удалось открыть уведомление."));}
+    };
+  });
+  updateNotificationBadges();
+  if(refresh&&sync?.isOnline?.())sync.refreshNotifications().catch(error=>console.warn("[FACE ARENA notifications]",error));
+}
+
 function historyResultKey(h,index){
   return String(h.resultId||(h.battleUid?String(h.battleUid)+":"+String(h.photoId):String(h.photoId)+":"+String(h.completedAt||index)));
 }
@@ -2139,7 +2207,7 @@ function renderResult(photoId){
   $("bkR").onclick=()=>{location.hash="profile"};
 }
 
-const views={av:$("av"),bv:$("bv"),qv:$("qv"),uv:$("uv"),pv:$("pv"),sv:$("sv"),mv:$("mv"),rv:$("rv"),iv:$("iv"),nfv:$("nfv")};
+const views={av:$("av"),bv:$("bv"),qv:$("qv"),uv:$("uv"),pv:$("pv"),sv:$("sv"),mv:$("mv"),rv:$("rv"),iv:$("iv"),nv:$("nv"),nfv:$("nfv")};
 function hideAll(){Object.values(views).forEach(v=>{if(v){v.hidden=true;v.classList.remove("is-on","is-leave","settings-menu")}})}
 function setTab(i){
   document.querySelectorAll(".tabs button").forEach((b,j)=>b.classList.toggle("on",j===i));
@@ -2196,6 +2264,7 @@ function show(){
     else if(/^profile-[0-9a-f-]{36}$/i.test(hash)){renderPublicProfile(decodeURIComponent(hash.slice(8)));target=views.pv;setTab(3)}
     else if(hash==="profile"){renderProfile();target=views.pv;setTab(3)}
     else if(hash==="results"){renderResults();target=views.iv;setTab(4)}
+    else if(hash==="notifications"){renderNotifications();target=views.nv;setTab(3)}
     else if(hash==="settings"){renderSettings();target=views.sv;setTab(3)}
     else if(hash===""){renderArenaGrid();target=views.av;setTab(0)}
     else {renderNotFound();target=views.nfv;setTab(0)}
@@ -2288,6 +2357,7 @@ window.addEventListener("face-arena-snapshot",event=>{
     }
     else if(activeHash.startsWith("result-"))renderResult(decodeURIComponent(activeHash.slice(7)));
     else if(activeHash==="results")renderResults();
+    else if(activeHash==="notifications")renderNotifications();
     else if(activeHash==="queue")renderQueue();
     else if(activeHash==="profile")renderProfile();
     else if(activeHash==="settings")renderSettings();
@@ -2317,6 +2387,7 @@ window.addEventListener("face-arena-snapshot",event=>{
   updateArenaStats();
   const hash=location.hash.slice(1);
   if(hash==="results")renderResults();
+  else if(hash==="notifications")renderNotifications();
   else if(hash.startsWith("result-"))renderResult(decodeURIComponent(hash.slice(7)));
   else if(/^battle-\d+$/.test(hash)){
     const battleId=Number(hash.slice(7));
@@ -2335,6 +2406,7 @@ window.addEventListener("face-arena-snapshot",event=>{
 });
 renderArenaGrid();
 show();
+updateNotificationBadges();
 setInterval(()=>{tickArena();tick2();tickQueueWaits()},1000);
 
 const IC={
