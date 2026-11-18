@@ -1556,7 +1556,8 @@ function renderSettings(){
       </div>
       <div class="set-row" style="display:block">
         <div class="lbl">Активные сеансы</div>
-        <div class="sub" id="currentSessionInfo">Это устройство</div>
+        <div class="sub" id="currentSessionInfo">Загрузка списка сеансов…</div>
+        <div id="activeSessionsList" aria-live="polite" style="display:grid;gap:8px;margin-top:10px"></div>
         <button type="button" class="menu-item" id="revokeOtherSessions" style="margin-top:8px;padding:10px 0;color:#fff">Завершить другие сеансы</button>
       </div>
       <div class="set-row" style="display:block">
@@ -1727,11 +1728,27 @@ function renderSettings(){
     };
   }
   const sessionInfo=$("currentSessionInfo");
-  if(sessionInfo){
-    const ua=navigator.userAgent||"";
-    const device=/iPhone|iPad|iPod/.test(ua)?"Текущее устройство: Apple":/Android/.test(ua)?"Текущее устройство: Android":/Mac/.test(ua)?"Текущее устройство: Mac":/Windows/.test(ua)?"Текущее устройство: Windows":"Текущее устройство";
-    sessionInfo.textContent=device+" · другие сеансы можно завершить ниже";
-  }
+  const sessionsList=$("activeSessionsList");
+  const sessionDeviceLabel=ua=>/iPhone|iPad|iPod/.test(ua||"")?"Apple · iPhone/iPad":/Android/.test(ua||"")?"Android":/Macintosh|Mac OS/.test(ua||"")?"Mac":/Windows/.test(ua||"")?"Windows":/Linux/.test(ua||"")?"Linux":(ua||"Неизвестное устройство").slice(0,72);
+  const loadActiveSessions=async()=>{
+    if(!sessionsList||!window.FaceArenaSync?.isOnline?.())return;
+    sessionsList.textContent="Загрузка…";
+    try{
+      const sessions=await window.FaceArenaSync.listSessions();
+      if(!sessions.length){sessionsList.textContent="Активные сеансы не найдены";return;}
+      sessionsList.innerHTML=sessions.map(session=>{
+        const last=session.refreshed_at||session.created_at;
+        const when=last?new Date(last).toLocaleString():"";
+        const current=!!session.is_current;
+        return '<div style="padding:10px 11px;background:#101010;border-radius:10px;display:flex;justify-content:space-between;gap:10px;align-items:center"><span style="min-width:0"><strong style="display:block;font-size:12px">'+esc(sessionDeviceLabel(session.user_agent))+'</strong><span style="display:block;color:var(--mu);font-size:10px;margin-top:3px">'+esc(when)+'</span></span><span style="flex:none;color:'+(current?'#fff':'var(--mu)')+';font-size:10px;font-weight:700">'+(current?'ТЕКУЩИЙ':'АКТИВЕН')+'</span></div>';
+      }).join("");
+      if(sessionInfo)sessionInfo.textContent="Сеансы этого аккаунта · список получен с сервера";
+    }catch(error){
+      sessionsList.textContent=error?.message||"Не удалось загрузить сеансы";
+      if(sessionInfo)sessionInfo.textContent="Не удалось получить список сеансов";
+    }
+  };
+  loadActiveSessions();
   const revokeBtn=$("revokeOtherSessions");
   if(revokeBtn)revokeBtn.onclick=async()=>{
     if(!confirm("Завершить все остальные сеансы FACE ARENA? Текущий сеанс останется активным."))return;
