@@ -89,6 +89,14 @@ Deno.serve(async (req: Request) => {
     if (countError) throw countError;
     if ((count || 0) >= 3) return reply({ error: "Достигнут лимит: одновременно можно иметь не более 3 активных фотографий." }, 409);
 
+    const { data: rateAllowed, error: rateError } = await admin.rpc("claim_arena_photo_moderation_attempt", {
+      p_owner_id: userId,
+    });
+    if (rateError) throw rateError;
+    if (rateAllowed !== true) {
+      return reply({ error: "Слишком много попыток проверки. Подождите 10 минут и попробуйте снова." }, 429);
+    }
+
     const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
