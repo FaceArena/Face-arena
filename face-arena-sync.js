@@ -693,7 +693,7 @@
       if (!file) throw new Error("Не выбран файл фотографии.");
       const ext = (file.type.split("/")[1] || "jpg").replace("jpeg","jpg");
       const path = this.user.id + "/" + crypto.randomUUID() + "." + ext;
-      const upload = await this.client.storage.from("arena-photos").upload(path,file,{contentType:file.type,upsert:false,cacheControl:"31536000"});
+      const upload = await this.client.storage.from("arena-photos").upload(path,file,{contentType:file.type,upsert:false,cacheControl:"60"});
       if (upload.error) throw upload.error;
       const enqueue = await this.client.rpc("enqueue_arena_photo",{p_object_path:path});
       if (enqueue.error) {
