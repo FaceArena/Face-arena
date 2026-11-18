@@ -1543,7 +1543,7 @@ function renderProfile(){
     <h1 class="sec-h">${t("prTitle")}</h1>
     <p class="sec-lead">${t("prLead")}</p>
 <div class="pr-head">
-      <div class="pr-av"><img data-avatar-path="${esc(profile.avatarPath||"")}" src="${avSrc}" alt="Аватар профиля"></div>
+      <div class="pr-av"><img data-avatar-path="${esc(profile.avatarPath||"")}" data-photo-path="${esc(profile.avatarPath||"")}" src="${avSrc}" alt="Аватар профиля"></div>
       <div>
         <div class="pr-name">${dispName}${verifiedBadge(profile.isVerified)}</div>
         <div class="pr-handle">@${dispHandle}</div>
@@ -1617,16 +1617,6 @@ async function renderPublicProfile(userId){
     if(renderPublicProfile._requestId!==renderToken||location.hash.slice(1)!=="profile-"+encodeURIComponent(userId))return;
     const photoUrl=p=>signedPhotoUrls.get(p.object_path)||"";
     const avatarUrl=data.avatar_path?signedPhotoUrls.get(data.avatar_path)||"":"";
-    if(!window.__faceArenaSignedPhotoRefreshBound){
-      window.__faceArenaSignedPhotoRefreshBound=true;
-      window.addEventListener("face-arena-photo-urls-refreshed",event=>{
-        const urls=event.detail?.urls||{};
-        host.querySelectorAll("img[data-photo-path]").forEach(img=>{
-          const next=urls[img.dataset.photoPath];
-          if(next)img.src=next;else img.removeAttribute("src");
-        });
-      });
-    }
     const photoCards=photosList.length?photosList.map(p=>`<div class="ph-card"><img data-photo-path="${esc(p.object_path)}" src="${esc(photoUrl(p))}" alt="Фото участника" loading="lazy"></div>`).join(""):`<div class="empty-box"><p>У участника пока нет опубликованных фотографий.</p></div>`;
     host.innerHTML=`
       ${hdrHTML()}<h1 class="sec-h">Профиль участника</h1><p class="sec-lead">Публичный профиль FACE ARENA</p>
@@ -1688,7 +1678,7 @@ function renderSettings(){
       <button type="button" class="settings-back" id="backFromProfile">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Профиль</h2>
       <div class="profile-avatar-tools">
-        <div class="profile-avatar-preview"><img id="profileAvatarPreview" src="${esc(profile.avatarUrl||"")}" alt="Аватар профиля" ${profile.avatarUrl?"":"hidden"}></div>
+        <div class="profile-avatar-preview"><img id="profileAvatarPreview" data-photo-path="${esc(profile.avatarPath||"")}" src="${esc(profile.avatarUrl||"")}" alt="Аватар профиля" ${profile.avatarUrl?"":"hidden"}></div>
         <div style="flex:1;min-width:0"><div class="lbl">Фотография профиля</div><div class="sub">Отдельно от фотографий для баттлов · JPEG, PNG или WebP до 5 МБ</div>
           <input type="file" id="profileAvatarFile" accept="image/jpeg,image/png,image/webp" style="display:none">
           <button type="button" class="btn-ghost" id="chooseProfileAvatar" style="margin-top:8px">Добавить фото</button>
@@ -2057,7 +2047,11 @@ function renderSettings(){
       avatarChoose.textContent="Загружаем…";
       await window.FaceArenaSync.uploadProfileAvatar(photo);
       profile=window.FaceArenaSync.lastSnapshot?.profile||profile;
-      if(avatarPreview){avatarPreview.src=profile.avatarUrl||"";avatarPreview.hidden=!profile.avatarUrl}
+      if(avatarPreview){
+        avatarPreview.dataset.photoPath=profile.avatarPath||"";
+        avatarPreview.src=profile.avatarUrl||"";
+        avatarPreview.hidden=!profile.avatarUrl;
+      }
       toast("Фотография профиля обновлена");
       renderProfile();
     }catch(error){toast(window.FaceArenaErrors.message(error,"Не удалось загрузить фотографию профиля. Попробуйте ещё раз."))}
@@ -2254,6 +2248,14 @@ function finishFaBoot(){
 window.addEventListener("face-arena-sync-failed",finishFaBoot);
 window.addEventListener("face-arena-critical-images-ready",finishFaBoot);
 addEventListener("hashchange",show);
+window.addEventListener("face-arena-photo-urls-refreshed",event=>{
+  const urls=event.detail?.urls||{};
+  document.querySelectorAll("img[data-photo-path]").forEach(img=>{
+    const next=urls[img.dataset.photoPath];
+    if(next)img.src=next;
+    else img.removeAttribute("src");
+  });
+});
 window.addEventListener("face-arena-snapshot",event=>{
   const snapshot=event.detail;
   if(!snapshot){
@@ -2286,6 +2288,16 @@ window.addEventListener("face-arena-snapshot",event=>{
   profile=snapshot.profile||profile;
   participantStats=snapshot.participantStats||{};
   topArenaRanking=Array.isArray(snapshot.topArenaRanking)?snapshot.topArenaRanking:null;
+  if(location.hash.slice(1)==="settings"){
+    const preview=$("profileAvatarPreview");
+    if(preview){
+      preview.dataset.photoPath=profile.avatarPath||"";
+      preview.src=profile.avatarUrl||"";
+      preview.hidden=!profile.avatarUrl;
+    }
+    const avatarButton=$("chooseProfileAvatar");
+    if(avatarButton)avatarButton.textContent=profile.avatarPath?"Изменить фото":"Добавить фото";
+  }
   updateArenaStats();
   const hash=location.hash.slice(1);
   if(hash==="results")renderResults();
