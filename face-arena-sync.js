@@ -16,6 +16,15 @@
       this.clockSyncTimer = null;
       this.authGeneration = 0;
       this.privacyOverrides = new Map();
+      this.photoUrlRefreshTimer = null;
+      this.photoUrlRefreshInFlight = false;
+      this.photoUrlsExpiresAt = 0;
+      this.photoUrlVisibilityHandler = () => {
+        if (document.visibilityState === "visible" && this.isOnline() && Date.now() >= this.photoUrlsExpiresAt - 300000) {
+          this.refreshPhotoUrls().catch(error => console.warn("[FACE ARENA signed photo URLs]", error));
+        }
+      };
+      document.addEventListener("visibilitychange", this.photoUrlVisibilityHandler);
     }
 
     async init() {
@@ -42,6 +51,8 @@
       if (previousId !== nextId) {
         // Invalidate the previous account's in-memory snapshot before rendering the next one.
         this.authGeneration++;
+        this.stopPhotoUrlRefresh();
+        this.photoUrlsExpiresAt = 0;
         this.lastSnapshot = null;
         this.serverTimeOffset = 0;
         this.pendingReload = !!this.loading;
@@ -53,6 +64,8 @@
       this.ready = !!nextUser;
       this.renderAuthGate();
       if (!nextUser) {
+        this.stopPhotoUrlRefresh();
+        this.photoUrlsExpiresAt = 0;
         this.stopClockSync();
         this.unsubscribe();
         return;
@@ -60,6 +73,7 @@
       await this.loadSnapshot();
       // A slower previous-session request must never start services for a newer account.
       if (this.user?.id !== nextId) return;
+      if (this.lastSnapshot?.userId === nextId) this.startPhotoUrlRefresh();
       this.startClockSync();
       this.subscribe();
       const coordinator = await this.wakeSafely();
@@ -69,6 +83,80 @@
     getUser() { return this.user; }
     isOnline() { return !!this.client && !!this.user && this.ready; }
     serverNow() { return Date.now() + (Number.isFinite(this.serverTimeOffset) ? this.serverTimeOffset : 0); }
+    async createPhotoSignedUrlMap(paths, expiresIn = 900) {
+      const unique = [...new Set((paths || []).filter(path => typeof path === "string" && path.length))];
+      const signed = new Map();
+      for (let offset = 0; offset < unique.length; offset += 100) {
+        const batch = unique.slice(offset, offset + 100);
+        const { data, error } = await this.client.storage.from("arena-photos").createSignedUrls(batch, expiresIn);
+        if (error) throw error;
+        for (const item of data || []) {
+          if (item.error) throw new Error(item.error);
+          if (item.path && item.signedUrl) signed.set(item.path, item.signedUrl);
+        }
+      }
+      return signed;
+    }
+    startPhotoUrlRefresh() {
+      if (this.photoUrlRefreshTimer) return;
+      this.photoUrlRefreshTimer = setInterval(() => {
+        if (this.isOnline() && Date.now() >= this.photoUrlsExpiresAt - 300000) {
+          this.refreshPhotoUrls().catch(error => console.warn("[FACE ARENA signed photo URLs]", error));
+        }
+      }, 300000);
+    }
+    stopPhotoUrlRefresh() {
+      if (this.photoUrlRefreshTimer) clearInterval(this.photoUrlRefreshTimer);
+      this.photoUrlRefreshTimer = null;
+    }
+    async refreshPhotoUrls() {
+      if (!this.isOnline() || !this.lastSnapshot || this.photoUrlRefreshInFlight) return false;
+      const snapshot = this.lastSnapshot;
+      this.photoUrlRefreshInFlight = true;
+      try {
+        const paths = (snapshot.photos || []).filter(photo => photo.objectPath && photo.status !== "removed").map(photo => photo.objectPath);
+        const signed = await this.createPhotoSignedUrlMap(paths, 900);
+        if (this.lastSnapshot !== snapshot || this.user?.id !== snapshot.userId) return false;
+        const photos = (snapshot.photos || []).map(photo => ({
+          ...photo,
+          dataUrl: photo.objectPath && photo.status !== "removed" ? signed.get(photo.objectPath) || "" : ""
+        }));
+        const byId = new Map(photos.map(photo => [String(photo.id), photo]));
+        const imageFor = (photoId, fallback) => {
+          const photo = photoId == null ? null : byId.get(String(photoId));
+          return photo ? photo.dataUrl : fallback || "";
+        };
+        const arenaBattles = (snapshot.arenaBattles || []).map(battle => ({
+          ...battle,
+          redImg: imageFor(battle.redPhotoId, battle.redImg),
+          blueImg: imageFor(battle.bluePhotoId, battle.blueImg),
+          championImg: imageFor(battle.championPhotoId, battle.championImg)
+        }));
+        const arenaResults = (snapshot.arenaResults || []).map(result => ({
+          ...result,
+          myImg: imageFor(result.photoId, result.myImg),
+          opponentImg: imageFor(result.opponentPhotoId, result.opponentImg)
+        }));
+        const history = (snapshot.history || []).map(result => ({
+          ...result,
+          myImg: imageFor(result.photoId, result.myImg),
+          opponentImg: imageFor(result.opponentPhotoId, result.opponentImg)
+        }));
+        const participantStats = Object.fromEntries(Object.entries(snapshot.participantStats || {}).map(([id, stats]) => [
+          id, { ...stats, img: imageFor(stats.photoId, stats.img) }
+        ]));
+        this.photoUrlsExpiresAt = Date.now() + 900000;
+        this.dispatch({ ...snapshot, photos, arenaBattles, arenaResults, history, participantStats });
+        window.dispatchEvent(new CustomEvent("face-arena-photo-urls-refreshed", { detail: { urls: Object.fromEntries(signed) } }));
+        return true;
+      } catch (error) {
+        console.warn("[FACE ARENA signed photo URL refresh]", error);
+        await this.loadSnapshot();
+        return false;
+      } finally {
+        this.photoUrlRefreshInFlight = false;
+      }
+    }
     async fetchAllRows(makeQuery, pageSize = 500) {
       const rows = [];
       for (let from = 0; ; from += pageSize) {
@@ -256,12 +344,17 @@
 
         const profiles = new Map(profileRes.data.map(x => [x.user_id, x]));
         const photoRows = photoRes.data;
-        const photosById = new Map(photoRows.map(p => [p.id,p]));
-        const photos = photoRows.filter(p => p.status !== "removed").map(p => {
+        const visiblePhotoRows = photoRows.filter(p => p.status !== "removed");
+        const signedPhotoUrls = await this.createPhotoSignedUrlMap(visiblePhotoRows.map(p => p.object_path), 900);
+        this.photoUrlsExpiresAt = Date.now() + 900000;
+        const photosById = new Map(photoRows.map(p => [p.id, {
+          ...p, dataUrl: signedPhotoUrls.get(p.object_path) || ""
+        }]));
+        const photos = visiblePhotoRows.map(p => {
           const profile = profiles.get(p.owner_id) || {};
           return {
             id: p.id, ownerId: p.owner_id, userId: p.owner_id, name: profile.display_name || "Участник",
-            handle: profile.handle || "", dataUrl: c.storage.from("arena-photos").getPublicUrl(p.object_path).data.publicUrl,
+            handle: profile.handle || "", dataUrl: photosById.get(p.id)?.dataUrl || "",
             objectPath: p.object_path, status: p.status, queuedAt: Date.parse(p.created_at)
           };
         });
@@ -331,8 +424,9 @@
             battleUid: result.battle_id, laneId: result.lane_id,
             result: result.no_contest ? "no-contest" : result.is_draw ? "draw" : result.winner_photo_id === result.left_photo_id ? "red" : "blue",
             myVotes: result.left_votes, oppVotes: result.right_votes,
-            myImg: leftPhoto ? c.storage.from("arena-photos").getPublicUrl(leftPhoto.object_path).data.publicUrl : "",
-            opponentImg: rightPhoto ? c.storage.from("arena-photos").getPublicUrl(rightPhoto.object_path).data.publicUrl : "",
+            myImg: leftPhoto?.dataUrl || "",
+            opponentImg: rightPhoto?.dataUrl || "",
+            opponentPhotoId: result.right_photo_id,
             myName: leftProfile.display_name || "Участник",
             opponentName: rightProfile.display_name || "Участник",
             completedAt: Date.parse(result.completed_at), side: "RED"
@@ -351,8 +445,9 @@
             resultId: result.id, photoId: myPhoto.id, battleId: result.lane_id, battleUid: result.battle_id,
             laneId: result.lane_id, result: result.no_contest ? "no-contest" : result.is_draw ? "draw" : result.winner_photo_id === myPhoto.id ? "win" : "lose",
             myVotes, oppVotes, myName: profiles.get(myPhoto.owner_id)?.display_name || "Вы",
-            myImg: c.storage.from("arena-photos").getPublicUrl(myPhoto.object_path).data.publicUrl,
-            opponentImg: opponent ? c.storage.from("arena-photos").getPublicUrl(opponent.object_path).data.publicUrl : "",
+            myImg: myPhoto.dataUrl || "",
+            opponentImg: opponent?.dataUrl || "",
+            opponentPhotoId: opponent?.id || null,
             opponentName: profiles.get(opponent?.owner_id)?.display_name || "Участник", completedAt: Date.parse(result.completed_at)
           });
         }
@@ -376,14 +471,14 @@
               wins: 0, losses: 0, defenses: 0, currentStreak: 0, bestStreak: 0,
               topArenaQualified: false, isLegendary: false,
               name: p.display_name || "Участник", ownerId,
-              img: row ? c.storage.from("arena-photos").getPublicUrl(row.object_path).data.publicUrl : "",
+              img: row?.dataUrl || "", photoId: row?.id || null,
               isChampion: false, laneId: null
             };
           }
           const stats = participantStats[ownerId];
           if (!stats.img && photoId) {
             const row = photosById.get(photoId);
-            if (row) stats.img = c.storage.from("arena-photos").getPublicUrl(row.object_path).data.publicUrl;
+            if (row) { stats.img = row.dataUrl || ""; stats.photoId = row.id; }
           }
           return stats;
         };
@@ -531,7 +626,12 @@
         throw enqueue.error;
       }
       // Show the accepted photo immediately; the authoritative snapshot will reconcile it.
-      const publicUrl = this.client.storage.from("arena-photos").getPublicUrl(path).data.publicUrl;
+      let publicUrl = "";
+      try {
+        publicUrl = (await this.createPhotoSignedUrlMap([path], 900)).get(path) || "";
+      } catch (error) {
+        console.warn("[FACE ARENA uploaded photo URL]", error);
+      }
       const current = this.lastSnapshot || {};
       const optimisticPhoto = {
         id: enqueue.data, ownerId: this.user.id, userId: this.user.id,
@@ -649,8 +749,9 @@
       return data || null;
     }
 
-    getPhotoPublicUrl(objectPath) {
-      return this.client.storage.from("arena-photos").getPublicUrl(objectPath).data.publicUrl;
+    async getPhotoSignedUrls(objectPaths) {
+      if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
+      return this.createPhotoSignedUrlMap(objectPaths, 900);
     }
 
     async listSessions() {
