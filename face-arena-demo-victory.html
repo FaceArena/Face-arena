@@ -703,8 +703,8 @@ function renderArenaGrid(){
     const vsCls=lead==="R"?"push-b":(lead==="B"?"push-r":"");
     return `<article class="card" tabindex="0" role="button" aria-label="${t("battle")}${b.id}" style="--i:${i}" data-id="${b.id}">
 <div class="top"><span class="num">Линия ${String(b.id).padStart(2,"0")}</span><span class="chip ${w&&isActive?"":isActive?"v":""}">${chipText}</span></div>
-<div class="duel"><div class="ph R ${rCls}">${crownR}<img alt="" loading="lazy" src="${redSrc}"><span class="side">RED</span><div class="nm">${esc(redNm)}</div></div>
-<div class="ph B ${bCls}">${crownB}<img alt="" loading="lazy" src="${blueSrc}"><span class="side">BLUE</span><div class="nm">${esc(blueNm)}</div></div><div class="vs ${vsCls}">VS</div></div>${streak}
+<div class="duel"><div class="ph R ${rCls}">${crownR}<img alt="" loading="eager" fetchpriority="high" decoding="async" src="${redSrc}"><span class="side">RED</span><div class="nm">${esc(redNm)}</div></div>
+<div class="ph B ${bCls}">${crownB}<img alt="" loading="eager" fetchpriority="high" decoding="async" src="${blueSrc}"><span class="side">BLUE</span><div class="nm">${esc(blueNm)}</div></div><div class="vs ${vsCls}">VS</div></div>${streak}
 <div class="bar ${tot?"":"zero"} ${lead!=="eq"?"fight":""}" style="--p:${rp};--sx:${rp/100}"><u data-p="${rp/100}"></u>${lead!=="eq"?`<i class="clash"></i>`:""}</div>
 <div class="pct">${tot?`<span class="r ${lead==="R"?"lead":""}">RED ${rp}%</span><span class="m">${pl(tot,["голос","голоса","голосов"])}</span><span class="b ${lead==="B"?"lead":""}">${100-rp}% BLUE</span>`:`<span class="m">${t("noVotes")}</span>`}</div>
 ${isActive?`<div class="tm"><small>${confirming?"Отмена участия":t(w?"tWait":"tVote")}</small><b class="cd">${fmt(left)}</b></div><div class="tl"><u style="transform:scaleX(${left/STAGE_SEC})"></u></div>`:""}</article>`;
