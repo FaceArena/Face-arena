@@ -236,7 +236,7 @@
           this.fetchAllRows(() => c.from("arena_profiles").select("user_id,display_name,handle").order("user_id", { ascending: true })),
           c.from("arena_lanes").select("lane_id,champion_photo_id,challenger_photo_id").order("lane_id"),
           c.from("arena_battles").select("id,lane_id,opening,stage,started_at,confirm_until,stage_ends_at,finished_at").in("stage", ["waiting","voting"]),
-          this.fetchAllRows(() => c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,completed_at").order("completed_at", { ascending: false }).order("id", { ascending: false }))
+          this.fetchAllRows(() => c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,no_contest,completed_at").order("completed_at", { ascending: false }).order("id", { ascending: false }))
         ]);
         await clockSync;
         for (const r of [photoRes,profileRes,laneRes,battleRes,resultRes]) if (r.error) throw r.error;
@@ -321,7 +321,7 @@
           return {
             resultId: result.id, photoId: result.left_photo_id, battleId: result.lane_id,
             battleUid: result.battle_id, laneId: result.lane_id,
-            result: result.is_draw ? "draw" : result.winner_photo_id === result.left_photo_id ? "red" : "blue",
+            result: result.no_contest ? "no-contest" : result.is_draw ? "draw" : result.winner_photo_id === result.left_photo_id ? "red" : "blue",
             myVotes: result.left_votes, oppVotes: result.right_votes,
             myImg: leftPhoto ? c.storage.from("arena-photos").getPublicUrl(leftPhoto.object_path).data.publicUrl : "",
             opponentImg: rightPhoto ? c.storage.from("arena-photos").getPublicUrl(rightPhoto.object_path).data.publicUrl : "",
@@ -341,7 +341,7 @@
           const oppVotes = myPhoto.id === result.left_photo_id ? result.right_votes : result.left_votes;
           history.push({
             resultId: result.id, photoId: myPhoto.id, battleId: result.lane_id, battleUid: result.battle_id,
-            laneId: result.lane_id, result: result.is_draw ? "draw" : result.winner_photo_id === myPhoto.id ? "win" : "lose",
+            laneId: result.lane_id, result: result.no_contest ? "no-contest" : result.is_draw ? "draw" : result.winner_photo_id === myPhoto.id ? "win" : "lose",
             myVotes, oppVotes, myName: profiles.get(myPhoto.owner_id)?.display_name || "Вы",
             myImg: c.storage.from("arena-photos").getPublicUrl(myPhoto.object_path).data.publicUrl,
             opponentImg: opponent ? c.storage.from("arena-photos").getPublicUrl(opponent.object_path).data.publicUrl : "",
@@ -385,7 +385,7 @@
         for (const result of chronologicalResults) {
           // Opening battles are setup matches: keep them in history, but never
           // count them toward account wins, losses, streaks, or TOP ARENA.
-          if (result.opening) continue;
+          if (result.opening || result.no_contest) continue;
           const leftOwner = photosById.get(result.left_photo_id)?.owner_id;
           const rightOwner = photosById.get(result.right_photo_id)?.owner_id;
           const leftStats = getStats(leftOwner, result.left_photo_id);
