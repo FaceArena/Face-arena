@@ -40,6 +40,9 @@
     settings.enabled=!!value;
     if(master&&context)master.gain.setTargetAtTime(settings.enabled?settings.volume/100:0,context.currentTime,.04);
     persist();
+    // Enabling from the settings button is a direct user gesture.
+    // Resume/create Web Audio here so iOS Safari does not leave sound suspended.
+    if(settings.enabled)unlock();
   }
   function setVolume(value){
     settings.volume=Math.max(0,Math.min(100,Number(value)||0));
