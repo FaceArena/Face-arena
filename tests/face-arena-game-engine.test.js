@@ -52,7 +52,7 @@ test("assignment preserves string IDs and starts battle",()=>{
  assert.equal(r.assigned,true);assert.equal(r.state.photos[0].status,"confirmed");assert.equal(r.state.lanes[0].userPhotoId,"photo-abc");
 });
 test("one vote is insufficient: challenger returns to queue and incumbent keeps title",()=>{
- const state={photos:[{id:"challenger",status:"voting",side:"B",battleId:1,battleUid:"q1"}],lanes:[lane(1,{stage:"v",userPhotoId:"challenger",championPhotoId:"incumbent",battleUid:"q1",blueVotes:1,redVotes:0})],history:[],participantStats:{}};
+ const state={photos:[{id:"incumbent",status:"champion",userId:"u1"},{id:"challenger",status:"voting",side:"B",userId:"u2",battleId:1,battleUid:"q1"}],lanes:[lane(1,{stage:"v",userPhotoId:"challenger",championPhotoId:"incumbent",battleUid:"q1",blueVotes:1,redVotes:0})],history:[],participantStats:{}};
  const r=E.resolveBattle(state,1,100);
  assert.equal(r.result.noContest,true);
  assert.equal(r.state.lanes[0].championPhotoId,"incumbent");
