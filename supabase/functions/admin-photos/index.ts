@@ -154,9 +154,19 @@ Deno.serve(async (req: Request) => {
     if (body?.action === "delete_one") {
       const photoId = String(body?.photo_id || "");
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(photoId)) return reply({ error: "Invalid photo id" }, 400);
-      const { data: photo, error: findError } = await admin.from("arena_photos").select("id,object_path").eq("id", photoId).maybeSingle();
+      const { data: photo, error: findError } = await admin.from("arena_photos").select("id,object_path,status").eq("id", photoId).maybeSingle();
       if (findError) throw findError;
       if (!photo) return reply({ error: "Photo not found" }, 404);
+      const { data: activeBattles, error: battlesError } = await admin.from("arena_battles").select("id").in("stage", ["waiting", "voting"]);
+      if (battlesError) throw battlesError;
+      const activeBattleIds = (activeBattles || []).map((battle: any) => battle.id);
+      if (activeBattleIds.length) {
+        const { data: activeMembership, error: membershipError } = await admin.from("arena_battle_participants")
+          .select("photo_id").eq("photo_id", photoId).in("battle_id", activeBattleIds).limit(1);
+        if (membershipError) throw membershipError;
+        if (activeMembership?.length) return reply({ error: "Нельзя удалить фотографию, пока она участвует в активном баттле. Сначала завершите или отмените баттл." }, 409);
+      }
+      if (photo.status === "removed") return reply({ ok: true, deleted: 0, already_removed: true, metadata_preserved: true });
       const { error: storageError } = await admin.storage.from("arena-photos").remove([photo.object_path]);
       if (storageError) throw storageError;
       const { error: updateError } = await admin.from("arena_photos").update({ status: "removed", updated_at: new Date().toISOString() }).eq("id", photoId);
@@ -166,10 +176,19 @@ Deno.serve(async (req: Request) => {
 
     if (body?.action === "delete_all") {
       if (body?.confirmation !== "DELETE_ALL_ARENA_PHOTOS") return reply({ error: "Explicit confirmation required" }, 400);
+      const { data: activeBattles, error: battlesError } = await admin.from("arena_battles").select("id").in("stage", ["waiting", "voting"]);
+      if (battlesError) throw battlesError;
+      const activeBattleIds = (activeBattles || []).map((battle: any) => battle.id);
+      if (activeBattleIds.length) {
+        const { data: activeMembers, error: membersError } = await admin.from("arena_battle_participants")
+          .select("photo_id").in("battle_id", activeBattleIds).limit(1);
+        if (membersError) throw membersError;
+        if (activeMembers?.length) return reply({ error: "Нельзя очистить фотографии, пока есть активные баттлы. Сначала завершите или отмените их." }, 409);
+      }
       const photos: any[] = [];
       for (let offset = 0; ; offset += 1000) {
-        const { data, error } = await admin.from("arena_photos").select("id,object_path")
-          .order("created_at", { ascending: true }).range(offset, offset + 999);
+        const { data, error } = await admin.from("arena_photos").select("id,object_path,status")
+          .neq("status", "removed").order("created_at", { ascending: true }).range(offset, offset + 999);
         if (error) throw error;
         photos.push(...(data || []));
         if (!data || data.length < 1000) break;
