@@ -521,7 +521,7 @@
           ? Math.min(previousExpiry, Date.now() + 900000)
           : Date.now() + 900000;
         const photosById = new Map(photoRows.map(p => [p.id, {
-          ...p, dataUrl: signedPhotoUrls.get(p.object_path) || ""
+          ...p, isVerified: !!profiles.get(p.owner_id)?.is_verified, dataUrl: signedPhotoUrls.get(p.object_path) || ""
         }]));
         const topArenaRanking = this.mapTopArenaRanking(topRankingRows, photosById);
         const photos = visiblePhotoRows.map(p => {
