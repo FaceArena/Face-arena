@@ -2025,7 +2025,7 @@ function renderSettings(){
     if(window.FaceArenaSync?.isOnline()){
       try{await window.FaceArenaSync.updateProfile(name,handle)}catch(error){toast(error?.message||"Не удалось сохранить профиль");return}
     }
-    profile={name,handle};
+    profile={...profile,name,handle};
     saveState();
     toast("Профиль сохранён");
     showMain();
