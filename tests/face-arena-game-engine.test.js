@@ -73,7 +73,11 @@ test("draw completes challenger without changing title",()=>{
  const r=E.resolveBattle(state,1,100);assert.equal(r.state.lanes[0].championPhotoId,"c");assert.equal(r.state.photos[0].result,"draw");
 });
 test("ranking excludes demo identities and has deterministic ID tie break",()=>{
- const rows=E.buildRanking({demo_alex:{wins:99},"z-user":{wins:2},"a-user":{wins:2}},[]);
+ const rows=E.buildRanking({
+  demo_alex:{wins:99,bestStreak:99},
+  "z-user":{wins:5,bestStreak:5},
+  "a-user":{wins:5,bestStreak:5}
+ },[]);
  assert.deepEqual(rows.map(x=>x.id),["a-user","z-user"]);
 });
 
