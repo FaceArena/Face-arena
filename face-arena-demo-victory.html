@@ -2254,5 +2254,159 @@ const IC={
 tryFillSlots();
 saveState();
 </script>
+
+<script>
+(() => {
+  const SUPABASE_URL = "https://nvvkmjeobnnxlrpiuisf.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_-a7Qjy5NL3ZUaKfLpIi4Dg_x2hzmNKE";
+  const escAdmin = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  let adminClient = null;
+  let adminBusy = false;
+
+  function isAdmin() {
+    return window.FaceArenaSync?.getUser?.()?.app_metadata?.role === "admin";
+  }
+  function client() {
+    if (!adminClient) adminClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    return adminClient;
+  }
+  async function invoke(action, payload = {}) {
+    const { data, error } = await client().functions.invoke("admin-photos", { body: { action, ...payload } });
+    if (error) {
+      let message = error.message || "Ошибка серверной функции";
+      try { const body = await error.context?.json?.(); if (body?.error) message = body.error; } catch (_) {}
+      throw new Error(message);
+    }
+    if (data?.error) throw new Error(data.error);
+    return data;
+  }
+  function showAdminPanel() {
+    if (!isAdmin()) return;
+    const host = document.getElementById("sv");
+    if (!host) return;
+    document.getElementById("setMain").style.display = "none";
+    host.querySelectorAll(".settings-sub").forEach(el => el.classList.remove("on"));
+    let panel = document.getElementById("faAdminPanel");
+    if (!panel) {
+      panel = document.createElement("section");
+      panel.id = "faAdminPanel";
+      panel.className = "settings-sub on";
+      panel.style.cssText = "display:block;padding-bottom:32px";
+      panel.innerHTML = `
+        <button type="button" class="settings-back" id="faAdminBack">← Назад</button>
+        <h2 class="sec-h" style="margin-top:4px">Администрирование</h2>
+        <p class="set-info">Управление фотографиями участников FACE ARENA. Удаление файлов необратимо.</p>
+        <div id="faAdminStats" class="set-info">Загружаем фотографии…</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
+          <button type="button" class="menu-item" id="faAdminRefresh" style="padding:10px 14px;border:1px solid #333;border-radius:10px">Обновить список</button>
+          <button type="button" class="menu-item danger" id="faAdminDeleteAll" style="padding:10px 14px;border:1px solid #5a2424;border-radius:10px">Удалить все фото</button>
+        </div>
+        <div id="faAdminNotice" class="set-info" aria-live="polite"></div>
+        <div id="faAdminPhotos" style="display:grid;gap:10px"></div>`;
+      host.appendChild(panel);
+      document.getElementById("faAdminBack").onclick = () => {
+        panel.classList.remove("on");
+        document.getElementById("setMain").style.display = "";
+      };
+      document.getElementById("faAdminRefresh").onclick = loadPhotos;
+      document.getElementById("faAdminDeleteAll").onclick = deleteAllPhotos;
+    } else {
+      panel.classList.add("on");
+    }
+    loadPhotos();
+  }
+  async function loadPhotos() {
+    const stats = document.getElementById("faAdminStats");
+    const list = document.getElementById("faAdminPhotos");
+    const notice = document.getElementById("faAdminNotice");
+    if (!stats || !list) return;
+    stats.textContent = "Загружаем фотографии…";
+    list.innerHTML = "";
+    try {
+      const result = await invoke("list");
+      const photos = result.photos || [];
+      const active = photos.filter(p => p.status !== "removed").length;
+      stats.textContent = "Всего записей: " + photos.length + " · Файлов, помеченных активными: " + active;
+      if (!photos.length) {
+        list.innerHTML = '<div class="empty-box"><p>Фотографий в базе нет.</p></div>';
+        return;
+      }
+      list.innerHTML = photos.map(photo => `
+        <article style="display:grid;grid-template-columns:76px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px;border:1px solid #252525;border-radius:13px;background:#101010">
+          ${photo.image_url ? `<img src="${escAdmin(photo.image_url)}" alt="" loading="lazy" style="width:76px;height:88px;object-fit:cover;border-radius:9px;background:#050505">` : '<div style="width:76px;height:88px;border-radius:9px;background:#191919;display:grid;place-items:center;color:#777;font-size:11px;text-align:center">Нет<br>файла</div>'}
+          <div style="min-width:0">
+            <strong style="display:block;font-size:13px;overflow-wrap:anywhere">${escAdmin(photo.display_name)} · @${escAdmin(photo.handle)}</strong>
+            <span style="display:block;color:var(--mu);font-size:11px;margin-top:5px">${escAdmin(photo.status)} · ${escAdmin(new Date(photo.created_at).toLocaleString("ru-RU"))}</span>
+            <span style="display:block;color:var(--mu);font-size:10px;margin-top:4px;overflow-wrap:anywhere">${escAdmin(photo.id)}</span>
+          </div>
+          <button type="button" data-admin-delete="${escAdmin(photo.id)}" class="menu-item danger" style="padding:9px 7px;border:1px solid #542525;border-radius:9px;font-size:11px">Удалить</button>
+        </article>`).join("");
+      list.querySelectorAll("[data-admin-delete]").forEach(button => {
+        button.onclick = () => deleteOnePhoto(button.dataset.adminDelete);
+      });
+      if (notice) notice.textContent = "";
+    } catch (error) {
+      stats.textContent = "Не удалось загрузить список.";
+      if (notice) notice.textContent = error.message;
+    }
+  }
+  async function deleteOnePhoto(photoId) {
+    if (adminBusy || !isAdmin()) return;
+    if (!confirm("Удалить этот файл фотографии навсегда? Запись и результаты баттлов останутся в базе.")) return;
+    adminBusy = true;
+    try {
+      await invoke("delete_one", { photo_id: photoId });
+      document.getElementById("faAdminNotice").textContent = "Файл удалён без возможности восстановления.";
+      await loadPhotos();
+      window.FaceArenaSync?.loadSnapshot?.().catch(() => {});
+    } catch (error) {
+      document.getElementById("faAdminNotice").textContent = "Ошибка: " + error.message;
+    } finally { adminBusy = false; }
+  }
+  async function deleteAllPhotos() {
+    if (adminBusy || !isAdmin()) return;
+    if (!confirm("ВНИМАНИЕ: будут безвозвратно удалены все файлы фотографий, включая фото активных баттлов и чемпионов. История и записи результатов сохранятся, но изображения восстановить нельзя. Продолжить?")) return;
+    const phrase = prompt("Для подтверждения введи точно: УДАЛИТЬ ВСЕ ФОТО");
+    if (phrase !== "УДАЛИТЬ ВСЕ ФОТО") return;
+    adminBusy = true;
+    const button = document.getElementById("faAdminDeleteAll");
+    if (button) button.disabled = true;
+    const notice = document.getElementById("faAdminNotice");
+    try {
+      const result = await invoke("delete_all", { confirmation: "DELETE_ALL_ARENA_PHOTOS" });
+      notice.textContent = "Удалено файловых записей: " + result.deleted + " из " + result.total + ". Изображения удалены из Storage; история сохранена.";
+      await loadPhotos();
+      window.FaceArenaSync?.loadSnapshot?.().catch(() => {});
+    } catch (error) {
+      notice.textContent = "Операция не завершена полностью: " + error.message + ". Обнови список и повтори для оставшихся файлов.";
+      await loadPhotos();
+    } finally {
+      adminBusy = false;
+      if (button) button.disabled = false;
+    }
+  }
+  function injectAdminEntry() {
+    const host = document.getElementById("sv");
+    if (!host || !isAdmin()) return;
+    const menu = host.querySelector(".settings-menu-list");
+    if (!menu || menu.querySelector("[data-fa-admin-entry]")) return;
+    const item = document.createElement("li");
+    item.dataset.faAdminEntry = "true";
+    item.innerHTML = '<button type="button" class="menu-item" style="color:#65a4ff" data-fa-admin-open>Администрирование</button>';
+    menu.insertBefore(item, menu.querySelector('[data-go="signout"]') || null);
+    item.querySelector("button").onclick = showAdminPanel;
+  }
+  function start() {
+    const host = document.getElementById("sv");
+    if (!host) return;
+    const observer = new MutationObserver(injectAdminEntry);
+    observer.observe(host, { childList: true, subtree: true });
+    injectAdminEntry();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
+  else start();
+})();
+</script>
+
 </body>
 </html>
