@@ -227,8 +227,8 @@ html.no-anim .card{opacity:1}
 .btn-sm-muted{background:var(--s);color:var(--mu)}
 .empty-box{background:var(--c);border-radius:16px;padding:28px 16px;text-align:center;color:var(--mu)}
 .empty-box p{margin:8px 0 0;font-size:13px;line-height:1.4}
-.up-zone{background:var(--c);border:2px dashed #333;border-radius:16px;padding:28px 16px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;touch-action:manipulation}
-.up-zone:active{border-color:var(--blue);background:#0a1220}
+.up-zone{background:var(--c);border:0;border-radius:16px;padding:28px 16px;text-align:center;cursor:pointer;transition:background .2s;touch-action:manipulation}
+.up-zone:active{background:#0a1220}
 .up-zone input{display:none}
 .up-zone .ic{font-size:28px;margin-bottom:8px;opacity:.7}
 .up-zone b{display:block;font:700 14px var(--bd);margin-bottom:4px}
@@ -1386,7 +1386,7 @@ function renderUpload(){
     ${hdrHTML()}
     <h1 class="sec-h">${t("upTitle")}</h1>
     <p class="sec-lead">${t("upLead")}</p>
-    <p class="limit-note">Перед публикацией фото проверяется Groq — изображение передаётся стороннему AI-сервису. Если проверка не уверена, фото поступит администратору.</p>
+    <p class="limit-note">Перед публикацией фото проверяется ИИ. Допускаются только реальные фотографии людей. Рисунки, мультфильмы и изображения без людей не принимаются.</p>
 ${preview}
     ${!canAdd&&!pendingUrl?`<p class="limit-note" style="color:#ffb454">${t("upLimit")}</p>`:""}
     ${my}`;
