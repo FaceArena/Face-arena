@@ -801,7 +801,7 @@
       if (this.user?.id === userId && this.lastSnapshot?.userId === userId) {
         this.dispatch({ ...this.lastSnapshot, settings: { ...(this.lastSnapshot.settings || {}), ...data } });
       }
-      if (allowed.includes("profile_public")) {
+      if (typeof update.profile_public === "boolean") {
         this.refreshTopArenaRanking().catch(error => console.warn("[FACE ARENA TOP ARENA privacy refresh]", error));
       }
     }
