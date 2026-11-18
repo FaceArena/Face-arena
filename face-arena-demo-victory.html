@@ -439,7 +439,7 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 <div class="toast" id="toast" role="status"></div>
 <div class="ov" id="ov"><div class="sh" id="sh" role="dialog" aria-modal="true"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./face-arena-sync.js?v=20261118-verified-admin-v2"></script>
+<script src="./face-arena-sync.js?v=20261119-friendly-errors-v1"></script>
 <script src="./face-arena-audio.js"></script>
 <script src="./face-arena-game-engine.js"></script>
 <script>
@@ -1038,7 +1038,7 @@ function requestBattleVisit(b){
   }).catch(error=>{
     b._visitRequested=false;
     b._visitRetryAt=Date.now()+3000;
-    if(location.hash==="#battle-"+b.id)toast(error?.message||"Не удалось открыть голосование");
+    if(location.hash==="#battle-"+b.id)toast(window.FaceArenaErrors.message(error,"Не удалось открыть голосование. Попробуйте ещё раз."));
   });
 }
 function tick2(){
@@ -1110,7 +1110,7 @@ async function submit(n){
     }catch(error){
       busy=false;
       const send=$("sd");if(send){send.disabled=false;send.textContent=t("send")}
-      const err=$("er");if(err)err.textContent=error?.message||"Не удалось отправить голос";
+      const err=$("er");if(err)err.textContent=window.FaceArenaErrors.message(error,"Не удалось отправить голос. Попробуйте ещё раз.");
     }
     return;
   }
@@ -1192,12 +1192,12 @@ function renderQueue(){
       else if(act==="openbattle"){const p=photos.find(x=>String(x.id)===String(id));if(p&&p.battleId)location.hash="battle-"+p.battleId}
       else if(act==="cancelmatch"){
         const p=photos.find(x=>String(x.id)===String(id));
-        if(p?.battleUid)window.FaceArenaSync.cancelMatch(p.battleUid).then(result=>toast(result?.ok===false?"Участие отменено. Серверный таймер временно недоступен.":"Участие отменено, обе фотографии возвращены в очередь")).catch(error=>toast(error?.message||"Окно отмены уже закрыто"));
+        if(p?.battleUid)window.FaceArenaSync.cancelMatch(p.battleUid).then(result=>toast(result?.ok===false?"Участие отменено. Серверный таймер временно недоступен.":"Участие отменено, обе фотографии возвращены в очередь")).catch(error=>toast(window.FaceArenaErrors.message(error,"Не удалось отменить участие. Обновите страницу и попробуйте снова.")));
       }
       else if(act==="del"){
         const p=photos.find(x=>String(x.id)===String(id));
         if(window.FaceArenaSync?.isOnline()){
-          window.FaceArenaSync.deletePhoto(id).then(result=>toast(result?.ok===false?"Фото удалено. Серверный таймер временно недоступен.":"Фото удалено")).catch(error=>toast(error?.message||"Не удалось удалить фото"));
+          window.FaceArenaSync.deletePhoto(id).then(result=>toast(result?.ok===false?"Фото удалено. Серверный таймер временно недоступен.":"Фото удалено")).catch(error=>toast(window.FaceArenaErrors.message(error,"Не удалось удалить фотографию. Попробуйте ещё раз.")));
         }else if(p&&p.status==="queued"){photos=photos.filter(x=>String(x.id)!==String(id));toast("Фото удалено из очереди");saveState();renderQueue();updateArenaStats()}
         else toast("Нельзя удалить: фото уже в баттле");
       }
@@ -1412,7 +1412,7 @@ ${preview}
         updateArenaStats();
       }catch(error){
         b.disabled=false;
-        toast(error?.message||"Не удалось удалить фото");
+        toast(window.FaceArenaErrors.message(error,"Не удалось удалить фотографию. Попробуйте ещё раз."));
       }
       return;
     }
@@ -1480,7 +1480,7 @@ async function confirmAdd(){
       location.hash="queue";
     }catch(error){
       isPublishingPhoto=false;
-      toast(error?.message||"Не удалось загрузить фото");
+      toast(window.FaceArenaErrors.message(error,"Не удалось загрузить фотографию. Попробуйте ещё раз."));
       renderUpload();
     }
     return;
@@ -1585,7 +1585,7 @@ function renderProfile(){
   $("pv").querySelectorAll(".rm").forEach(b=>b.onclick=()=>{
     const id=b.dataset.id;
     if(window.FaceArenaSync?.isOnline()){
-      window.FaceArenaSync.deletePhoto(id).then(()=>toast("Фото удалено из архива (история сохранена)")).catch(error=>toast(error?.message||"Не удалось удалить фото"));
+      window.FaceArenaSync.deletePhoto(id).then(()=>toast("Фото удалено из архива (история сохранена)")).catch(error=>toast(window.FaceArenaErrors.message(error,"Не удалось удалить фотографию. Попробуйте ещё раз.")));
       return;
     }
     photos=photos.filter(x=>String(x.id)!==String(id));
@@ -1648,7 +1648,7 @@ async function renderPublicProfile(userId){
     };
   }catch(error){
     if(renderPublicProfile._requestId!==renderToken||location.hash.slice(1)!=="profile-"+encodeURIComponent(userId))return;
-    host.innerHTML=`${hdrHTML()}<h1 class="sec-h">Не удалось открыть профиль</h1><div class="empty-box"><p>${esc(error?.message||"Ошибка загрузки профиля")}</p><button class="btn" id="publicProfileBack" type="button">Назад</button></div>`;
+    host.innerHTML=`${hdrHTML()}<h1 class="sec-h">Не удалось открыть профиль</h1><div class="empty-box"><p>${esc(window.FaceArenaErrors.message(error,"Не удалось загрузить профиль. Попробуйте позже."))}</p><button class="btn" id="publicProfileBack" type="button">Назад</button></div>`;
     $("publicProfileBack").onclick=()=>history.back();
   }
 }
@@ -1978,7 +1978,7 @@ function renderSettings(){
           syncPrivacy();
           delete privacyOptimistic[key];
           syncPrivacy();
-          toast(error?.message||"Не удалось сохранить настройку");
+          toast(window.FaceArenaErrors.message(error,"Не удалось сохранить настройку. Попробуйте ещё раз."));
         }
       }).finally(()=>{
         if(privacyWrites.get(key)===write)privacyWrites.delete(key);
@@ -2002,7 +2002,7 @@ function renderSettings(){
       }).join("");
       if(sessionInfo)sessionInfo.textContent="Сеансы этого аккаунта · список получен с сервера";
     }catch(error){
-      sessionsList.textContent=error?.message||"Не удалось загрузить сеансы";
+      sessionsList.textContent=window.FaceArenaErrors.message(error,"Не удалось загрузить список сеансов. Попробуйте позже.");
       if(sessionInfo)sessionInfo.textContent="Не удалось получить список сеансов";
     }
   };
@@ -2012,7 +2012,7 @@ function renderSettings(){
     if(!confirm("Завершить все остальные сеансы FACE ARENA? Текущий сеанс останется активным."))return;
     revokeBtn.disabled=true;
     try{await window.FaceArenaSync.revokeOtherSessions();toast("Обновление токенов других сеансов отозвано");}
-    catch(error){toast(error?.message||"Не удалось завершить сеансы");}
+    catch(error){toast(window.FaceArenaErrors.message(error,"Не удалось завершить другие сеансы. Попробуйте позже."));}
     finally{revokeBtn.disabled=false;}
   };
   const deletionInfo=$("accountDeletionInfo");
@@ -2060,7 +2060,7 @@ function renderSettings(){
       if(avatarPreview){avatarPreview.src=profile.avatarUrl||"";avatarPreview.hidden=!profile.avatarUrl}
       toast("Фотография профиля обновлена");
       renderProfile();
-    }catch(error){toast(error?.message||"Не удалось загрузить фотографию")}
+    }catch(error){toast(window.FaceArenaErrors.message(error,"Не удалось загрузить фотографию профиля. Попробуйте ещё раз."))}
     finally{avatarChoose.disabled=false;avatarChoose.textContent=profile.avatarPath?"Изменить фото":"Добавить фото"}
   };
 
@@ -2071,7 +2071,7 @@ function renderSettings(){
     if(!name){toast("Укажите имя");return}
     if(!handle){toast("Укажите никнейм");return}
     if(window.FaceArenaSync?.isOnline()){
-      try{await window.FaceArenaSync.updateProfile(name,handle)}catch(error){toast(error?.message||"Не удалось сохранить профиль");return}
+      try{await window.FaceArenaSync.updateProfile(name,handle)}catch(error){toast(window.FaceArenaErrors.message(error,"Не удалось сохранить профиль. Проверьте подключение и попробуйте снова."));return}
     }
     profile={...profile,name,handle};
     saveState();
@@ -2428,7 +2428,7 @@ saveState();
       if (notice) notice.textContent = "";
     } catch (error) {
       stats.textContent = "Не удалось загрузить список.";
-      if (notice) notice.textContent = error.message;
+      console.error("[FACE ARENA admin list photos]", error); if (notice) notice.textContent = "Не удалось загрузить фотографии. Попробуйте обновить список.";
     }
   }
   async function deleteOnePhoto(photoId) {
@@ -2441,7 +2441,7 @@ saveState();
       await loadPhotos();
       window.FaceArenaSync?.loadSnapshot?.().catch(() => {});
     } catch (error) {
-      document.getElementById("faAdminNotice").textContent = "Ошибка: " + error.message;
+      console.error("[FACE ARENA admin delete photo]", error); document.getElementById("faAdminNotice").textContent = "Не удалось удалить фотографию. Попробуйте ещё раз.";
     } finally { adminBusy = false; }
   }
   async function deleteAllPhotos() {
@@ -2459,7 +2459,7 @@ saveState();
       await loadPhotos();
       window.FaceArenaSync?.loadSnapshot?.().catch(() => {});
     } catch (error) {
-      notice.textContent = "Операция не завершена полностью: " + error.message + ". Обнови список и повтори для оставшихся файлов.";
+      console.error("[FACE ARENA admin delete all photos]", error); notice.textContent = "Не удалось завершить удаление всех фотографий. Обновите список и проверьте результат.";
       await loadPhotos();
     } finally {
       adminBusy = false;
