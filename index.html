@@ -1753,7 +1753,7 @@ function renderSettings(){
   if(revokeBtn)revokeBtn.onclick=async()=>{
     if(!confirm("Завершить все остальные сеансы FACE ARENA? Текущий сеанс останется активным."))return;
     revokeBtn.disabled=true;
-    try{await window.FaceArenaSync.revokeOtherSessions();toast("Другие сеансы завершены");}
+    try{await window.FaceArenaSync.revokeOtherSessions();toast("Обновление токенов других сеансов отозвано");}
     catch(error){toast(error?.message||"Не удалось завершить сеансы");}
     finally{revokeBtn.disabled=false;}
   };
