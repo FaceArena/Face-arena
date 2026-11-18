@@ -1386,6 +1386,7 @@ function renderUpload(){
     ${hdrHTML()}
     <h1 class="sec-h">${t("upTitle")}</h1>
     <p class="sec-lead">${t("upLead")}</p>
+    <p class="limit-note">Перед публикацией фото проверяется Groq — изображение передаётся стороннему AI-сервису. Если проверка не уверена, фото поступит администратору.</p>
 ${preview}
     ${!canAdd&&!pendingUrl?`<p class="limit-note" style="color:#ffb454">${t("upLimit")}</p>`:""}
     ${my}`;
@@ -1475,9 +1476,15 @@ async function confirmAdd(){
     try{
       const result=await window.FaceArenaSync.uploadPhoto(pendingFile);
       pendingFile=null;pendingUrl=null;
-      toast(result?.coordinatorAvailable===false?"Фото сохранено. Серверный таймер временно недоступен.":"Фото добавлено в общую очередь");
-      isPublishingPhoto=false;
-      location.hash="queue";
+      if(result?.moderation==="review"){
+        toast("Фото отправлено администратору на проверку. После одобрения оно появится в очереди.");
+        isPublishingPhoto=false;
+        location.hash="upload";
+      }else{
+        toast(result?.coordinatorAvailable===false?"Фото сохранено. Серверный таймер временно недоступен.":"Фото прошло проверку и добавлено в общую очередь");
+        isPublishingPhoto=false;
+        location.hash="queue";
+      }
     }catch(error){
       isPublishingPhoto=false;
       toast(window.FaceArenaErrors.message(error,"Не удалось загрузить фотографию. Попробуйте ещё раз."));
@@ -2389,6 +2396,9 @@ saveState();
         <button type="button" class="settings-back" id="faAdminBack">← Назад</button>
         <h2 class="sec-h" style="margin-top:4px">Администрирование</h2>
         <p class="set-info">Управление фотографиями участников FACE ARENA. Удаление файлов необратимо.</p>
+        <h3 style="font:800 13px Unbounded,Arial,sans-serif;margin:18px 0 8px">Фото ожидают проверки</h3>
+        <div id="faModerationStats" class="set-info">Загружаем список…</div>
+        <div id="faModerationPhotos" style="display:grid;gap:10px;margin:10px 0 18px"></div>
         <div id="faAdminStats" class="set-info">Загружаем фотографии…</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
           <button type="button" class="menu-item" id="faAdminRefresh" style="padding:10px 14px;border:1px solid #333;border-radius:10px">Обновить список</button>
@@ -2408,11 +2418,70 @@ saveState();
     }
     loadPhotos();
   }
+  async function loadModerationPhotos() {
+    const stats = document.getElementById("faModerationStats");
+    const list = document.getElementById("faModerationPhotos");
+    if (!stats || !list) return;
+    stats.textContent = "Загружаем список…";
+    try {
+      const result = await invoke("list_moderation");
+      const photos = result.photos || [];
+      stats.textContent = photos.length ? "Ожидают решения: " + photos.length : "Нет фотографий, ожидающих проверки.";
+      if (!photos.length) {
+        list.innerHTML = "";
+        return;
+      }
+      list.innerHTML = photos.map(photo => `
+        <article style="display:grid;grid-template-columns:76px minmax(0,1fr);gap:10px;align-items:start;padding:10px;border:1px solid #4a3b20;border-radius:13px;background:#15130f">
+          ${photo.image_url ? `<img src="${escAdmin(photo.image_url)}" alt="" loading="lazy" style="width:76px;height:88px;object-fit:cover;border-radius:9px;background:#050505">` : '<div style="width:76px;height:88px;border-radius:9px;background:#191919;display:grid;place-items:center;color:#777;font-size:11px">Нет файла</div>'}
+          <div style="min-width:0">
+            <strong style="display:block;font-size:13px;overflow-wrap:anywhere">${escAdmin(photo.display_name)} · @${escAdmin(photo.handle)}</strong>
+            <span style="display:block;color:var(--mu);font-size:11px;margin-top:5px">${escAdmin(photo.reason || "Требуется ручная проверка")}</span>
+            <span style="display:block;color:var(--mu);font-size:10px;margin-top:4px">${escAdmin((photo.categories || []).join(", "))} · уверенность ${Math.round((Number(photo.confidence) || 0) * 100)}%</span>
+            <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px">
+              <button type="button" data-review-approve="${escAdmin(photo.id)}" class="menu-item" style="padding:8px 10px;border:1px solid #315b3b;border-radius:9px;color:#8cdb9b;font-size:11px">Одобрить</button>
+              <button type="button" data-review-reject="${escAdmin(photo.id)}" class="menu-item danger" style="padding:8px 10px;border:1px solid #542525;border-radius:9px;font-size:11px">Отклонить</button>
+            </div>
+          </div>
+        </article>`).join("");
+      list.querySelectorAll("[data-review-approve]").forEach(button => {
+        button.onclick = () => moderatePendingPhoto(button.dataset.reviewApprove, "approve_moderation");
+      });
+      list.querySelectorAll("[data-review-reject]").forEach(button => {
+        button.onclick = () => moderatePendingPhoto(button.dataset.reviewReject, "reject_moderation");
+      });
+    } catch (error) {
+      stats.textContent = "Не удалось загрузить очередь ручной проверки.";
+      console.error("[FACE ARENA admin moderation list]", error);
+    }
+  }
+  async function moderatePendingPhoto(moderationId, action) {
+    if (adminBusy || !isAdmin()) return;
+    if (action === "reject_moderation" && !confirm("Отклонить фотографию и удалить её из закрытого хранилища?")) return;
+    adminBusy = true;
+    const notice = document.getElementById("faAdminNotice");
+    try {
+      await invoke(action, { moderation_id: moderationId });
+      if (notice) notice.textContent = action === "approve_moderation"
+        ? "Фото одобрено и добавлено в очередь."
+        : "Фото отклонено и удалено из закрытого хранилища.";
+      await loadPhotos();
+      await loadModerationPhotos();
+      window.FaceArenaSync?.loadSnapshot?.().catch(() => {});
+    } catch (error) {
+      console.error("[FACE ARENA admin moderation action]", error);
+      if (notice) notice.textContent = "Не удалось обработать фотографию. Обновите список и попробуйте ещё раз.";
+      await loadModerationPhotos();
+    } finally {
+      adminBusy = false;
+    }
+  }
   async function loadPhotos() {
     const stats = document.getElementById("faAdminStats");
     const list = document.getElementById("faAdminPhotos");
     const notice = document.getElementById("faAdminNotice");
     if (!stats || !list) return;
+    loadModerationPhotos();
     stats.textContent = "Загружаем фотографии…";
     list.innerHTML = "";
     try {
