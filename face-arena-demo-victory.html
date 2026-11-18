@@ -2265,20 +2265,25 @@ saveState();
 
   let adminUserId = null;
   let adminCheckPromise = null;
+  let adminCheckedUserId = null;
   function isAdmin() {
     return !!adminUserId && adminUserId === window.FaceArenaSync?.getUser?.()?.id;
   }
   async function refreshAdminAuthorization() {
     const sync = window.FaceArenaSync;
     const expectedUserId = sync?.getUser?.()?.id;
-    if (!sync?.isOnline?.() || !expectedUserId || !sync.client?.auth?.getUser) {
+    if (!sync?.isOnline?.() || !expectedUserId || !sync.client?.auth?.refreshSession || !sync.client?.auth?.getUser) {
       adminUserId = null;
       return false;
     }
+    if (adminUserId === expectedUserId) return true;
     if (adminCheckPromise) return adminCheckPromise;
     adminCheckPromise = (async () => {
       try {
-        // Fetch the current user from Supabase Auth instead of trusting possibly stale JWT claims.
+        // Role changes live in app_metadata; refresh the JWT before checking so an old
+        // browser session cannot keep stale role claims indefinitely.
+        const refreshed = await sync.client.auth.refreshSession();
+        if (refreshed.error) throw refreshed.error;
         const { data, error } = await sync.client.auth.getUser();
         const currentUser = sync.getUser?.();
         const freshUser = data?.user;
@@ -2287,10 +2292,13 @@ saveState();
           && currentUser?.id === expectedUserId
           && freshUser?.app_metadata?.role === "admin";
         adminUserId = allowed ? expectedUserId : null;
+        adminCheckedUserId = expectedUserId;
         if (allowed) injectAdminEntry();
         return allowed;
-      } catch (_) {
+      } catch (error) {
+        console.warn("[FACE ARENA admin authorization]", error);
         adminUserId = null;
+        adminCheckedUserId = expectedUserId;
         return false;
       }
     })().finally(() => { adminCheckPromise = null; });
@@ -2417,9 +2425,13 @@ saveState();
   }
   function injectAdminEntry() {
     const host = document.getElementById("sv");
-    if (!host || !isAdmin()) return;
-    const menu = host.querySelector(".settings-menu-list");
-    if (!menu || menu.querySelector("[data-fa-admin-entry]")) return;
+    const menu = host?.querySelector(".settings-menu-list");
+    if (!host || !menu || menu.querySelector("[data-fa-admin-entry]")) return;
+    if (!isAdmin()) {
+      const userId = window.FaceArenaSync?.getUser?.()?.id;
+      if (userId && adminCheckedUserId !== userId) refreshAdminAuthorization();
+      return;
+    }
     const item = document.createElement("li");
     item.dataset.faAdminEntry = "true";
     item.innerHTML = '<button type="button" class="menu-item" style="color:#65a4ff" data-fa-admin-open>Администрирование</button>';
