@@ -11,6 +11,9 @@
     if (/этот никнейм уже занят/i.test(message)) return "Этот никнейм уже занят. Выберите другой.";
     if (/не подходит для участия/i.test(message)) return "Эта фотография не подходит для участия. Выберите другую.";
     if (/слишком много попыток проверки/i.test(message)) return "Слишком много попыток. Подождите 10 минут и попробуйте снова.";
+    if (/для голосования нужен подтверждённый аккаунт/i.test(message)) return "Подтвердите email, чтобы голосовать.";
+    if (/лимит голосов за 10 минут/i.test(message)) return "Слишком много голосов за короткое время. Подождите 10 минут и попробуйте снова.";
+    if (/дневной лимит голосов/i.test(message)) return "На сегодня достигнут лимит голосов. Попробуйте завтра.";
     if (!message) return fallback;
     if (/invalid login credentials|invalid email or password|email or password is incorrect/.test(message)) return "Неверный email или пароль.";
     if (/email not confirmed|email_not_confirmed|confirm your email/.test(message)) return "Подтвердите email по ссылке в письме, затем войдите.";
