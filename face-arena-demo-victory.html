@@ -2121,7 +2121,9 @@ function finishFaBoot(){
   faBootLoader?.classList.add("is-hidden");
   setTimeout(()=>faBootLoader?.remove(),350);
 }
-window.addEventListener("face-arena-snapshot",finishFaBoot,{once:true});
+window.addEventListener("face-arena-snapshot",event=>{
+  if(event.detail || !window.FaceArenaSync?.isOnline?.()) finishFaBoot();
+},{once:false});
 window.addEventListener("face-arena-sync-failed",finishFaBoot,{once:true});
 setTimeout(finishFaBoot,12000);
 addEventListener("hashchange",show);
