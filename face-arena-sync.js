@@ -65,6 +65,7 @@
       if (!coordinator.ok) console.warn("[FACE ARENA coordinator unavailable]", coordinator.error);
     }
 
+    getUser() { return this.user; }
     isOnline() { return !!this.client && !!this.user && this.ready; }
     serverNow() { return Date.now() + (Number.isFinite(this.serverTimeOffset) ? this.serverTimeOffset : 0); }
     async fetchAllRows(makeQuery, pageSize = 500) {
