@@ -56,6 +56,7 @@
         this.stopPhotoUrlRefresh();
         this.photoUrlsExpiresAt = 0;
         this.lastSnapshot = null;
+        this.initialArenaImagesReadyStarted = false;
         this.serverTimeOffset = 0;
         this.pendingReload = !!this.loading;
         if (this.snapshotReloadTimer) clearTimeout(this.snapshotReloadTimer);
