@@ -6,7 +6,7 @@
   let settings={...DEFAULTS},context=null,master=null,unlocked=false;
   const buffers={};
   const lastPlayed=new Map();
-  const COOLDOWN={victory:1200,champion:1600,defeat:900,titleLost:1200};
+  const COOLDOWN={victory:1200,champion:1600,defeat:900,titleLost:1200,countdown:850};
   try{
     const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");
     if(saved&&typeof saved==="object"){
@@ -96,9 +96,30 @@
     }
     buffers[kind]=buffer;return buffer;
   }
-  function playNow(name,force){
+
+  // A short, restrained timer tick. This is a game countdown cue, not a UI click.
+  function playCountdownTick(force){
     if(!force&&(!settings.enabled||settings.volume===0))return false;
-    if(!["victory","champion","defeat","titleLost"].includes(name))return false;
+    const now=Date.now();
+    if(!force&&now-(lastPlayed.get("countdown")||0)<COOLDOWN.countdown)return false;
+    const ctx=getContext();if(!ctx||ctx.state!=="running")return false;
+    try{
+      const osc=ctx.createOscillator(),gain=ctx.createGain();
+      const start=ctx.currentTime;
+      osc.type="sine";
+      osc.frequency.setValueAtTime(880,start);
+      osc.frequency.exponentialRampToValueAtTime(660,start+.11);
+      gain.gain.setValueAtTime(0.0001,start);
+      gain.gain.exponentialRampToValueAtTime(.12*(settings.volume/100),start+.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001,start+.14);
+      osc.connect(gain);gain.connect(master);
+      osc.start(start);osc.stop(start+.15);
+      lastPlayed.set("countdown",now);return true;
+    }catch(_){return false}
+  }
+\n  function playNow(name,force){
+    if(!force&&(!settings.enabled||settings.volume===0))return false;
+    if(name==="countdown")return playCountdownTick(force);\n    if(!["victory","champion","defeat","titleLost"].includes(name))return false;
     const now=Date.now();
     if(!force&&now-(lastPlayed.get(name)||0)<(COOLDOWN[name]||900))return false;
     const ctx=getContext();if(!ctx||ctx.state!=="running")return false;
