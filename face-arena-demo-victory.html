@@ -1810,8 +1810,19 @@ function renderSettings(){
   const privacyConfirmed={};
   const privacyWrites=new Map();
   const privacyVersions=new Map();
+  let privacyOwnerId=null;
   const syncPrivacy=()=>{
     const sync=window.FaceArenaSync;
+    const userId=sync?.getUser?.()?.id||null;
+    if(privacyOwnerId!==userId){
+      privacyOwnerId=userId;
+      for(const [,key] of privacyKeys){
+        delete privacyOptimistic[key];
+        delete privacyConfirmed[key];
+        privacyWrites.delete(key);
+        privacyVersions.delete(key);
+      }
+    }
     const online=!!sync?.isOnline?.();
     const settings=sync?.lastSnapshot?.settings||{};
     for(const [id,key] of privacyKeys){
@@ -1837,6 +1848,8 @@ function renderSettings(){
     el.onclick=()=>{
       const sync=window.FaceArenaSync;
       if(!sync?.isOnline?.()){toast("Сначала войдите в аккаунт");return;}
+      const userId=sync.getUser?.()?.id;
+      if(!userId){toast("Сначала войдите в аккаунт");return;}
       const current=Object.prototype.hasOwnProperty.call(privacyOptimistic,key)
         ?privacyOptimistic[key]
         :(sync.lastSnapshot?.settings?.[key]!==false);
@@ -1848,9 +1861,13 @@ function renderSettings(){
       el.setAttribute("aria-pressed",String(next));
       // Queue writes per setting so rapid taps cannot arrive out of order.
       const previous=privacyWrites.get(key)||Promise.resolve();
-      const write=previous.catch(()=>{}).then(()=>sync.updatePrivacySettings({[key]:next}));
+      const write=previous.catch(()=>{}).then(()=>{
+        if(sync.getUser?.()?.id!==userId)throw new Error("Аккаунт изменился. Повторите действие.");
+        return sync.updatePrivacySettings({[key]:next});
+      });
       privacyWrites.set(key,write);
       write.then(()=>{
+        if(sync.getUser?.()?.id!==userId)return;
         privacyConfirmed[key]=next;
         if(privacyVersions.get(key)===version){
           delete privacyOptimistic[key];
@@ -1858,6 +1875,7 @@ function renderSettings(){
           toast("Настройка сохранена");
         }
       }).catch(error=>{
+        if(sync.getUser?.()?.id!==userId)return;
         if(privacyVersions.get(key)===version){
           privacyOptimistic[key]=privacyConfirmed[key]??(sync.lastSnapshot?.settings?.[key]!==false);
           syncPrivacy();
