@@ -121,6 +121,7 @@ Deno.serve(async (req: Request) => {
 
     let decision: "allow" | "reject";
     let reason = typeof claim.reason === "string" ? claim.reason : "";
+    let cooldownTriggered = false;
 
     if (claim.status === "cached") {
       decision = claim.decision;
@@ -226,13 +227,14 @@ Deno.serve(async (req: Request) => {
           ? "allow"
           : "reject";
 
-      const { error: finishError } = await admin.rpc("finish_arena_photo_moderation", {
+      const { data: finishResult, error: finishError } = await admin.rpc("finish_arena_photo_moderation", {
         p_owner_id: userId,
         p_content_sha256: contentHash,
         p_decision: decision,
         p_reason: reason,
       });
       if (finishError) throw finishError;
+      cooldownTriggered = finishResult?.blocked === true;
       pendingModeration = null;
     }
 
@@ -240,7 +242,9 @@ Deno.serve(async (req: Request) => {
     if (decision === "reject") {
       return reply({
         decision: "reject",
-        message: "Эта фотография не подходит для участия. Выберите другую.",
+        message: cooldownTriggered
+          ? "Три фотографии подряд не прошли проверку. Новые попытки будут доступны через 30 минут."
+          : "Эта фотография не подходит для участия. Выберите другую.",
       }, 422);
     }
 
