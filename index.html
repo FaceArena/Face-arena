@@ -1517,6 +1517,8 @@ function renderProfile(){
 }
 
 async function renderPublicProfile(userId){
+  const renderToken=(renderPublicProfile._requestId||0)+1;
+  renderPublicProfile._requestId=renderToken;
   const host=$("pv");
   host.innerHTML=`${hdrHTML()}<h1 class="sec-h">Профиль участника</h1><div class="profile-loading">Загружаем профиль…</div>`;
   if(!window.FaceArenaSync?.isOnline?.()){
@@ -1525,7 +1527,7 @@ async function renderPublicProfile(userId){
   }
   try{
     const data=await window.FaceArenaSync.getPublicProfile(userId);
-    if(location.hash.slice(1)!=="profile-"+encodeURIComponent(userId))return;
+    if(renderPublicProfile._requestId!==renderToken||location.hash.slice(1)!=="profile-"+encodeURIComponent(userId))return;
     if(!data){
       host.innerHTML=`${hdrHTML()}<h1 class="sec-h">Профиль закрыт</h1><div class="empty-box"><p>Владелец отключил публичный профиль. Его фотографии и данные профиля недоступны.</p><button class="btn" id="publicProfileBack" type="button">Вернуться к баттлам</button></div>`;
       $("publicProfileBack").onclick=()=>location.hash="";
@@ -1533,6 +1535,7 @@ async function renderPublicProfile(userId){
     }
     const photosList=Array.isArray(data.photos)?data.photos:[];
     const signedPhotoUrls=await window.FaceArenaSync.getPhotoSignedUrls(photosList.map(p=>p.object_path));
+    if(renderPublicProfile._requestId!==renderToken||location.hash.slice(1)!=="profile-"+encodeURIComponent(userId))return;
     const photoUrl=p=>signedPhotoUrls.get(p.object_path)||"";
     if(!window.__faceArenaSignedPhotoRefreshBound){
       window.__faceArenaSignedPhotoRefreshBound=true;
@@ -1554,7 +1557,7 @@ async function renderPublicProfile(userId){
       <div class="stat"><b>${photosList.filter(p=>["queued","matched","confirmed","voting","champion"].includes(p.status)).length}</b><span>Активные</span></div></div>
       <h2>Фотографии</h2><div class="public-profile-photos">${photoCards}</div>`;
   }catch(error){
-    if(location.hash.slice(1)!=="profile-"+encodeURIComponent(userId))return;
+    if(renderPublicProfile._requestId!==renderToken||location.hash.slice(1)!=="profile-"+encodeURIComponent(userId))return;
     host.innerHTML=`${hdrHTML()}<h1 class="sec-h">Не удалось открыть профиль</h1><div class="empty-box"><p>${esc(error?.message||"Ошибка загрузки профиля")}</p><button class="btn" id="publicProfileBack" type="button">Назад</button></div>`;
     $("publicProfileBack").onclick=()=>history.back();
   }
