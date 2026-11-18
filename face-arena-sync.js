@@ -579,7 +579,7 @@
     }
 
     async deletePhoto(photoId) {
-      const photo = this.lastSnapshot?.photos?.find(p => p.id === photoId);
+      const photo = this.lastSnapshot?.photos?.find(p => String(p.id) === String(photoId));
       const { error } = await this.client.rpc("delete_arena_photo",{p_photo_id:photoId});
       if (error) throw error;
       if (photo?.status === "queued" && photo.objectPath) {
@@ -616,18 +616,28 @@
       for (const key of allowed) {
         if (typeof update[key] === "boolean") this.privacyOverrides.set(key, { value: update[key], updatedAt: update.updated_at });
       }
-      const { error } = await this.client.from("arena_user_settings").update(update).eq("user_id",userId);
-      if (error) {
+      const { data, error } = await this.client.from("arena_user_settings")
+        .upsert({ user_id: userId, ...update }, { onConflict: "user_id" })
+        .select("profile_public,history_public,security_notifications,updated_at")
+        .single();
+      if (error || !data) {
         for (const key of allowed) {
           const current = this.privacyOverrides.get(key);
           if (current?.updatedAt === update.updated_at) this.privacyOverrides.delete(key);
         }
-        throw error;
+        throw error || new Error("Сервер не подтвердил сохранение настроек.");
+      }
+      for (const key of allowed) {
+        if (typeof update[key] === "boolean" && data[key] !== update[key]) {
+          const current = this.privacyOverrides.get(key);
+          if (current?.updatedAt === update.updated_at) this.privacyOverrides.delete(key);
+          throw new Error("Сервер сохранил не все настройки приватности.");
+        }
       }
       // Update only the settings snapshot. A full arena reload here made toggles
       // wait for unrelated photos, battles, votes and history queries.
       if (this.user?.id === userId && this.lastSnapshot?.userId === userId) {
-        this.dispatch({ ...this.lastSnapshot, settings: { ...(this.lastSnapshot.settings || {}), ...update } });
+        this.dispatch({ ...this.lastSnapshot, settings: { ...(this.lastSnapshot.settings || {}), ...data } });
       }
     }
 
