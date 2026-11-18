@@ -59,10 +59,14 @@
         this.pendingReload = !!this.loading;
         this.stopClockSync();
         this.unsubscribe();
-        this.dispatch(null);
       }
       this.user = nextUser;
       this.ready = !!nextUser;
+      if (previousId !== nextId) {
+        // Privacy overrides belong to one account only; never carry them across sessions.
+        this.privacyOverrides.clear();
+        this.dispatch(null);
+      }
       this.renderAuthGate();
       if (!nextUser) {
         this.stopPhotoUrlRefresh();
