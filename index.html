@@ -2098,8 +2098,18 @@ window.addEventListener("face-arena-snapshot",event=>{
     arenaBattles=createDefaultArena();profile={name:"Вы",handle:"user"};
     updateArenaStats();
     const activeHash=location.hash.slice(1);
-    if(activeHash==="queue")renderQueue();
+    // Re-render the current route after an account change so private DOM and
+    // in-flight profile requests from the previous account cannot remain visible.
+    if(/^profile-[0-9a-f-]{36}$/i.test(activeHash))renderPublicProfile(decodeURIComponent(activeHash.slice(8)));
+    else if(/^battle-\d+$/.test(activeHash)){
+      $("bv").innerHTML=`<div class="big"><p class="note">${window.FaceArenaSync?.isOnline?.()?"Загружаем бой…":"Войдите в аккаунт, чтобы открыть бой."}</p></div>`;
+    }
+    else if(activeHash.startsWith("result-"))renderResult(decodeURIComponent(activeHash.slice(7)));
+    else if(activeHash==="results")renderResults();
+    else if(activeHash==="queue")renderQueue();
     else if(activeHash==="profile")renderProfile();
+    else if(activeHash==="settings")renderSettings();
+    else if(activeHash==="upload")renderUpload();
     else if(activeHash==="")renderArenaGrid();
     return;
   }
@@ -2116,7 +2126,12 @@ window.addEventListener("face-arena-snapshot",event=>{
   const hash=location.hash.slice(1);
   if(hash==="results")renderResults();
   else if(hash.startsWith("result-"))renderResult(decodeURIComponent(hash.slice(7)));
-  else if(/^battle-\d+$/.test(hash))bview(Number(hash.slice(7)));
+  else if(/^battle-\d+$/.test(hash)){
+    const battleId=Number(hash.slice(7));
+    const battle=arenaBattles.find(item=>item.id===battleId);
+    if(battle?.battleUid)bview(battleId);
+    else {location.hash="";renderArenaGrid();}
+  }
   else if(hash==="queue")renderQueue();
   else if(/^profile-[0-9a-f-]{36}$/i.test(hash))renderPublicProfile(decodeURIComponent(hash.slice(8)));
   else if(hash==="profile")renderProfile();
