@@ -20,6 +20,7 @@
       this.photoUrlRefreshTimer = null;
       this.photoUrlRefreshInFlight = false;
       this.photoUrlsExpiresAt = 0;
+      this.snapshotReloadTimer = null;
       this.photoUrlVisibilityHandler = () => {
         if (document.visibilityState === "visible" && this.isOnline() && Date.now() >= this.photoUrlsExpiresAt - 300000) {
           this.refreshPhotoUrls().catch(error => console.warn("[FACE ARENA signed photo URLs]", error));
@@ -57,6 +58,8 @@
         this.lastSnapshot = null;
         this.serverTimeOffset = 0;
         this.pendingReload = !!this.loading;
+        if (this.snapshotReloadTimer) clearTimeout(this.snapshotReloadTimer);
+        this.snapshotReloadTimer = null;
         this.stopClockSync();
         this.unsubscribe();
       }
@@ -360,6 +363,14 @@
       window.dispatchEvent(new CustomEvent(EVENT, { detail: snapshot }));
     }
 
+    scheduleSnapshotReload() {
+      if (this.snapshotReloadTimer) clearTimeout(this.snapshotReloadTimer);
+      this.snapshotReloadTimer = setTimeout(() => {
+        this.snapshotReloadTimer = null;
+        this.loadSnapshot();
+      }, 250);
+    }
+
     async preloadCriticalImages(snapshot) {
       // Only images in cards intersecting the initial viewport are critical.
       // All other battle images remain lazy and load naturally as the user scrolls.
@@ -479,8 +490,31 @@
         const signedPhotoRows = visiblePhotoRows.filter(p =>
           p.owner_id === requestUserId || ["matched", "champion", "completed"].includes(p.status)
         );
-        const signedPhotoUrls = await this.createPhotoSignedUrlMap(signedPhotoRows.map(p => p.object_path), 900);
-        this.photoUrlsExpiresAt = Date.now() + 900000;
+        // Reuse still-valid signed URLs for unchanged photo objects. A Realtime
+        // event often refreshes battle metadata only; minting new URLs here would
+        // change every <img src> and force the browser to fetch the same photos again.
+        const previousExpiry = this.photoUrlsExpiresAt;
+        const canReusePreviousUrls = previousExpiry > Date.now() + 60000;
+        const previousUrls = new Map();
+        if (canReusePreviousUrls) {
+          for (const photo of this.lastSnapshot?.photos || []) {
+            if (photo.objectPath && photo.dataUrl && photo.status !== "removed") {
+              previousUrls.set(photo.objectPath, photo.dataUrl);
+            }
+          }
+        }
+        const signedPhotoUrls = new Map(previousUrls);
+        const pathsToSign = signedPhotoRows
+          .map(p => p.object_path)
+          .filter(path => path && !signedPhotoUrls.has(path));
+        if (pathsToSign.length) {
+          const freshUrls = await this.createPhotoSignedUrlMap(pathsToSign, 900);
+          for (const [path, url] of freshUrls) signedPhotoUrls.set(path, url);
+        }
+        const reusedAnyUrl = signedPhotoRows.some(p => previousUrls.has(p.object_path));
+        this.photoUrlsExpiresAt = reusedAnyUrl
+          ? Math.min(previousExpiry, Date.now() + 900000)
+          : Date.now() + 900000;
         const photosById = new Map(photoRows.map(p => [p.id, {
           ...p, dataUrl: signedPhotoUrls.get(p.object_path) || ""
         }]));
@@ -722,18 +756,18 @@
       if (!this.isOnline()) return;
       if (!this.channel) {
         this.channel = this.client.channel("face-arena-live")
-          .on("postgres_changes", { event: "*", schema: "public", table: "arena_photos" }, () => this.loadSnapshot())
-          .on("postgres_changes", { event: "*", schema: "public", table: "arena_lanes" }, () => this.loadSnapshot())
-          .on("postgres_changes", { event: "*", schema: "public", table: "arena_battles" }, () => this.loadSnapshot())
-          .on("postgres_changes", { event: "*", schema: "public", table: "arena_battle_participants" }, () => this.loadSnapshot())
-          .on("postgres_changes", { event: "*", schema: "public", table: "arena_votes" }, () => this.loadSnapshot())
-          .on("postgres_changes", { event: "*", schema: "public", table: "arena_results" }, () => this.loadSnapshot())
-          .on("postgres_changes", { event: "*", schema: "public", table: "arena_profiles" }, () => this.loadSnapshot())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_photos" }, () => this.scheduleSnapshotReload())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_lanes" }, () => this.scheduleSnapshotReload())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_battles" }, () => this.scheduleSnapshotReload())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_battle_participants" }, () => this.scheduleSnapshotReload())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_votes" }, () => this.scheduleSnapshotReload())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_results" }, () => this.scheduleSnapshotReload())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_profiles" }, () => this.scheduleSnapshotReload())
           .subscribe();
       }
       if (!this.visibilityChannel) {
         this.visibilityChannel = this.client.channel("arena-visibility-events", { config: { private: true } })
-          .on("broadcast", { event: "visibility_changed" }, () => this.loadSnapshot())
+          .on("broadcast", { event: "visibility_changed" }, () => this.scheduleSnapshotReload())
           .subscribe(status => {
             if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
               console.warn("[FACE ARENA visibility realtime]", status);
