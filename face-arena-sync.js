@@ -500,17 +500,18 @@
           console.warn("[FACE ARENA TOP ARENA ranking]", error);
           return [];
         });
-        const [photoRes, profileRes, laneRes, battleRes, resultRes, notificationRes, topRankingRows] = await Promise.all([
+        const [photoRes, profileRes, laneRes, battleRes, resultRes, notificationRes, unreadCountRes, topRankingRows] = await Promise.all([
           this.fetchAllRows(() => c.from("arena_photos").select("id,owner_id,object_path,status,created_at").order("created_at", { ascending: true }).order("id", { ascending: true })),
           this.fetchAllRows(() => c.from("arena_profiles").select("user_id,display_name,handle,is_verified,avatar_path").order("user_id", { ascending: true })),
           c.from("arena_lanes").select("lane_id,champion_photo_id,challenger_photo_id").order("lane_id"),
           c.from("arena_battles").select("id,lane_id,opening,stage,started_at,confirm_until,stage_ends_at,finished_at").in("stage", ["waiting","voting"]),
           this.fetchAllRows(() => c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,no_contest,completed_at,is_hidden").order("completed_at", { ascending: false }).order("id", { ascending: false })),
           c.from("arena_notifications").select("id,kind,title,body,payload,created_at,read_at").eq("user_id", requestUserId).order("created_at", { ascending: false }).limit(50),
+          c.from("arena_notifications").select("id", { count: "exact", head: true }).eq("user_id", requestUserId).is("read_at", null),
           topRankingPromise
         ]);
         await clockSync;
-        for (const r of [photoRes,profileRes,laneRes,battleRes,resultRes,notificationRes]) if (r.error) throw r.error;
+        for (const r of [photoRes,profileRes,laneRes,battleRes,resultRes,notificationRes,unreadCountRes]) if (r.error) throw r.error;
 
         const activeBattleIds = battleRes.data.map(b => b.id);
         const [participantRes, voteRes] = activeBattleIds.length ? await Promise.all([
@@ -761,7 +762,7 @@
           userId: requestUserId,
           photos, arenaBattles, history, arenaResults, VOTED, MY, profiles: profileRes.data,
           notifications: notificationRes.data || [],
-          unreadNotificationsCount: (notificationRes.data || []).filter(item => !item.read_at).length,
+          unreadNotificationsCount: Number(unreadCountRes.count ?? (notificationRes.data || []).filter(item => !item.read_at).length) || 0,
           profile: { name: myProfile.display_name || this.user.user_metadata?.display_name || "Участник", handle: myProfile.handle || "user", isVerified: !!myProfile.is_verified, role: this.user.app_metadata?.role || "user", avatarPath: myProfile.avatar_path || null, avatarUrl: myProfile.avatar_path ? signedPhotoUrls.get(myProfile.avatar_path) || "" : "" },
           settings: snapshotSettings,
           participantStats,
