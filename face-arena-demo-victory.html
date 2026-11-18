@@ -1526,10 +1526,22 @@ async function renderPublicProfile(userId){
       return;
     }
     const photosList=Array.isArray(data.photos)?data.photos:[];
-    const photoCards=photosList.length?photosList.map(p=>`<div class="ph-card"><img src="${esc(window.FaceArenaSync.getPhotoPublicUrl(p.object_path))}" alt="Фото участника" loading="lazy"></div>`).join(""):`<div class="empty-box"><p>У участника пока нет опубликованных фотографий.</p></div>`;
+    const signedPhotoUrls=await window.FaceArenaSync.getPhotoSignedUrls(photosList.map(p=>p.object_path));
+    const photoUrl=p=>signedPhotoUrls.get(p.object_path)||"";
+    if(!window.__faceArenaSignedPhotoRefreshBound){
+      window.__faceArenaSignedPhotoRefreshBound=true;
+      window.addEventListener("face-arena-photo-urls-refreshed",event=>{
+        const urls=event.detail?.urls||{};
+        host.querySelectorAll("img[data-photo-path]").forEach(img=>{
+          const next=urls[img.dataset.photoPath];
+          if(next)img.src=next;else img.removeAttribute("src");
+        });
+      });
+    }
+    const photoCards=photosList.length?photosList.map(p=>`<div class="ph-card"><img data-photo-path="${esc(p.object_path)}" src="${esc(photoUrl(p))}" alt="Фото участника" loading="lazy"></div>`).join(""):`<div class="empty-box"><p>У участника пока нет опубликованных фотографий.</p></div>`;
     host.innerHTML=`
       ${hdrHTML()}<h1 class="sec-h">Профиль участника</h1><p class="sec-lead">Публичный профиль FACE ARENA</p>
-      <div class="pr-head"><div class="pr-av">${photosList[0]?`<img src="${esc(window.FaceArenaSync.getPhotoPublicUrl(photosList[0].object_path))}" alt="">`:""}</div>
+      <div class="pr-head"><div class="pr-av">${photosList[0]?`<img data-photo-path="${esc(photosList[0].object_path)}" src="${esc(photoUrl(photosList[0]))}" alt="">`:""}</div>
       <div><div class="pr-name">${esc(data.display_name||"Участник")}</div><div class="pr-handle">@${esc(data.handle||"user")}</div></div></div>
       <div class="pr-stats"><div class="stat"><b>${photosList.length}</b><span>Фото в профиле</span></div>
       <div class="stat"><b>${photosList.filter(p=>p.status==="completed"||p.status==="cancelled").length}</b><span>В архиве</span></div>
