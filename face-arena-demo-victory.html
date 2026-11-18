@@ -2263,46 +2263,13 @@ saveState();
   let adminClient = null;
   let adminBusy = false;
 
-  let adminUserId = null;
-  let adminCheckPromise = null;
-  let adminCheckedUserId = null;
+  const ADMIN_USER_ID = "ac86c2a7-9ec6-4016-a0d5-a6810578fd2c";
+  let adminClient = null;
+  let adminBusy = false;
   function isAdmin() {
-    return !!adminUserId && adminUserId === window.FaceArenaSync?.getUser?.()?.id;
-  }
-  async function refreshAdminAuthorization() {
-    const sync = window.FaceArenaSync;
-    const expectedUserId = sync?.getUser?.()?.id;
-    if (!sync?.isOnline?.() || !expectedUserId || !sync.client?.auth?.refreshSession || !sync.client?.auth?.getUser) {
-      adminUserId = null;
-      return false;
-    }
-    if (adminUserId === expectedUserId) return true;
-    if (adminCheckPromise) return adminCheckPromise;
-    adminCheckPromise = (async () => {
-      try {
-        // Role changes live in app_metadata; refresh the JWT before checking so an old
-        // browser session cannot keep stale role claims indefinitely.
-        const refreshed = await sync.client.auth.refreshSession();
-        if (refreshed.error) throw refreshed.error;
-        const { data, error } = await sync.client.auth.getUser();
-        const currentUser = sync.getUser?.();
-        const freshUser = data?.user;
-        const allowed = !error
-          && freshUser?.id === expectedUserId
-          && currentUser?.id === expectedUserId
-          && freshUser?.app_metadata?.role === "admin";
-        adminUserId = allowed ? expectedUserId : null;
-        adminCheckedUserId = expectedUserId;
-        if (allowed) injectAdminEntry();
-        return allowed;
-      } catch (error) {
-        console.warn("[FACE ARENA admin authorization]", error);
-        adminUserId = null;
-        adminCheckedUserId = expectedUserId;
-        return false;
-      }
-    })().finally(() => { adminCheckPromise = null; });
-    return adminCheckPromise;
+    // UI visibility is tied to the already verified Google-linked account.
+    // Every privileged operation is still authorized by the Edge Function.
+    return window.FaceArenaSync?.getUser?.()?.id === ADMIN_USER_ID;
   }
   function client() {
     if (!adminClient) adminClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2319,7 +2286,7 @@ saveState();
     return data;
   }
   async function showAdminPanel() {
-    if (!await refreshAdminAuthorization()) return;
+    if (!isAdmin()) return;
     const host = document.getElementById("sv");
     if (!host) return;
     document.getElementById("setMain").style.display = "none";
@@ -2426,12 +2393,13 @@ saveState();
   function injectAdminEntry() {
     const host = document.getElementById("sv");
     const menu = host?.querySelector(".settings-menu-list");
-    if (!host || !menu || menu.querySelector("[data-fa-admin-entry]")) return;
+    if (!host || !menu) return;
+    const existing = menu.querySelector("[data-fa-admin-entry]");
     if (!isAdmin()) {
-      const userId = window.FaceArenaSync?.getUser?.()?.id;
-      if (userId && adminCheckedUserId !== userId) refreshAdminAuthorization();
+      existing?.remove();
       return;
     }
+    if (existing) return;
     const item = document.createElement("li");
     item.dataset.faAdminEntry = "true";
     item.innerHTML = '<button type="button" class="menu-item" style="color:#65a4ff" data-fa-admin-open>Администрирование</button>';
@@ -2443,12 +2411,10 @@ saveState();
     if (!host) return;
     const observer = new MutationObserver(injectAdminEntry);
     observer.observe(host, { childList: true, subtree: true });
-    window.addEventListener("face-arena-snapshot", () => {
-      if (!isAdmin()) refreshAdminAuthorization();
-      injectAdminEntry();
-    });
-    window.addEventListener("face-arena-authenticated-boot-start", refreshAdminAuthorization);
-    refreshAdminAuthorization();
+    window.addEventListener("face-arena-snapshot", injectAdminEntry);
+    window.addEventListener("face-arena-authenticated-boot-start", injectAdminEntry);
+    window.addEventListener("face-arena-authenticated-boot-stop", injectAdminEntry);
+    injectAdminEntry();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
   else start();
