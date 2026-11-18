@@ -483,7 +483,7 @@
       const requestGeneration = this.authGeneration;
       try {
         const c = this.client;
-        let settingsRes = await c.from("arena_user_settings").select("profile_public,history_public,security_notifications,updated_at").eq("user_id", requestUserId).maybeSingle();
+        let settingsRes = await c.from("arena_user_settings").select("profile_public,history_public,security_notifications,battle_notifications,updated_at").eq("user_id", requestUserId).maybeSingle();
         if (settingsRes.error) throw settingsRes.error;
         if (!settingsRes.data) {
           settingsRes = await c.from("arena_user_settings").insert({ user_id: requestUserId }).select("profile_public,history_public,security_notifications,updated_at").single();
@@ -500,16 +500,17 @@
           console.warn("[FACE ARENA TOP ARENA ranking]", error);
           return [];
         });
-        const [photoRes, profileRes, laneRes, battleRes, resultRes, topRankingRows] = await Promise.all([
+        const [photoRes, profileRes, laneRes, battleRes, resultRes, notificationRes, topRankingRows] = await Promise.all([
           this.fetchAllRows(() => c.from("arena_photos").select("id,owner_id,object_path,status,created_at").order("created_at", { ascending: true }).order("id", { ascending: true })),
           this.fetchAllRows(() => c.from("arena_profiles").select("user_id,display_name,handle,is_verified,avatar_path").order("user_id", { ascending: true })),
           c.from("arena_lanes").select("lane_id,champion_photo_id,challenger_photo_id").order("lane_id"),
           c.from("arena_battles").select("id,lane_id,opening,stage,started_at,confirm_until,stage_ends_at,finished_at").in("stage", ["waiting","voting"]),
           this.fetchAllRows(() => c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,no_contest,completed_at,is_hidden").order("completed_at", { ascending: false }).order("id", { ascending: false })),
+          c.from("arena_notifications").select("id,kind,title,body,payload,created_at,read_at").eq("user_id", requestUserId).order("created_at", { ascending: false }).limit(50),
           topRankingPromise
         ]);
         await clockSync;
-        for (const r of [photoRes,profileRes,laneRes,battleRes,resultRes]) if (r.error) throw r.error;
+        for (const r of [photoRes,profileRes,laneRes,battleRes,resultRes,notificationRes]) if (r.error) throw r.error;
 
         const activeBattleIds = battleRes.data.map(b => b.id);
         const [participantRes, voteRes] = activeBattleIds.length ? await Promise.all([
@@ -748,7 +749,7 @@
         // Keep a just-committed local privacy value if this snapshot read began
         // before Supabase returned the updated row; newer remote rows win.
         const snapshotSettings = { ...settingsRes.data };
-        for (const key of ["profile_public","history_public","security_notifications"]) {
+        for (const key of ["profile_public","history_public","security_notifications","battle_notifications"]) {
           const local = this.privacyOverrides.get(key);
           if (!local) continue;
           const serverUpdatedAt = Date.parse(snapshotSettings.updated_at || 0) || 0;
@@ -759,6 +760,8 @@
         const snapshot = {
           userId: requestUserId,
           photos, arenaBattles, history, arenaResults, VOTED, MY, profiles: profileRes.data,
+          notifications: notificationRes.data || [],
+          unreadNotificationsCount: (notificationRes.data || []).filter(item => !item.read_at).length,
           profile: { name: myProfile.display_name || this.user.user_metadata?.display_name || "Участник", handle: myProfile.handle || "user", isVerified: !!myProfile.is_verified, role: this.user.app_metadata?.role || "user", avatarPath: myProfile.avatar_path || null, avatarUrl: myProfile.avatar_path ? signedPhotoUrls.get(myProfile.avatar_path) || "" : "" },
           settings: snapshotSettings,
           participantStats,
@@ -801,6 +804,7 @@
           .on("postgres_changes", { event: "*", schema: "public", table: "arena_battle_participants" }, () => this.scheduleSnapshotReload())
           .on("postgres_changes", { event: "*", schema: "public", table: "arena_votes" }, () => this.scheduleSnapshotReload())
           .on("postgres_changes", { event: "*", schema: "public", table: "arena_results" }, () => this.scheduleSnapshotReload())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_notifications", filter: "user_id=eq." + this.user.id }, () => this.scheduleSnapshotReload())
           .on("postgres_changes", { event: "*", schema: "public", table: "arena_profiles" }, () => this.scheduleSnapshotReload())
           .subscribe();
       }
@@ -1013,7 +1017,7 @@
     async updatePrivacySettings(patch) {
       if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
       const userId = this.user.id;
-      const allowed = ["profile_public","history_public","security_notifications"];
+      const allowed = ["profile_public","history_public","security_notifications","battle_notifications"];
       const update = {};
       for (const key of allowed) {
         if (typeof patch?.[key] === "boolean") {
@@ -1053,6 +1057,51 @@
       if (typeof update.profile_public === "boolean") {
         this.refreshTopArenaRanking().catch(error => console.warn("[FACE ARENA TOP ARENA privacy refresh]", error));
       }
+    }
+
+    async markNotificationRead(notificationId) {
+      if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
+      const id = String(notificationId || "");
+      if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("Некорректное уведомление.");
+      const userId = this.user.id;
+      const readAt = new Date().toISOString();
+      const { error } = await this.client.from("arena_notifications")
+        .update({ read_at: readAt })
+        .eq("id", id)
+        .eq("user_id", userId)
+        .is("read_at", null);
+      if (error) throw error;
+      const snapshot = this.lastSnapshot;
+      if (this.user?.id === userId && snapshot?.userId === userId) {
+        const notifications = (snapshot.notifications || []).map(item =>
+          item.id === id ? { ...item, read_at: readAt } : item
+        );
+        this.dispatch({
+          ...snapshot,
+          notifications,
+          unreadNotificationsCount: notifications.filter(item => !item.read_at).length
+        });
+      }
+      return true;
+    }
+
+    async markAllNotificationsRead() {
+      if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
+      const userId = this.user.id;
+      const readAt = new Date().toISOString();
+      const { error } = await this.client.from("arena_notifications")
+        .update({ read_at: readAt })
+        .eq("user_id", userId)
+        .is("read_at", null);
+      if (error) throw error;
+      const snapshot = this.lastSnapshot;
+      if (this.user?.id === userId && snapshot?.userId === userId) {
+        const notifications = (snapshot.notifications || []).map(item =>
+          item.read_at ? item : { ...item, read_at: readAt }
+        );
+        this.dispatch({ ...snapshot, notifications, unreadNotificationsCount: 0 });
+      }
+      return true;
     }
 
     async getPublicProfile(userId) {
