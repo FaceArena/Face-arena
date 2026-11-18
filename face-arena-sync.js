@@ -361,37 +361,74 @@
     }
 
     async preloadCriticalImages(snapshot) {
-      // Only preload images that are actually visible on the first arena screen.
-      // TOP ARENA and history images are intentionally left for their own screens.
-      const urls = [...new Set([
-        ...(snapshot.arenaBattles || []).flatMap(b => [b.redImg, b.blueImg, b.championImg])
-      ].filter(url => typeof url === "string" && /^https?:/i.test(url)))].slice(0, 32);
-      if (!urls.length) return;
-      const loads = urls.map(url => new Promise(resolve => {
-        const img = new Image();
-        const done = async ok => {
-          if (ok && typeof img.decode === "function") {
-            try { await img.decode(); } catch (_) {}
+      // The snapshot event renders the arena synchronously before this method runs.
+      // Wait for the real <img> elements used by the battle cards, not detached
+      // Image() objects whose readiness can differ from what Safari paints.
+      const images = Array.from(document.querySelectorAll("#av .grid .card .duel img"));
+      const total = images.length;
+      const emit = (loaded, failed, status) => {
+        const progress = total ? 0.18 + 0.78 * ((loaded + failed) / total) : 0.96;
+        window.dispatchEvent(new CustomEvent("face-arena-loader-progress", {
+          detail: { progress, loaded, failed, total, status }
+        }));
+      };
+      emit(0, 0, "Подтягиваем фотографии");
+      if (!total) {
+        emit(0, 0, "Баттлы готовы");
+        return;
+      }
+      let loaded = 0, failed = 0;
+      const waitForImage = image => new Promise(resolve => {
+        let settled = false, timeoutId;
+        const finish = async ok => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeoutId);
+          image.removeEventListener("load", onLoad);
+          image.removeEventListener("error", onError);
+          if (ok && typeof image.decode === "function") {
+            try {
+              await Promise.race([
+                image.decode(),
+                new Promise(done => setTimeout(done, 1200))
+              ]);
+            } catch (_) {}
           }
-          resolve(ok);
+          if (ok) loaded++; else failed++;
+          const status = failed
+            ? "Фотографии " + (loaded + failed) + "/" + total
+            : "Загружаем фотографии " + (loaded + failed) + "/" + total;
+          emit(loaded, failed, status);
+          resolve();
         };
-        img.onload = () => done(true);
-        img.onerror = () => done(false);
-        img.src = url;
-        if (img.complete) done(img.naturalWidth > 0);
-      }));
-      // Cards are already rendered behind the loader. Wait for visible arena photos,
-      // but never block entry forever if a remote object is unavailable or very slow.
-      await Promise.race([
-        Promise.allSettled(loads),
-        new Promise(resolve => setTimeout(resolve, 8000))
-      ]);
+        const onLoad = () => finish(image.naturalWidth > 0);
+        const onError = () => finish(false);
+        image.loading = "eager";
+        image.setAttribute("fetchpriority", "high");
+        image.decoding = "async";
+        image.addEventListener("load", onLoad, { once: true });
+        image.addEventListener("error", onError, { once: true });
+        if (image.complete) {
+          finish(image.naturalWidth > 0);
+          return;
+        }
+        timeoutId = setTimeout(() => finish(false), 18000);
+      });
+      // The loader has a hard safety cap, but normally finishes from actual
+      // image load/decode events. Failed images count as settled, not as success.
+      await Promise.all(images.map(waitForImage));
+      emit(loaded, failed, failed
+        ? "Арена готова · недоступно фото: " + failed
+        : "Все фотографии загружены");
     }
 
     async loadSnapshot() {
       if (!this.isOnline()) return this.lastSnapshot;
       if (this.loading) { this.pendingReload = true; return this.lastSnapshot; }
       this.loading = true;
+      window.dispatchEvent(new CustomEvent("face-arena-loader-progress", {
+        detail: { progress: 0.08, status: "Загружаем арену" }
+      }));
       const requestUserId = this.user.id;
       const requestGeneration = this.authGeneration;
       try {
@@ -654,6 +691,9 @@
         // Render the battle cards immediately underneath the boot screen, then keep
         // the screen covered until their actual images have loaded or timed out.
         this.dispatch(snapshot);
+        window.dispatchEvent(new CustomEvent("face-arena-loader-progress", {
+          detail: { progress: 0.18, status: "Баттлы получены · загружаем фотографии" }
+        }));
         if (!this.initialArenaImagesReadyStarted) {
           this.initialArenaImagesReadyStarted = true;
           this.preloadCriticalImages(snapshot).catch(error => console.warn("[FACE ARENA image preload]", error))
