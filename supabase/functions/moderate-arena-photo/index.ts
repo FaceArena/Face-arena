@@ -115,14 +115,14 @@ Deno.serve(async (req: Request) => {
         messages: [
           {
             role: "system",
-            content: "You are a cautious image policy reviewer for a public photo-voting game. Assess only visible image content; never identify people or infer protected traits. Allow ordinary clothed portraits, fashion, sports, fitness, and non-explicit beach/swimwear photos. Reject only unmistakable explicit sexual activity, exposed intimate nudity, graphic real-world violence/gore, or clear hateful extremist propaganda. Send ambiguous, borderline, low-quality, promotional graphics, QR codes, and spam to manual review. Be conservative: uncertainty means review, not rejection. Output one JSON object only, with exactly these keys: decision (string: allow, reject, or review), confidence (number from 0 to 1), categories (array of short strings), reason (short neutral Russian string). Always include all four fields, even when the decision is review. Do not include markdown or any text outside the JSON object."
+            content: "You are a strict binary photo classifier for FACE ARENA. Decide only whether the image is a real photograph containing at least one clearly visible real human person. ALLOW only if a real human person is clearly visible and the image is a genuine photograph. REJECT if there is no person, the subject is an animal/object/landscape, the image is a cartoon, anime, illustration, 3D render, avatar, drawing, AI-generated fictional character, meme, logo, or if you cannot confidently verify a real person in a real photo. Do not identify the person or infer any protected traits. Also reject explicit sexual activity, exposed intimate nudity, or graphic real-world violence. There is no manual review outcome. Return one JSON object only with exactly these fields: person_present (boolean), is_illustration (boolean), decision (string: allow or reject), confidence (number 0 to 1), reason (short neutral Russian string). Be conservative: uncertainty means reject. Do not include markdown or text outside JSON."
           },
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: "Check whether this photo is suitable for FACE ARENA public battles. Choose allow only when clearly suitable; reject only for an unmistakable severe violation; otherwise choose review. Give a short neutral reason in Russian."
+                text: "Is at least one real human person clearly visible in this genuine photograph? Reject cartoons, anime, drawings, illustrations, 3D renders, avatars, and images without a person. Return the required binary JSON decision in Russian."
               },
               {
                 type: "image_url",
@@ -160,11 +160,12 @@ Deno.serve(async (req: Request) => {
     let moderation: any = null;
     try { moderation = JSON.parse(jsonCandidate); } catch { moderation = null; }
     const valid = moderation &&
-      ["allow", "reject", "review"].includes(moderation.decision) &&
-      (moderation.confidence === undefined ||
-        (typeof moderation.confidence === "number" && moderation.confidence >= 0 && moderation.confidence <= 1)) &&
-      (moderation.categories === undefined || Array.isArray(moderation.categories)) &&
-      (moderation.reason === undefined || typeof moderation.reason === "string");
+      ["allow", "reject"].includes(moderation.decision) &&
+      typeof moderation.person_present === "boolean" &&
+      typeof moderation.is_illustration === "boolean" &&
+      typeof moderation.confidence === "number" &&
+      moderation.confidence >= 0 && moderation.confidence <= 1 &&
+      typeof moderation.reason === "string";
     if (!valid) {
       console.error("[moderate-arena-photo] Invalid moderation response", {
         contentType: typeof raw,
@@ -176,16 +177,17 @@ Deno.serve(async (req: Request) => {
       return reply({ error: "Не удалось проверить фотографию. Попробуйте ещё раз." }, 503);
     }
 
-    const confidence = typeof moderation.confidence === "number" ? moderation.confidence : 0.5;
-    const categories = Array.isArray(moderation.categories)
-      ? moderation.categories.filter((item: unknown) => typeof item === "string").slice(0, 12)
-      : [];
-    const reason = typeof moderation.reason === "string" && moderation.reason.trim()
-      ? moderation.reason.trim().slice(0, 500)
-      : "Требуется дополнительная проверка";
-    let decision = moderation.decision as "allow" | "reject" | "review";
-    // Missing/low confidence always goes to manual review, never automatic approval.
-    if (confidence < 0.85) decision = "review";
+    const confidence = moderation.confidence;
+    const reason = moderation.reason.trim().slice(0, 500) || "Фотография не прошла проверку";
+    // Binary rule: only a clearly detected real person in a genuine photo is allowed.
+    // Any uncertainty, illustration, or missing person is rejected; no manual-review path.
+    const decision: "allow" | "reject" =
+      moderation.decision === "allow" &&
+      moderation.person_present === true &&
+      moderation.is_illustration === false &&
+      confidence >= 0.85
+        ? "allow"
+        : "reject";
 
     const id = crypto.randomUUID();
     if (decision === "reject") {
@@ -215,28 +217,6 @@ Deno.serve(async (req: Request) => {
       return reply({ decision: "allow", photo_id: photoId, object_path: objectPath });
     }
 
-    const objectPath = `moderation-pending/${userId}/${id}.${detected.ext}`;
-    const { error: uploadError } = await admin.storage.from("arena-photos")
-      .upload(objectPath, bytes, { contentType: detected.mime, upsert: false, cacheControl: "60" });
-    if (uploadError) throw uploadError;
-
-    const { error: reviewError } = await admin.from("arena_photo_moderation").insert({
-      owner_id: userId,
-      object_path: objectPath,
-      decision: "pending",
-      reason,
-      categories,
-      confidence,
-    });
-    if (reviewError) {
-      await admin.storage.from("arena-photos").remove([objectPath]);
-      throw reviewError;
-    }
-
-    return reply({
-      decision: "review",
-      message: "Фотография отправлена администратору на проверку. После одобрения она появится в очереди.",
-    }, 202);
   } catch (error) {
     console.error("[moderate-arena-photo]", error instanceof Error ? error.message : "Unknown error");
     return reply({ error: "Не удалось обработать фотографию. Попробуйте ещё раз позже." }, 500);
