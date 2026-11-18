@@ -120,9 +120,11 @@
       lastPlayed.set("countdown",now);return true;
     }catch(_){return false}
   }
-\n  function playNow(name,force){
+
+  function playNow(name,force){
     if(!force&&(!settings.enabled||settings.volume===0))return false;
-    if(name==="countdown")return playCountdownTick(force);\n    if(!["victory","champion","defeat","titleLost"].includes(name))return false;
+    if(name==="countdown")return playCountdownTick(force);
+    if(!["victory","champion","defeat","titleLost"].includes(name))return false;
     const now=Date.now();
     if(!force&&now-(lastPlayed.get(name)||0)<(COOLDOWN[name]||900))return false;
     const ctx=getContext();if(!ctx||ctx.state!=="running")return false;
