@@ -141,6 +141,12 @@ test("opening battle assigns two different participants and winner becomes first
  assert.equal(result.state.lanes[0].championPhotoId,"a");
  assert.equal(result.state.photos.find(x=>x.id==="a").status,"champion");
  assert.equal(result.state.photos.find(x=>x.id==="b").status,"completed");
+ assert.equal(result.state.participantStats.a.wins,0);
+ assert.equal(result.state.participantStats.a.losses,0);
+ assert.equal(result.state.participantStats.a.currentStreak,0);
+ assert.equal(result.state.participantStats.b.wins,0);
+ assert.equal(result.state.participantStats.b.losses,0);
+ assert.equal(result.state.participantStats.b.currentStreak,0);
  assert.equal(result.state.history.length,2);
 });
 test("opening draw creates no champion and archives both participants",()=>{
