@@ -456,9 +456,25 @@
         await this.client.storage.from("arena-photos").remove([path]);
         throw enqueue.error;
       }
-      // Do not keep the upload UI waiting for the coordinator wake-up and full snapshot.
-      // Realtime will deliver the queue update; this refresh is a background fallback.
-      this.wakeSafely().finally(() => this.loadSnapshot());
+      // Show the accepted photo immediately; the authoritative snapshot will reconcile it.
+      const publicUrl = this.client.storage.from("arena-photos").getPublicUrl(path).data.publicUrl;
+      const current = this.lastSnapshot || {};
+      const optimisticPhoto = {
+        id: enqueue.data, ownerId: this.user.id, userId: this.user.id,
+        name: current.profile?.name || "Вы", handle: current.profile?.handle || "",
+        dataUrl: publicUrl, objectPath: path, status: "queued", queuedAt: Date.now()
+      };
+      this.dispatch({
+        ...current,
+        photos: [...(current.photos || []).filter(photo => String(photo.id) !== String(enqueue.data)), optimisticPhoto]
+      });
+      // Refresh the queue immediately and wake the coordinator in parallel.
+      // Do not make the upload button wait for either background operation.
+      this.loadSnapshot();
+      this.wakeSafely().then(result => {
+        if (!result.ok) console.warn("[FACE ARENA coordinator wake after upload]", result.error);
+        this.loadSnapshot();
+      });
       return { photoId: enqueue.data, coordinatorAvailable: null, coordinatorError: null };
     }
 
