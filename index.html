@@ -2263,8 +2263,38 @@ saveState();
   let adminClient = null;
   let adminBusy = false;
 
+  let adminUserId = null;
+  let adminCheckPromise = null;
   function isAdmin() {
-    return window.FaceArenaSync?.getUser?.()?.app_metadata?.role === "admin";
+    return !!adminUserId && adminUserId === window.FaceArenaSync?.getUser?.()?.id;
+  }
+  async function refreshAdminAuthorization() {
+    const sync = window.FaceArenaSync;
+    const expectedUserId = sync?.getUser?.()?.id;
+    if (!sync?.isOnline?.() || !expectedUserId || !sync.client?.auth?.getUser) {
+      adminUserId = null;
+      return false;
+    }
+    if (adminCheckPromise) return adminCheckPromise;
+    adminCheckPromise = (async () => {
+      try {
+        // Fetch the current user from Supabase Auth instead of trusting possibly stale JWT claims.
+        const { data, error } = await sync.client.auth.getUser();
+        const currentUser = sync.getUser?.();
+        const freshUser = data?.user;
+        const allowed = !error
+          && freshUser?.id === expectedUserId
+          && currentUser?.id === expectedUserId
+          && freshUser?.app_metadata?.role === "admin";
+        adminUserId = allowed ? expectedUserId : null;
+        if (allowed) injectAdminEntry();
+        return allowed;
+      } catch (_) {
+        adminUserId = null;
+        return false;
+      }
+    })().finally(() => { adminCheckPromise = null; });
+    return adminCheckPromise;
   }
   function client() {
     if (!adminClient) adminClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2280,8 +2310,8 @@ saveState();
     if (data?.error) throw new Error(data.error);
     return data;
   }
-  function showAdminPanel() {
-    if (!isAdmin()) return;
+  async function showAdminPanel() {
+    if (!await refreshAdminAuthorization()) return;
     const host = document.getElementById("sv");
     if (!host) return;
     document.getElementById("setMain").style.display = "none";
@@ -2401,8 +2431,12 @@ saveState();
     if (!host) return;
     const observer = new MutationObserver(injectAdminEntry);
     observer.observe(host, { childList: true, subtree: true });
-    window.addEventListener("face-arena-snapshot", injectAdminEntry);
-    injectAdminEntry();
+    window.addEventListener("face-arena-snapshot", () => {
+      if (!isAdmin()) refreshAdminAuthorization();
+      injectAdminEntry();
+    });
+    window.addEventListener("face-arena-authenticated-boot-start", refreshAdminAuthorization);
+    refreshAdminAuthorization();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
   else start();
