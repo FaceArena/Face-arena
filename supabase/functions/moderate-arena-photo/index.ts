@@ -151,10 +151,14 @@ Deno.serve(async (req: Request) => {
       : Array.isArray(raw)
         ? raw.map((part: any) => typeof part?.text === "string" ? part.text : "").join("\\n").trim()
         : "";
-    const jsonText = rawText.replace(/^\`\`\`(?:json)?\\s*/i, "").replace(/\\s*\`\`\`$/, "");
-    const objectMatch = jsonText.match(/\\{[\\s\\S]*\\}/);
+    const jsonText = rawText.replaceAll("```json", "").replaceAll("```", "").trim();
+    const objectStart = jsonText.indexOf("{");
+    const objectEnd = jsonText.lastIndexOf("}");
+    const jsonCandidate = objectStart >= 0 && objectEnd > objectStart
+      ? jsonText.slice(objectStart, objectEnd + 1)
+      : jsonText;
     let moderation: any = null;
-    try { moderation = JSON.parse(objectMatch?.[0] || jsonText); } catch { moderation = null; }
+    try { moderation = JSON.parse(jsonCandidate); } catch { moderation = null; }
     const valid = moderation &&
       ["allow", "reject", "review"].includes(moderation.decision) &&
       (moderation.confidence === undefined ||
