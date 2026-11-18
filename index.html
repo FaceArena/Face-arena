@@ -1390,7 +1390,7 @@ function renderUpload(){
         <div class="ph-card ${p.side?`frame-${p.side}`:""}"><img src="${p.dataUrl}" alt="">
           ${p.status==="queued"?`<button class="rm" data-id="${p.id}">×</button>`:""}
         </div>`).join("")}</div>
-      <p class="limit-note" style="text-align:left">Удалить можно фото, которое ещё в очереди.</p>`:`<p class="limit-note" style="text-align:left">${t("upEmptyMy")}</p>`}`;
+      <p class="limit-note" style="text-align:left">Удалить можно только фото, которые ещё ожидают участия в баттле.</p>`:`<p class="limit-note" style="text-align:left">${t("upEmptyMy")}</p>`}`;
 
   $("uv").innerHTML=`
     ${hdrHTML()}
