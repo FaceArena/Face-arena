@@ -227,6 +227,12 @@
       const requestGeneration = this.authGeneration;
       try {
         const c = this.client;
+        let settingsRes = await c.from("arena_user_settings").select("profile_public,history_public,security_notifications,updated_at").eq("user_id", requestUserId).maybeSingle();
+        if (settingsRes.error) throw settingsRes.error;
+        if (!settingsRes.data) {
+          settingsRes = await c.from("arena_user_settings").insert({ user_id: requestUserId }).select("profile_public,history_public,security_notifications,updated_at").single();
+          if (settingsRes.error) throw settingsRes.error;
+        }
         const clockSync = this.syncServerClock().catch(error => {
           console.warn("[FACE ARENA server clock]", error);
           return false;
@@ -439,6 +445,7 @@
           userId: requestUserId,
           photos, arenaBattles, history, arenaResults, VOTED, MY, profiles: profileRes.data,
           profile: { name: myProfile.display_name || this.user.user_metadata?.display_name || "Участник", handle: myProfile.handle || "user" },
+          settings: settingsRes.data,
           participantStats
         };
         this.dispatch(snapshot);
@@ -578,6 +585,25 @@
       }).eq("user_id",this.user.id);
       if (error) throw error;
       await this.loadSnapshot();
+    }
+
+    async updatePrivacySettings(patch) {
+      if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
+      const allowed = ["profile_public","history_public","security_notifications"];
+      const update = {};
+      for (const key of allowed) if (typeof patch?.[key] === "boolean") update[key] = patch[key];
+      if (!Object.keys(update).length) return;
+      update.updated_at = new Date().toISOString();
+      const { error } = await this.client.from("arena_user_settings").update(update).eq("user_id",this.user.id);
+      if (error) throw error;
+      await this.loadSnapshot();
+    }
+
+    async revokeOtherSessions() {
+      if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
+      const { error } = await this.client.auth.signOut({ scope: "others" });
+      if (error) throw error;
+      return true;
     }
 
     async signOut() {
