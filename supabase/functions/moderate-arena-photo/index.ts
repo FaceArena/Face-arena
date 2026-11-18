@@ -107,7 +107,7 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         model: "qwen/qwen3.8-27b",
         temperature: 0,
-        max_completion_tokens: 220,
+        max_completion_tokens: 600,
         reasoning_effort: "none",
         // Qwen 3.8 supports JSON Object Mode, but Groq strict JSON Schema mode
         // is currently limited to GPT-OSS models. Keep schema validation server-side.
@@ -115,7 +115,7 @@ Deno.serve(async (req: Request) => {
         messages: [
           {
             role: "system",
-            content: "You are a cautious image policy reviewer for a public photo-voting game. Assess only visible image content, never identify people or infer protected traits. Allow ordinary clothed portraits, fashion, sports, fitness, and non-explicit beach/swimwear photos. Reject only clearly visible explicit sexual activity, exposed intimate nudity, or graphic real-world violence/gore, and clear hateful extremist propaganda. Send ambiguous, borderline, low-quality, or uncertain cases to manual review. Obvious promotional graphics, QR codes, and spam should be sent to manual review unless clearly disallowed. Be conservative: uncertainty means review, not rejection. Return only the required JSON."
+            content: "You are a cautious image policy reviewer for a public photo-voting game. Assess only visible image content; never identify people or infer protected traits. Allow ordinary clothed portraits, fashion, sports, fitness, and non-explicit beach/swimwear photos. Reject only unmistakable explicit sexual activity, exposed intimate nudity, graphic real-world violence/gore, or clear hateful extremist propaganda. Send ambiguous, borderline, low-quality, promotional graphics, QR codes, and spam to manual review. Be conservative: uncertainty means review, not rejection. Output one JSON object only, with exactly these keys: decision (string: allow, reject, or review), confidence (number from 0 to 1), categories (array of short strings), reason (short neutral Russian string). Example: {\\"decision\\":\\"allow\\",\\"confidence\\":0.95,\\"categories\\":[],\\"reason\\":\\"Обычный портрет, нарушений не видно\\"}. Do not include markdown or any text outside the JSON object."
           },
           {
             role: "user",
@@ -142,22 +142,46 @@ Deno.serve(async (req: Request) => {
     }
 
     const groqData = await groqResponse.json();
-    const raw = groqData?.choices?.[0]?.message?.content;
-    let moderation: any;
-    try { moderation = JSON.parse(raw); } catch { moderation = null; }
+    const message = groqData?.choices?.[0]?.message;
+    const raw = message?.content;
+    // Some vision-model responses include surrounding whitespace or fenced JSON.
+    // Accept only a parseable JSON object; never infer an allow decision from malformed output.
+    const rawText = typeof raw === "string"
+      ? raw.trim()
+      : Array.isArray(raw)
+        ? raw.map((part: any) => typeof part?.text === "string" ? part.text : "").join("\\n").trim()
+        : "";
+    const jsonText = rawText.replace(/^\`\`\`(?:json)?\\s*/i, "").replace(/\\s*\`\`\`$/, "");
+    const objectMatch = jsonText.match(/\\{[\\s\\S]*\\}/);
+    let moderation: any = null;
+    try { moderation = JSON.parse(objectMatch?.[0] || jsonText); } catch { moderation = null; }
     const valid = moderation &&
       ["allow", "reject", "review"].includes(moderation.decision) &&
-      typeof moderation.confidence === "number" &&
-      moderation.confidence >= 0 && moderation.confidence <= 1 &&
-      Array.isArray(moderation.categories) &&
-      typeof moderation.reason === "string";
+      (moderation.confidence === undefined ||
+        (typeof moderation.confidence === "number" && moderation.confidence >= 0 && moderation.confidence <= 1)) &&
+      (moderation.categories === undefined || Array.isArray(moderation.categories)) &&
+      (moderation.reason === undefined || typeof moderation.reason === "string");
     if (!valid) {
-      console.error("[moderate-arena-photo] Invalid moderation response");
+      console.error("[moderate-arena-photo] Invalid moderation response", {
+        contentType: typeof raw,
+        contentLength: rawText.length,
+        finishReason: groqData?.choices?.[0]?.finish_reason ?? "unknown",
+        hasMessage: Boolean(message),
+        hasRefusal: Boolean(message?.refusal),
+      });
       return reply({ error: "Не удалось проверить фотографию. Попробуйте ещё раз." }, 503);
     }
 
+    const confidence = typeof moderation.confidence === "number" ? moderation.confidence : 0.5;
+    const categories = Array.isArray(moderation.categories)
+      ? moderation.categories.filter((item: unknown) => typeof item === "string").slice(0, 12)
+      : [];
+    const reason = typeof moderation.reason === "string" && moderation.reason.trim()
+      ? moderation.reason.trim().slice(0, 500)
+      : "Требуется дополнительная проверка";
     let decision = moderation.decision as "allow" | "reject" | "review";
-    if (moderation.confidence < 0.85) decision = "review";
+    // Missing/low confidence always goes to manual review, never automatic approval.
+    if (confidence < 0.85) decision = "review";
 
     const id = crypto.randomUUID();
     if (decision === "reject") {
@@ -196,9 +220,9 @@ Deno.serve(async (req: Request) => {
       owner_id: userId,
       object_path: objectPath,
       decision: "pending",
-      reason: moderation.reason.slice(0, 500),
-      categories: moderation.categories,
-      confidence: moderation.confidence,
+      reason,
+      categories,
+      confidence,
     });
     if (reviewError) {
       await admin.storage.from("arena-photos").remove([objectPath]);
