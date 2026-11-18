@@ -30,8 +30,14 @@ Deno.serve(async (req: Request) => {
     const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const body = await req.json().catch(() => ({}));
     if (body?.action === "list") {
-      const { data: photos, error } = await admin.from("arena_photos").select("id,owner_id,object_path,status,created_at").order("created_at", { ascending: false }).limit(5000);
-      if (error) throw error;
+      const photos: any[] = [];
+      for (let offset = 0; ; offset += 1000) {
+        const { data, error } = await admin.from("arena_photos").select("id,owner_id,object_path,status,created_at")
+          .order("created_at", { ascending: false }).range(offset, offset + 999);
+        if (error) throw error;
+        photos.push(...(data || []));
+        if (!data || data.length < 1000) break;
+      }
       const ownerIds = [...new Set((photos || []).map((p: any) => p.owner_id))];
       const { data: profiles, error: profileError } = ownerIds.length
         ? await admin.from("arena_profiles").select("user_id,display_name,handle").in("user_id", ownerIds)
@@ -61,8 +67,14 @@ Deno.serve(async (req: Request) => {
 
     if (body?.action === "delete_all") {
       if (body?.confirmation !== "DELETE_ALL_ARENA_PHOTOS") return reply({ error: "Explicit confirmation required" }, 400);
-      const { data: photos, error: listError } = await admin.from("arena_photos").select("id,object_path").order("created_at", { ascending: true }).limit(5000);
-      if (listError) throw listError;
+      const photos: any[] = [];
+      for (let offset = 0; ; offset += 1000) {
+        const { data, error } = await admin.from("arena_photos").select("id,object_path")
+          .order("created_at", { ascending: true }).range(offset, offset + 999);
+        if (error) throw error;
+        photos.push(...(data || []));
+        if (!data || data.length < 1000) break;
+      }
       let deleted = 0;
       for (let i = 0; i < (photos || []).length; i += 100) {
         const batch = photos!.slice(i, i + 100);
