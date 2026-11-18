@@ -166,7 +166,7 @@
       const s=participantStats[id]||{},p=(photos||[]).find(x=>idEq(x.ownerId??x.userId??x.id,id));
       if(s.isDemo||s.demoOnly||p&&(p.isDemo||p.demoOnly))return null;
       const best=Number(s.bestStreak)||0,streak=Number(s.currentStreak)||0;
-      if(!(s.topArenaQualified||best>=5))return null;
+      if(Number(s.wins||0)<5||best<5)return null;
       return {id,name:s.name||"Участник",img:s.img||(p&&p.dataUrl)||"",wins:Number(s.wins)||0,losses:Number(s.losses)||0,defenses:Number(s.defenses)||0,streak,best,isChampion:!!s.isChampion||!!(p&&p.status==="champion"),isLegendary:streak>=10,laneId:s.laneId||null};
     }).filter(Boolean).sort((a,b)=>b.wins-a.wins||b.streak-a.streak||b.best-a.best||String(a.id).localeCompare(String(b.id)));
   }
