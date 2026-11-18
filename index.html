@@ -2401,6 +2401,7 @@ saveState();
     if (!host) return;
     const observer = new MutationObserver(injectAdminEntry);
     observer.observe(host, { childList: true, subtree: true });
+    window.addEventListener("face-arena-snapshot", injectAdminEntry);
     injectAdminEntry();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
