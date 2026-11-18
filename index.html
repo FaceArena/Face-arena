@@ -506,7 +506,8 @@ let pendingUrl=null, pendingFile=null, isPublishingPhoto=false;
 let matchTimerId=null;
 let profile={name:"Вы",handle:"user"}
 let prefAnim=(()=>{try{const saved=localStorage.getItem(ANIM_PREF_KEY);return saved===null?true:saved==="true"}catch{return true}})();
-let participantStats={}; // photoId -> {wins,losses,defenses,bestStreak,name,img}
+let participantStats={}; // account-level stats for the signed-in user's own profile
+let topArenaRanking=null; // server-authoritative public aggregate; null means use local fallback
 let _uidSeq=0;
 function newBattleUid(){return "b_"+Date.now().toString(36)+"_"+((++_uidSeq)%1e6).toString(36)+"_"+Math.random().toString(36).slice(2,7)}
 
@@ -615,6 +616,11 @@ function updateArenaStats(){
 
 
 function buildTopRanking(){
+  if(window.FaceArenaSync?.isOnline?.()&&Array.isArray(topArenaRanking)){
+    return topArenaRanking
+      .filter(r=>Number(r?.wins)>=5&&Number(r?.best)>=5)
+      .map(r=>({...r,img:r.img||face(1,"R")}));
+  }
   if(window.FaceArenaGameEngine){
     return window.FaceArenaGameEngine.buildRanking(participantStats,photos)
       .filter(r=>Number(r?.wins)>=5&&Number(r?.best)>=5)
@@ -2053,6 +2059,7 @@ window.addEventListener("face-arena-snapshot",event=>{
   MY=snapshot.MY||{};
   profile=snapshot.profile||profile;
   participantStats=snapshot.participantStats||{};
+  topArenaRanking=Array.isArray(snapshot.topArenaRanking)?snapshot.topArenaRanking:null;
   updateArenaStats();
   const hash=location.hash.slice(1);
   if(hash==="results")renderResults();
