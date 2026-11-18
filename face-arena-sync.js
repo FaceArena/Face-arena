@@ -599,6 +599,13 @@
       await this.loadSnapshot();
     }
 
+    async listSessions() {
+      if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
+      const { data, error } = await this.client.rpc("get_my_auth_sessions");
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    }
+
     async revokeOtherSessions() {
       if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
       const { error } = await this.client.auth.signOut({ scope: "others" });
