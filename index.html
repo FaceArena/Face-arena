@@ -481,6 +481,8 @@ let _uidSeq=0;
 function newBattleUid(){return "b_"+Date.now().toString(36)+"_"+((++_uidSeq)%1e6).toString(36)+"_"+Math.random().toString(36).slice(2,7)}
 
 function saveState(){
+  // Authenticated arena state is server-owned; never persist it under a shared browser key.
+  if(window.FaceArenaSync)return;
   try{
     const data={
       v:3,
@@ -496,6 +498,8 @@ function saveState(){
   }
 }
 function loadState(){
+  // Wait for Supabase; do not restore legacy unscoped demo data before account identity is known.
+  if(window.FaceArenaSync)return false;
   try{
     // migrate from v1 if needed
     let raw=localStorage.getItem(LS_KEY);
@@ -563,7 +567,15 @@ function createDefaultArena(){
   saveState();
 })();
 
-function activeCount(){return photos.filter(p=>ACTIVE_STATUSES.has(p.status)).length}
+function getMyPhotos(){
+  const sync=window.FaceArenaSync;
+  if(sync?.isOnline?.()){
+    const userId=sync.getUser?.()?.id;
+    return userId?photos.filter(p=>String(p.ownerId||p.userId)===String(userId)):[];
+  }
+  return photos;
+}
+function activeCount(){return getMyPhotos().filter(p=>ACTIVE_STATUSES.has(p.status)).length}
 function queuedPhotos(){return photos.filter(p=>p.status==="queued")}
 function updateArenaStats(){
   const activePairs=arenaBattles.filter(b=>b.stage==="w"||b.stage==="v").length;
@@ -999,18 +1011,19 @@ function statusLabel(st){
   return t({queued:"stQueued",matched:"stMatched",confirmed:"stConfirmed",voting:"stVoting",champion:"stChampion",completed:"stCompleted",cancelled:"stCancelled"}[st]||"stQueued");
 }
 function renderQueue(){
-  // FIFO: only status===queued, ordered by queuedAt
+  // FIFO positions are global, but the personal queue contains only this account's photos.
+  const myPhotos=getMyPhotos();
   const qOrder=photos.filter(p=>p.status==="queued").sort((a,b)=>(a.queuedAt||0)-(b.queuedAt||0));
-  const active=photos.filter(p=>ACTIVE_STATUSES.has(p.status));
+  const active=myPhotos.filter(p=>ACTIVE_STATUSES.has(p.status));
   // Summary: position of the earliest queued photo in local FIFO
   let posHtml="—", aheadHtml="—";
-  const myQueued=qOrder.filter(p=>!p.ownerId||p.ownerId===window.FaceArenaSync?.getUser?.()?.id);
+  const myQueued=qOrder.filter(p=>myPhotos.some(m=>String(m.id)===String(p.id)));
   if(myQueued.length){const firstPos=qOrder.findIndex(p=>String(p.id)===String(myQueued[0].id))+1;posHtml=String(firstPos);aheadHtml=String(Math.max(0,firstPos-1))}
   let statusHtml=`<span class="status-pill queued">${t("stQueued")}</span>`;
   if(active.length){const top=active.sort((a,b)=>(a.queuedAt||0)-(b.queuedAt||0))[0];statusHtml=`<span class="status-pill ${top.status}">${statusLabel(top.status)}</span>`}
 
   let list="";
-  const show=photos.filter(p=>ACTIVE_STATUSES.has(p.status)||p.status==="completed"||p.status==="cancelled")
+  const show=myPhotos.filter(p=>ACTIVE_STATUSES.has(p.status)||p.status==="completed"||p.status==="cancelled")
     .sort((a,b)=>(a.queuedAt||0)-(b.queuedAt||0));
   if(show.length){
     list+=`<h2>${t("qYours")}</h2><div class="q-list">`+show.map(p=>{
@@ -1336,12 +1349,13 @@ async function confirmAdd(){
 }
 
 function renderProfile(){
+  const myPhotos=getMyPhotos();
   const wins=history.filter(h=>h.result==="win").length;
   const losses=history.filter(h=>h.result==="lose").length;
   const battles=history.length;
-  const avSrc=photos[0]?photos[0].dataUrl:face(20,"R");
-  const actives=photos.filter(p=>ACTIVE_STATUSES.has(p.status));
-  const archived=photos.filter(p=>p.status==="completed"||p.status==="cancelled");
+  const avSrc=myPhotos[0]?myPhotos[0].dataUrl:face(20,"R");
+  const actives=myPhotos.filter(p=>ACTIVE_STATUSES.has(p.status));
+  const archived=myPhotos.filter(p=>p.status==="completed"||p.status==="cancelled");
   const dispName=esc(profile.name||"Вы");
   const dispHandle=esc(profile.handle||"user");
 
@@ -1718,7 +1732,15 @@ function show(){
 addEventListener("hashchange",show);
 window.addEventListener("face-arena-snapshot",event=>{
   const snapshot=event.detail;
-  if(!snapshot)return;
+  if(!snapshot){
+    photos=[];history=[];arenaResults=[];VOTED=new Set();MY={};participantStats={};
+    arenaBattles=createDefaultArena();profile={name:"Вы",handle:"user"};
+    updateArenaStats();
+    if(location.hash==="#queue")renderQueue();
+    else if(location.hash==="#profile")renderProfile();
+    else renderArenaGrid();
+    return;
+  }
   photos=snapshot.photos||[];
   arenaBattles=snapshot.arenaBattles||createDefaultArena();
   history=snapshot.history||[];
