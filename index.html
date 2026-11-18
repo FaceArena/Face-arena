@@ -2159,7 +2159,7 @@ function renderNotifications(){
   const sync=window.FaceArenaSync;
   const rows=sync?.lastSnapshot?.notifications||[];
   const online=!!sync?.isOnline?.();
-  const unread=rows.filter(item=>!item.read_at).length;
+  const unread=Number(sync?.lastSnapshot?.unreadNotificationsCount)||0;
   let content="";
   if(!online)content='<div class="empty-box"><p>Войдите в аккаунт, чтобы просматривать уведомления.</p></div>';
   else if(!rows.length)content='<div class="empty-box"><p>Пока уведомлений нет. Здесь появятся сообщения о начале битв и их результатах.</p></div>';
