@@ -380,7 +380,7 @@ html.no-anim .victory-rays{animation:none}
 html.no-anim .victory-photo{animation:none}
 html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 
-#fa-boot-loader{--fa-progress:0;position:fixed;inset:0;z-index:200000;display:flex;align-items:center;justify-content:center;background:#050505;opacity:1;visibility:visible;transition:opacity .7s cubic-bezier(.4,0,.2,1),visibility .7s}
+#fa-boot-loader{--fa-progress:0;position:fixed;inset:0;z-index:200000;display:none;align-items:center;justify-content:center;background:#050505;opacity:1;visibility:visible;transition:opacity .7s cubic-bezier(.4,0,.2,1),visibility .7s}#fa-boot-loader.is-active{display:flex}
 #fa-boot-loader.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
 .fa-boot-inner{display:flex;flex-direction:column;align-items:center;gap:0;padding:24px;text-align:center;transition:transform .7s cubic-bezier(.4,0,.2,1),opacity .5s ease}
 #fa-boot-loader.is-hidden .fa-boot-inner{transform:translateY(-6px);opacity:0}
@@ -2121,13 +2121,34 @@ function show(){
 
 const faBootLoader=document.getElementById("fa-boot-loader");
 const faBootCaption=document.getElementById("fa-boot-caption");
-let faBootFinished=false,faBootStartedAt=Date.now(),faBootMinTimer=null;
+let faBootFinished=true,faBootStartedAt=0,faBootMinTimer=null,faBootFallbackTimer=null;
+function startFaBoot(){
+  if(!faBootLoader)return;
+  if(faBootFallbackTimer)clearTimeout(faBootFallbackTimer);
+  if(faBootMinTimer)clearTimeout(faBootMinTimer);
+  faBootFinished=false;faBootStartedAt=Date.now();faBootMinTimer=null;
+  faBootLoader.classList.remove("is-hidden");
+  faBootLoader.classList.add("is-active");
+  setFaBootProgress(0.08,"Загружаем арену");
+  faBootFallbackTimer=setTimeout(()=>{
+    if(!faBootFinished){setFaBootProgress(1,"Открываем арену");finishFaBoot();}
+  },30000);
+}
+function hideFaBoot(){
+  if(faBootFallbackTimer)clearTimeout(faBootFallbackTimer);
+  if(faBootMinTimer)clearTimeout(faBootMinTimer);
+  faBootFallbackTimer=null;faBootMinTimer=null;faBootFinished=true;
+  faBootLoader?.classList.remove("is-active");
+  faBootLoader?.classList.add("is-hidden");
+}
 function setFaBootProgress(progress,status){
   if(faBootFinished||!faBootLoader)return;
   const value=Math.max(0,Math.min(1,Number(progress)||0));
   faBootLoader.style.setProperty("--fa-progress",value.toFixed(3));
   if(status&&faBootCaption)faBootCaption.textContent=status;
 }
+window.addEventListener("face-arena-authenticated-boot-start",startFaBoot);
+window.addEventListener("face-arena-authenticated-boot-stop",hideFaBoot);
 window.addEventListener("face-arena-loader-progress",event=>{
   const detail=event.detail||{};
   setFaBootProgress(detail.progress,detail.status);
@@ -2142,19 +2163,13 @@ function finishFaBoot(){
     setFaBootProgress(1,"Арена готова");
     faBootFinished=true;
     setTimeout(()=>{
+      faBootLoader?.classList.remove("is-active");
       faBootLoader?.classList.add("is-hidden");
-      setTimeout(()=>faBootLoader?.remove(),750);
     },260);
   },wait);
 }
-window.addEventListener("face-arena-sync-failed",finishFaBoot,{once:true});
-window.addEventListener("face-arena-critical-images-ready",finishFaBoot,{once:true});
-setTimeout(()=>{
-  if(!faBootFinished){
-    setFaBootProgress(1,"Открываем арену");
-    finishFaBoot();
-  }
-},30000);
+window.addEventListener("face-arena-sync-failed",finishFaBoot);
+window.addEventListener("face-arena-critical-images-ready",finishFaBoot);
 addEventListener("hashchange",show);
 window.addEventListener("face-arena-snapshot",event=>{
   const snapshot=event.detail;
@@ -2177,7 +2192,6 @@ window.addEventListener("face-arena-snapshot",event=>{
     else if(activeHash==="settings")renderSettings();
     else if(activeHash==="upload")renderUpload();
     else if(activeHash==="")renderArenaGrid();
-    if(!window.FaceArenaSync?.isOnline?.()) requestAnimationFrame(()=>requestAnimationFrame(finishFaBoot));
     return;
   }
   photos=snapshot.photos||[];
