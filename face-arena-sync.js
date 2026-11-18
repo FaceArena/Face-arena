@@ -4,6 +4,26 @@
   const WORKER_URL = "https://face-arena.featuresfaded.workers.dev";
   const EVENT = "face-arena-snapshot";
 
+  function friendlyError(error, fallback = "Что-то пошло не так. Попробуйте ещё раз.") {
+    const raw = String(error?.message || error || "").trim();
+    const message = raw.toLowerCase();
+    if (!message) return fallback;
+    if (/invalid login credentials|invalid email or password|email or password is incorrect/.test(message)) return "Неверный email или пароль.";
+    if (/email not confirmed|email_not_confirmed|confirm your email/.test(message)) return "Подтвердите email по ссылке в письме, затем войдите.";
+    if (/user already registered|already registered|email.*already.*(exist|use)/.test(message)) return "Аккаунт с таким email уже существует. Попробуйте войти.";
+    if (/password.*(at least|minimum|min\.? length)|weak_password|password should be/.test(message)) return "Пароль слишком короткий или не соответствует требованиям.";
+    if (/rate limit|too many requests|too many attempts|request rate/.test(message)) return "Слишком много попыток. Подождите немного и попробуйте снова.";
+    if (/fetch failed|failed to fetch|networkerror|network request failed|load failed|internet disconnected|offline/.test(message)) return "Не удалось подключиться. Проверьте интернет и попробуйте снова.";
+    if (/jwt expired|session.*(expired|missing)|refresh token|not authenticated|unauthorized|401/.test(message)) return "Сеанс завершён. Войдите в аккаунт снова.";
+    if (/row.level security|permission denied|not allowed|forbidden|403|insufficient privilege/.test(message)) return "Недостаточно прав для этого действия.";
+    if (/file.*too large|payload too large|entity too large|maximum.*size|size.*limit/.test(message)) return "Файл слишком большой. Выберите фотографию меньшего размера.";
+    if (/unsupported.*(media|file|type)|invalid.*mime|content.type|file type/.test(message)) return "Формат файла не поддерживается. Выберите JPEG, PNG или WebP.";
+    if (/not found|does not exist|no rows/.test(message)) return "Не удалось найти нужные данные. Обновите страницу и попробуйте снова.";
+    if (/timeout|timed out|deadline exceeded|temporarily unavailable|503|502|500/.test(message)) return "Сервис временно недоступен. Попробуйте немного позже.";
+    return fallback;
+  }
+  window.FaceArenaErrors = Object.freeze({ message: friendlyError });
+
   class FaceArenaSync {
     constructor() {
       this.client = null;
@@ -42,7 +62,7 @@
         queueMicrotask(() => this.handleSession(session));
       });
       const { data, error } = await this.client.auth.getSession();
-      if (error) this.showMessage(error.message);
+      if (error) this.showMessage(friendlyError(error, "Не удалось проверить вход в аккаунт."));
       await this.handleSession(data.session);
     }
 
@@ -339,7 +359,7 @@
           errorEl.textContent = "Проверьте почту и подтвердите email, затем войдите.";
         }
       } catch (error) {
-        errorEl.textContent = error?.message || "Не удалось выполнить вход.";
+        errorEl.textContent = friendlyError(error, "Не удалось выполнить вход. Проверьте данные и попробуйте снова.");
       } finally {
         button.disabled = false;
       }
@@ -352,7 +372,7 @@
         provider: "google",
         options: { redirectTo: location.origin + location.pathname }
       });
-      if (error) errorEl.textContent = error.message;
+      if (error) errorEl.textContent = friendlyError(error, "Не удалось войти через Google. Попробуйте другой способ входа.");
     }
 
     showFatal(message) {
@@ -753,7 +773,7 @@
         return snapshot;
       } catch (error) {
         console.error("[FACE ARENA sync]", error);
-        this.showMessage(error?.message || "Не удалось загрузить данные арены.");
+        this.showMessage(friendlyError(error, "Не удалось загрузить данные арены. Попробуйте обновить страницу."));
         window.dispatchEvent(new CustomEvent("face-arena-sync-failed"));
         return null;
       } finally {
@@ -806,7 +826,7 @@
       });
       if (!response.ok) {
         const detail = await response.text();
-        throw new Error("Сервер арены недоступен (" + response.status + "): " + detail.slice(0, 160));
+        console.warn("[FACE ARENA coordinator] server returned", response.status); throw new Error("Сервер арены временно недоступен. Попробуйте позже.");
       }
       return await response.json();
     }
