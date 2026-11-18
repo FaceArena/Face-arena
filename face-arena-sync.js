@@ -15,6 +15,7 @@
       this.serverTimeOffset = 0;
       this.clockSyncTimer = null;
       this.authGeneration = 0;
+      this.privacyRevisions = new Map();
     }
 
     async init() {
@@ -225,6 +226,7 @@
       this.loading = true;
       const requestUserId = this.user.id;
       const requestGeneration = this.authGeneration;
+      const privacyRevisionAtStart = new Map(this.privacyRevisions);
       try {
         const c = this.client;
         let settingsRes = await c.from("arena_user_settings").select("profile_public,history_public,security_notifications,updated_at").eq("user_id", requestUserId).maybeSingle();
@@ -441,11 +443,21 @@
         }
         const myProfile = profiles.get(this.user.id) || {};
         if (this.user?.id !== requestUserId || this.authGeneration !== requestGeneration) return null;
+        // A snapshot that began before a privacy write must not overwrite its newer value.
+        const snapshotSettings = { ...settingsRes.data };
+        for (const key of ["profile_public","history_public","security_notifications"]) {
+          const currentRevision = this.privacyRevisions.get(key) || 0;
+          const startedRevision = privacyRevisionAtStart.get(key) || 0;
+          if (currentRevision > startedRevision && this.lastSnapshot?.userId === requestUserId) {
+            snapshotSettings[key] = this.lastSnapshot.settings?.[key] ?? snapshotSettings[key];
+            snapshotSettings.updated_at = this.lastSnapshot.settings?.updated_at || snapshotSettings.updated_at;
+          }
+        }
         const snapshot = {
           userId: requestUserId,
           photos, arenaBattles, history, arenaResults, VOTED, MY, profiles: profileRes.data,
           profile: { name: myProfile.display_name || this.user.user_metadata?.display_name || "Участник", handle: myProfile.handle || "user" },
-          settings: settingsRes.data,
+          settings: snapshotSettings,
           participantStats
         };
         this.dispatch(snapshot);
@@ -589,18 +601,24 @@
 
     async updatePrivacySettings(patch) {
       if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
+      const userId = this.user.id;
       const allowed = ["profile_public","history_public","security_notifications"];
       const update = {};
-      for (const key of allowed) if (typeof patch?.[key] === "boolean") update[key] = patch[key];
+      for (const key of allowed) {
+        if (typeof patch?.[key] === "boolean") {
+          update[key] = patch[key];
+          this.privacyRevisions.set(key, (this.privacyRevisions.get(key) || 0) + 1);
+        }
+      }
       if (!Object.keys(update).length) return;
       update.updated_at = new Date().toISOString();
-      const { error } = await this.client.from("arena_user_settings").update(update).eq("user_id",this.user.id);
+      const { error } = await this.client.from("arena_user_settings").update(update).eq("user_id",userId);
       if (error) throw error;
-      // Reflect the committed server value immediately; loadSnapshot may already be running.
-      if (this.lastSnapshot?.userId === this.user.id) {
+      // Update only the settings snapshot. A full arena reload here made toggles
+      // wait for unrelated photos, battles, votes and history queries.
+      if (this.user?.id === userId && this.lastSnapshot?.userId === userId) {
         this.dispatch({ ...this.lastSnapshot, settings: { ...(this.lastSnapshot.settings || {}), ...update } });
       }
-      await this.loadSnapshot();
     }
 
     async getPublicProfile(userId) {
