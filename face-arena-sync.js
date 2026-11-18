@@ -9,7 +9,8 @@
     const raw = String(error?.message || error || "").trim();
     const message = raw.toLowerCase();
     if (/этот никнейм уже занят/i.test(message)) return "Этот никнейм уже занят. Выберите другой.";
-    if (/не подходит для участия/i.test(message)) return "Эта фотография не подходит для участия. Выберите другую.";\n    if (!message) return fallback;
+    if (/не подходит для участия/i.test(message)) return "Эта фотография не подходит для участия. Выберите другую.";
+    if (!message) return fallback;
     if (/invalid login credentials|invalid email or password|email or password is incorrect/.test(message)) return "Неверный email или пароль.";
     if (/email not confirmed|email_not_confirmed|confirm your email/.test(message)) return "Подтвердите email по ссылке в письме, затем войдите.";
     if (/user already registered|already registered|email.*already.*(exist|use)/.test(message)) return "Аккаунт с таким email уже существует. Попробуйте войти.";
