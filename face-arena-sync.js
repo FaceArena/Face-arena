@@ -387,12 +387,14 @@
           image.removeEventListener("load", onLoad);
           image.removeEventListener("error", onError);
           if (ok && typeof image.decode === "function") {
+            let decodeTimeout;
             try {
               await Promise.race([
                 image.decode(),
-                new Promise(done => setTimeout(done, 1200))
+                new Promise(done => { decodeTimeout = setTimeout(done, 1200); })
               ]);
             } catch (_) {}
+            if (decodeTimeout) clearTimeout(decodeTimeout);
           }
           if (ok) loaded++; else failed++;
           const status = failed
