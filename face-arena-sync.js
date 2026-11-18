@@ -5,6 +5,7 @@
   const EVENT = "face-arena-snapshot";
 
   function friendlyError(error, fallback = "Что-то пошло не так. Попробуйте ещё раз.") {
+    if (error) console.warn("[FACE ARENA handled error]", error);
     const raw = String(error?.message || error || "").trim();
     const message = raw.toLowerCase();
     if (!message) return fallback;
@@ -825,7 +826,6 @@
         headers: { Authorization: "Bearer " + token }
       });
       if (!response.ok) {
-        const detail = await response.text();
         console.warn("[FACE ARENA coordinator] server returned", response.status); throw new Error("Сервер арены временно недоступен. Попробуйте позже.");
       }
       return await response.json();
