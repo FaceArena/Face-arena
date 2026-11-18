@@ -2260,9 +2260,6 @@ saveState();
   const SUPABASE_URL = "https://nvvkmjeobnnxlrpiuisf.supabase.co";
   const SUPABASE_KEY = "sb_publishable_-a7Qjy5NL3ZUaKfLpIi4Dg_x2hzmNKE";
   const escAdmin = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  let adminClient = null;
-  let adminBusy = false;
-
   const ADMIN_USER_ID = "ac86c2a7-9ec6-4016-a0d5-a6810578fd2c";
   let adminClient = null;
   let adminBusy = false;
