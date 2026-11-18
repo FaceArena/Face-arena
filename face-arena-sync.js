@@ -361,10 +361,14 @@
     }
 
     async preloadCriticalImages(snapshot) {
-      // The snapshot event renders the arena synchronously before this method runs.
-      // Wait for the real <img> elements used by the battle cards, not detached
-      // Image() objects whose readiness can differ from what Safari paints.
-      const images = Array.from(document.querySelectorAll("#av .grid .card .duel img"));
+      // Only images in cards intersecting the initial viewport are critical.
+      // All other battle images remain lazy and load naturally as the user scrolls.
+      const candidates = Array.from(document.querySelectorAll("#av .grid .card .duel img"));
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 700;
+      const images = candidates.filter(image => {
+        const rect = image.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && rect.top < viewportHeight && rect.bottom > 0;
+      });
       const total = images.length;
       const emit = (loaded, failed, status) => {
         const progress = total ? 0.18 + 0.78 * ((loaded + failed) / total) : 0.96;
@@ -372,11 +376,9 @@
           detail: { progress, loaded, failed, total, status }
         }));
       };
-      emit(0, 0, "Подтягиваем фотографии");
-      if (!total) {
-        emit(0, 0, "Баттлы готовы");
-        return;
-      }
+      emit(0, 0, total ? "Загружаем фотографии первого экрана" : "Арена готова");
+      if (!total) return;
+
       let loaded = 0, failed = 0;
       const waitForImage = image => new Promise(resolve => {
         let settled = false, timeoutId;
@@ -391,16 +393,13 @@
             try {
               await Promise.race([
                 image.decode(),
-                new Promise(done => { decodeTimeout = setTimeout(done, 1200); })
+                new Promise(done => { decodeTimeout = setTimeout(done, 900); })
               ]);
             } catch (_) {}
             if (decodeTimeout) clearTimeout(decodeTimeout);
           }
           if (ok) loaded++; else failed++;
-          const status = failed
-            ? "Фотографии " + (loaded + failed) + "/" + total
-            : "Загружаем фотографии " + (loaded + failed) + "/" + total;
-          emit(loaded, failed, status);
+          emit(loaded, failed, "Фотографии " + (loaded + failed) + "/" + total);
           resolve();
         };
         const onLoad = () => finish(image.naturalWidth > 0);
@@ -414,14 +413,17 @@
           finish(image.naturalWidth > 0);
           return;
         }
-        timeoutId = setTimeout(() => finish(false), 18000);
+        timeoutId = setTimeout(() => finish(false), 7500);
       });
-      // The loader has a hard safety cap, but normally finishes from actual
-      // image load/decode events. Failed images count as settled, not as success.
-      await Promise.all(images.map(waitForImage));
+
+      // Never hold the app behind off-screen images or a stalled image request.
+      await Promise.race([
+        Promise.all(images.map(waitForImage)),
+        new Promise(resolve => setTimeout(resolve, 8000))
+      ]);
       emit(loaded, failed, failed
-        ? "Арена готова · недоступно фото: " + failed
-        : "Все фотографии загружены");
+        ? "Арена готова · фото недоступно: " + failed
+        : "Первый экран готов");
     }
 
     async loadSnapshot() {
