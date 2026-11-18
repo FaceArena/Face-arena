@@ -1626,7 +1626,16 @@ function renderSettings(){
         }
       });
     }
-    if(soundVolume)soundVolume.oninput=()=>{audio.setVolume(Number(soundVolume.value));if(soundValue)soundValue.textContent=soundVolume.value+"%";};
+    const updateSoundVolume=(event)=>{
+      const target=event.target;
+      if(!target||target.id!=="soundVolume")return;
+      const value=Number(target.value);
+      if(soundValue)soundValue.textContent=value+"%";
+      try{audio.setVolume(value);}catch(error){console.error("FACE ARENA: volume update failed",error);}
+    };
+    // Delegation survives settings-panel re-renders and works with iOS range input.
+    document.addEventListener("input",updateSoundVolume);
+    document.addEventListener("change",updateSoundVolume);
     if(soundPreview)soundPreview.onclick=()=>{
       soundPreview.disabled=true;
       const originalLabel="Прослушать";
