@@ -20,7 +20,22 @@ test("no free lane returns null",()=>{
  assert.equal(E.selectNextAssignment([photo("a")],[lane(1,{stage:"w",isMock:false,userPhotoId:"x"})]),null);
 });
 test("empty and mock lanes are never assigned without a real champion",()=>{
- assert.equal(E.selectNextAssignment([photo("a")],[lane(1),lane(2,{stage:"v",isMock:true}),lane(3,{championPhotoId:"champ"})]).laneId,3);
+ assert.equal(E.selectNextAssignment([photo("a",1,{userId:"challenger"})],[lane(1),lane(2,{stage:"v",isMock:true}),lane(3,{championPhotoId:"champ"})]).laneId,3);
+});
+test("skips an empty lane when it cannot form an opening pair and uses the next viable champion lane",()=>{
+ const photos=[photo("challenger",1,{userId:"u1"}),{id:"champ",status:"champion",userId:"u2"}];
+ const lanes=[lane(1),lane(2,{championPhotoId:"champ"})];
+ assert.deepEqual(E.selectNextAssignment(photos,lanes),{photoId:"challenger",laneId:2});
+});
+test("mock lanes are never selected, even if they appear empty",()=>{
+ const photos=[photo("a",1,{userId:"u1"}),photo("b",2,{userId:"u2"})];
+ assert.deepEqual(E.selectNextAssignment(photos,[lane(1,{isMock:true}),lane(2)]),{photoId:"a",opponentPhotoId:"b",laneId:2,opening:true});
+});
+test("new local battles use the 70-second stage timer",()=>{
+ const state={photos:[photo("a",1,{userId:"u1"}),photo("b",2,{userId:"u2"})],lanes:[lane(1)],history:[],participantStats:{}};
+ const assignment=E.selectNextAssignment(state.photos,state.lanes);
+ const result=E.assignChallenger(state,assignment,"timer-test",1000);
+ assert.equal(result.state.lanes[0].stageEnd,71000);
 });
 test("duplicate photo assignment is rejected without mutation",()=>{
  const state={photos:[photo("x")],lanes:[lane(1,{userPhotoId:"x",stage:"w"})],history:[],participantStats:{}};

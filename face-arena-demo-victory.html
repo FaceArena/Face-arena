@@ -83,7 +83,7 @@ h1{font:800 clamp(28px,8.5vw,72px)/.95 var(--hd);letter-spacing:-.02em;margin:16
 .tl{height:2px;background:#222;margin-top:6px;overflow:hidden;border-radius:2px}
 .tl u{display:block;height:100%;background:#fff;transform-origin:left;transition:transform 1s linear;text-decoration:none}
 nav{position:fixed;left:0;right:0;bottom:0;padding:6px 10px calc(6px + env(safe-area-inset-bottom,0px));background:rgba(10,10,10,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);z-index:5}
-.tabs{position:relative;max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.tabs{position:relative;max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
 .tabs button{background:none;border:0;color:var(--mu);font:700 9px var(--bd);letter-spacing:.08em;text-transform:uppercase;padding:6px 0;display:grid;justify-items:center;gap:3px;min-height:44px;cursor:pointer;transition:color .22s;touch-action:manipulation}
 .tabs button.on{color:#fff}
 .tabs svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -241,7 +241,7 @@ html.no-anim .card{opacity:1}
 .hist-item .sides img{width:40px;height:50px;object-fit:cover;border-radius:8px}
 .hist-item .vs-s{font:800 10px var(--hd);color:var(--mu)}
 .hist-item .res{font:800 12px var(--hd);letter-spacing:.06em}
-.hist-item .res.win{color:#4ade80}.hist-item .res.lose{color:var(--red)}.hist-item .res.draw{color:var(--mu)}
+.hist-item .res.win{color:#4ade80}.hist-item .res.lose{color:var(--red)}.hist-item .res.draw{color:var(--mu)}.hist-item .res.red{color:var(--red)}.hist-item .res.blue{color:var(--blue)}
 .champion-tag{display:inline-block;font:700 9px var(--bd);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#3a3010;color:#f0d060;margin-left:6px;vertical-align:middle}
 .btn-main{width:100%;border:0;border-radius:14px;min-height:52px;font:800 13px var(--hd);letter-spacing:.06em;color:#fff;background:var(--blue);cursor:pointer;touch-action:manipulation;margin-top:12px}
 .btn-main:disabled{opacity:.5}
@@ -370,9 +370,12 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 <div class="wrap view" id="sv" hidden></div>
 <div class="wrap view" id="mv" hidden></div>
 <div class="wrap view" id="rv" hidden></div>
+<div class="wrap view" id="iv" hidden></div>
 <nav><div class="tabs" id="tabs"><span class="ind" id="ind"></span></div></nav>
 <div class="toast" id="toast" role="status"></div>
 <div class="ov" id="ov"><div class="sh" id="sh" role="dialog" aria-modal="true"></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./face-arena-sync.js"></script>
 <script src="./face-arena-audio.js"></script>
 <script src="./face-arena-game-engine.js"></script>
 <script>
@@ -387,7 +390,7 @@ const STR={ru:{
 live:"Прямой эфир",title:"Кто красивее?",lead:"Десять баттлов идут одновременно. Выбери сторону и объясни свой выбор комментарием.",
 battle:"Баттл №",wait:"Ждём первого зрителя",vote:"Идёт голосование",tWait:"До отмены",tVote:"До конца голосования",
 noVotes:"Голосов пока нет",slots:"слотов занято",queue:"фото в очереди",ending:"Подсчёт итогов",
-arena:"Арена",q:"Очередь",up:"Загрузка",pr:"Профиль",st:"Ещё",of:"из",back:"Назад",
+arena:"Арена",q:"Очередь",up:"Загрузка",pr:"Профиль",results:"Итоги",st:"Ещё",of:"из",back:"Назад",
 setTitle:"Настройки",setLead:"Настройки приложения.",
 setProfile:"Профиль",setName:"Имя",setHandle:"Никнейм",setSave:"Сохранить",
 setAppear:"Оформление",setAnim:"Анимации",setAnimSub:"Отключение ускоряет интерфейс",
@@ -404,7 +407,7 @@ ok:"Голос и комментарий сохранены на этом уст
 done:"Ваш голос засчитан. Повторное голосование запрещено.",you:"Вы",
 qTitle:"Очередь",qLead:"Ваши фото ждут пары или уже участвуют в баттлах.",
 qPos:"Ваша позиция",qAhead:"фото впереди",
-stQueued:"В очереди",stMatched:"Пара найдена",stConfirmed:"Ожидание зрителя",stVoting:"Идёт голосование",
+stQueued:"В очереди",stMatched:"Пара найдена",stConfirmed:"Ожидание зрителя",stVoting:"Идёт голосование",stChampion:"Чемпион",
 stCompleted:"Завершён",stCancelled:"Отменён",
 qEmpty:"В очереди пока нет ваших фото. Загрузите портрет во вкладке «Загрузка».",
 qYours:"Ваши фото",
@@ -455,12 +458,14 @@ function face(s,tm){const g=tm=="R"?["#4a1010","#140404"]:["#0f2a5c","#040a18"],
 const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${g[0]}"/><stop offset="1" stop-color="${g[1]}"/></linearGradient></defs><rect width="300" height="400" fill="url(#g)"/>${long?`<ellipse cx="150" cy="175" rx="92" ry="110" fill="${hr}"/>`:""}<path d="M25 400c0-75 55-110 125-110s125 35 125 110z" fill="${cl}"/><rect x="125" y="245" width="50" height="70" rx="16" fill="${sk}"/><ellipse cx="150" cy="185" rx="62" ry="78" fill="${sk}"/><path d="M85 175c-5-58 28-82 65-82s70 24 65 82c-12-28-32-42-65-42s-52 14-65 42z" fill="${hr}"/><circle cx="126" cy="188" r="4.5" fill="#1a1a1a"/><circle cx="174" cy="188" r="4.5" fill="#1a1a1a"/><path d="M132 228q18 14 36 0" stroke="#7a3b2e" stroke-width="3.5" fill="none" stroke-linecap="round"/></svg>`;
 return "data:image/svg+xml,"+encodeURIComponent(svg)}
 
-const MAX_ACTIVE=3, MAX_SIZE=5*1024*1024, MATCH_SEC=10, STAGE_SEC=150, MAX_BATTLES=10;
+const MAX_ACTIVE=3, MAX_SIZE=5*1024*1024, MATCH_SEC=10, STAGE_SEC=70, MAX_BATTLES=10;
+function arenaNow(){return window.FaceArenaSync?.isOnline?.()&&typeof window.FaceArenaSync.serverNow==="function"?window.FaceArenaSync.serverNow():Date.now()}
 const ACTIVE_STATUSES=new Set(["queued","matched","confirmed","voting","champion"]);
 const LS_KEY="face_arena_demo_v2";
 let photos=[];
 let arenaBattles=[];
 let history=[];
+let arenaResults=[];
 // Votes & comments keyed by immutable battleUid (NOT slot id)
 let VOTED=new Set(); // Set of battleUid strings
 let MY={}; // { [battleUid]: [{s,v}] }
@@ -498,8 +503,12 @@ function loadState(){
     history=data.history||[];
     arenaBattles=(data.arenaBattles||[]).map(b=>{
       b={...b};
-      if((b.stage==="w"||b.stage==="v")&&(typeof b.stageEnd!=="number"||b.stageEnd<1e12)){
-        b.stageEnd=(typeof b.stageStarted==="number"?b.stageStarted:Date.now())+STAGE_SEC*1000;
+      if(b.stage==="w"||b.stage==="v"){
+        const oldDuration=STAGE_SEC*1000;
+        const started=typeof b.stageStarted==="number"&&b.stageStarted>0?b.stageStarted:(typeof b.stageEnd==="number"&&b.stageEnd>1e12?b.stageEnd-oldDuration:Date.now());
+        b.stageStarted=started;
+        b.stageEnd=Math.min(typeof b.stageEnd==="number"&&b.stageEnd>1e12?b.stageEnd:started+oldDuration,started+STAGE_SEC*1000);
+        b.totalStage=STAGE_SEC;
       }
       return b;
     });
@@ -585,10 +594,11 @@ function renderTopArenaHTML(){
 }
 
 function renderArenaGrid(){
-  const now=Date.now();
+  const now=arenaNow();
   // Show only active (w/v) and empty slots — completed/cancelled appear as empty state
   $("grid").innerHTML=arenaBattles.map((b,i)=>{
-    const isActive=b.stage==="w"||b.stage==="v";
+    const isActive=b.stage==="m"||b.stage==="w"||b.stage==="v";
+    const confirming=b.stage==="m";
     const isEmpty=b.stage==="empty"||b.stage==="done"||b.stage==="cancelled";
     if(isEmpty&&!b.isMock&&!b.championPhotoId){
       // Empty slot card; a waiting champion must remain visible on its lane.
@@ -599,17 +609,17 @@ function renderArenaGrid(){
     }
     const tot=b.redVotes+b.blueVotes, w=b.stage==="w", rp=tot?Math.round(b.redVotes/tot*100):50;
     const left=isActive?Math.max(0,Math.ceil((b.stageEnd-now)/1000)):0;
-    let redSrc=face(i*2+1,"R"), blueSrc=face(i*2+4,"B"), redNm="@"+b.redName, blueNm="@"+b.blueName;
+    let redSrc=b.redImg||face(i*2+1,"R"), blueSrc=b.blueImg||face(i*2+4,"B"), redNm="@"+b.redName, blueNm="@"+b.blueName;
     if(b.championImg&&b.championSide==="R"){redSrc=b.championImg;redNm=b.championName||"Чемпион"}
     if(b.championImg&&b.championSide==="B"){blueSrc=b.championImg;blueNm=b.championName||"Чемпион"}
-    if(b.userPhotoId){
+    if(b.userPhotoId&&!window.FaceArenaSync?.isOnline()){
       const up=photos.find(x=>String(x.id)===String(b.userPhotoId));
       if(up){
         if(up.side==="R"){redSrc=up.dataUrl;redNm=(up.status==="champion"?"👑 ":"")+(profile.name||"Вы");blueSrc=up.opponentImg||blueSrc;blueNm=up.opponentName||blueNm}
         else{blueSrc=up.dataUrl;blueNm=(up.status==="champion"?"👑 ":"")+(profile.name||"Вы");redSrc=up.opponentImg||redSrc;redNm=up.opponentName||redNm}
       }
     }
-    const chipText=!isActive?(b.stage==="done"?(b.championPhotoId?"Чемпион ждёт":"Итоги"):"Отменён"):t(w?"wait":"vote");
+    const chipText=confirming?"10 секунд на отмену":!isActive?(b.hasChampionWaiting||b.championPhotoId?"Чемпион ждёт":b.stage==="done"?"Итоги":"Слот свободен"):t(w?"wait":"vote");
     const crownR=b.championSide==="R"&&b.championPhotoId?`<span class="champ-badge">👑</span>`:"";
     const crownB=b.championSide==="B"&&b.championPhotoId?`<span class="champ-badge">👑</span>`:"";
     const streak=b.championStreak?`<div class="streak">Серия: ${b.championStreak}</div>`:"";
@@ -623,7 +633,7 @@ function renderArenaGrid(){
 <div class="ph B ${bCls}">${crownB}<img alt="" loading="lazy" src="${blueSrc}"><span class="side">BLUE</span><div class="nm">${esc(blueNm)}</div></div><div class="vs ${vsCls}">VS</div></div>${streak}
 <div class="bar ${tot?"":"zero"} ${lead!=="eq"?"fight":""}" style="--p:${rp};--sx:${rp/100}"><u data-p="${rp/100}"></u>${lead!=="eq"?`<i class="clash"></i>`:""}</div>
 <div class="pct">${tot?`<span class="r ${lead==="R"?"lead":""}">RED ${rp}%</span><span class="m">${pl(tot,["голос","голоса","голосов"])}</span><span class="b ${lead==="B"?"lead":""}">${100-rp}% BLUE</span>`:`<span class="m">${t("noVotes")}</span>`}</div>
-${isActive?`<div class="tm"><small>${t(w?"tWait":"tVote")}</small><b class="cd">${fmt(left)}</b></div><div class="tl"><u style="transform:scaleX(${left/STAGE_SEC})"></u></div>`:""}</article>`;
+${isActive?`<div class="tm"><small>${confirming?"Отмена участия":t(w?"tWait":"tVote")}</small><b class="cd">${fmt(left)}</b></div><div class="tl"><u style="transform:scaleX(${left/STAGE_SEC})"></u></div>`:""}</article>`;
   }).join("");
   requestAnimationFrame(()=>{
     document.querySelectorAll(".bar u").forEach(u=>{
@@ -642,7 +652,7 @@ ${isActive?`<div class="tm"><small>${t(w?"tWait":"tVote")}</small><b class="cd">
   document.querySelectorAll(".card[tabindex]").forEach(c=>{
     const id=+c.dataset.id;
     const b=arenaBattles.find(x=>x.id===id);
-    if(!b||(b.stage!=="w"&&b.stage!=="v"))return;
+    if(!b||(b.stage!=="m"&&b.stage!=="w"&&b.stage!=="v"))return;
     c.onclick=()=>location.hash="battle-"+id;
     c.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();location.hash="battle-"+id}};
   });
@@ -784,6 +794,7 @@ function finishBattle(b,now){
   return true;
 }
 function tryFillSlots(){
+  if(window.FaceArenaSync?.isOnline())return;
   const now=Date.now();
   const waitingMatched=photos.filter(p=>p.status==="matched"&&p.matchDeadline&&p.matchDeadline<=now&&!p._confirming);
   waitingMatched.forEach(p=>confirmMatch(p));
@@ -816,7 +827,23 @@ function tryFillSlots(){
   }
 }
 function tickArena(){
-  const now=Date.now();
+  const now=arenaNow();
+  if(window.FaceArenaSync?.isOnline()){
+    if(arenaBattles.some(b=>b.stage==="m"&&b.confirmUntil&&b.confirmUntil<=now)&&!window._faConfirmRefresh){
+      window._faConfirmRefresh=true;
+      window.FaceArenaSync.loadSnapshot().finally(()=>{window._faConfirmRefresh=false});
+    }
+    if(!$("av").hidden){
+      document.querySelectorAll(".card[data-id]").forEach(card=>{
+        const b=arenaBattles.find(x=>x.id===+card.dataset.id);
+        if(!b||(b.stage!=="m"&&b.stage!=="w"&&b.stage!=="v"))return;
+        const left=Math.max(0,Math.ceil((b.stageEnd-now)/1000));
+        const cd=card.querySelector(".cd");if(cd)cd.textContent=fmt(left);
+        const bar=card.querySelector(".tl u");if(bar)bar.style.transform=`scaleX(${Math.min(1,left/STAGE_SEC)})`;
+      });
+    }
+    return;
+  }
   let changed=false;
   arenaBattles.forEach(b=>{
     if(b.stage!=="w"&&b.stage!=="v")return;
@@ -851,9 +878,12 @@ function tickArena(){
 
 function bview(n){
   const b=arenaBattles.find(x=>x.id===n);if(!b)return;
-  if(!b.battleUid)b.battleUid=newBattleUid();
+  if(!b.battleUid&&!window.FaceArenaSync?.isOnline())b.battleUid=newBattleUid();
   const uid=b.battleUid;
-  if(b.stage==="w"){
+  if(window.FaceArenaSync?.isOnline()&&b.stage==="w"&&!b._visitRequested){
+    b._visitRequested=true;
+    window.FaceArenaSync.registerVisit(uid).then(result=>{if(result?.ok===false)toast("Голосование открыто, но серверный таймер временно недоступен")}).catch(error=>{b._visitRequested=false;toast(error?.message||"Не удалось открыть голосование")});
+  }else if(!window.FaceArenaSync?.isOnline()&&b.stage==="w"){
     b.stage="v";b.stageEnd=Date.now()+STAGE_SEC*1000;b.stageStarted=Date.now();
     window.FaceArenaAudio?.play("votingStart");
     if(b.userPhotoId){const p=photos.find(x=>x.id===b.userPhotoId);if(p)p.status="voting"}
@@ -863,10 +893,11 @@ function bview(n){
   const tot=b.redVotes+b.blueVotes,w=b.stage==="w",rp=tot?Math.round(b.redVotes/tot*100):50;
   const myComments=MY[uid]||[];
   const k=Math.min(4,Math.max(0,tot-myComments.length));
-  let cs=myComments.map((m,j)=>`<li class="cm ${m.s}" style="--i:${j}"><b>${t("you")}</b><span class="tg">${m.s==="R"?"RED":"BLUE"}</span><p>${esc(m.v)}</p></li>`).join("");
+  let cs=myComments.map((m,j)=>`<li class="cm ${m.s}" style="--i:${j}"><b>${esc(m.author||t("you"))}</b><span class="tg">${m.s==="R"?"RED":"BLUE"}</span><p>${esc(m.v)}</p></li>`).join("");
+  const confirming=b.stage==="m";
   const closed=b.stage==="done"||b.stage==="cancelled"||b.stage==="empty";
-  let redSrc=face((n-1)*2+1,"R"), blueSrc=face((n-1)*2+4,"B"), redNm=b.redName, blueNm=b.blueName;
-  if(b.userPhotoId){
+  let redSrc=b.redImg||face((n-1)*2+1,"R"), blueSrc=b.blueImg||face((n-1)*2+4,"B"), redNm=b.redName, blueNm=b.blueName;
+  if(b.userPhotoId&&!window.FaceArenaSync?.isOnline()){
     const up=photos.find(x=>x.id===b.userPhotoId);
     if(up){
       if(up.side==="R"){redSrc=up.dataUrl;redNm=profile.name||"Вы";blueSrc=up.opponentImg||blueSrc;blueNm=(up.opponentName||blueNm).replace("@","")}
@@ -883,9 +914,9 @@ function bview(n){
 <div class="ph B ${bCls}"><img alt="" src="${blueSrc}"><span class="side">BLUE</span><div class="nm"><span class="av"><img alt="" src="${blueSrc}"></span><button class="nk">@${esc(blueNm)}</button></div></div><div class="vs ${vsCls}">VS</div></div>
 <div class="bar ${tot?"":"zero"} ${lead!=="eq"?"fight":""}" style="--p:${rp};--sx:${rp/100}"><u id="bp" data-p="${rp/100}"></u>${lead!=="eq"?`<i class="clash"></i>`:""}</div>
 <div class="pct">${tot?`<span class="r ${lead==="R"?"lead":""}">RED ${rp}%</span><span class="m">${pl(tot,["голос","голоса","голосов"])}</span><span class="b ${lead==="B"?"lead":""}">${100-rp}% BLUE</span>`:`<span class="m">${t("noVotes")}</span>`}</div>
-<div class="tm"><small>${t(w?"tWait":"tVote")}</small><b id="bcd" data-id="${n}"></b></div><div class="tl"><u id="btl"></u></div>
+<div class="tm"><small>${confirming?"Отмена участия":t(w?"tWait":"tVote")}</small><b id="bcd" data-id="${n}"></b></div><div class="tl"><u id="btl"></u></div>
 <p class="note">${t("srv")}</p>
-${VOTED.has(uid)?`<p class="done">${t("done")}</p>`:closed?`<p class="done">${b.stage==="cancelled"?"Баттл отменён":"Голосование завершено"}</p>`:`<div class="picks"><button class="pick R">${t("pickR")}</button><button class="pick B">${t("pickB")}</button></div><p class="note">${t("hint")}</p>`}
+${confirming?`<p class="done">Можно отменить участие во вкладке «Очередь» ещё ${fmt(Math.max(0,Math.ceil((b.confirmUntil-arenaNow())/1000)))} сек.</p>`:b.isParticipant?`<p class="done">Участники не голосуют в собственном баттле</p>`:VOTED.has(uid)?`<p class="done">${t("done")}</p>`:closed?`<p class="done">${b.stage==="cancelled"?"Баттл отменён":"Голосование завершено"}</p>`:`<div class="picks"><button class="pick R">${t("pickR")}</button><button class="pick B">${t("pickB")}</button></div><p class="note">${t("hint")}</p>`}
 <h2>${t("cm")}</h2>${cs?`<ul class="cms">${cs}</ul>`:`<div class="empty">${t("cmEmpty")}</div>`}</div>`;
   $("bk").onclick=()=>{location.hash=""};
   document.querySelectorAll(".pick").forEach(btn=>btn.onclick=()=>openV(n,btn.classList.contains("R")?"R":"B"));
@@ -895,8 +926,8 @@ ${VOTED.has(uid)?`<p class="done">${t("done")}</p>`:closed?`<p class="done">${b.
 function tick2(){
   const e=$("bcd");if(!e)return;
   const b=arenaBattles.find(x=>x.id===+e.dataset.id);if(!b)return;
-  if(b.stage!=="w"&&b.stage!=="v"){e.textContent=t("ending");return}
-  const s=Math.max(0,Math.ceil((b.stageEnd-Date.now())/1000));
+  if(b.stage!=="m"&&b.stage!=="w"&&b.stage!=="v"){e.textContent=t("ending");return}
+  const s=Math.max(0,Math.ceil((b.stageEnd-arenaNow())/1000));
   if(!$("bv").hidden&&s>=1&&s<=3)window.FaceArenaAudio?.play("countdown");
   e.textContent=s?fmt(s):t("ending");
   const tl=$("btl");if(tl)tl.style.transform=`scaleX(${Math.min(1,Math.max(0,s/STAGE_SEC))})`;
@@ -907,16 +938,17 @@ function closeV(){$("ov").classList.remove("on")}
 function openV(n,s){
   const b=arenaBattles.find(x=>x.id===n);
   if(!b||b.stage!=="v"){toast(t("closed"));return}
+  if(window.FaceArenaSync?.isOnline()&&b.isParticipant){toast("Участники не голосуют в собственном баттле");return}
   if(!b.battleUid)b.battleUid=newBattleUid();
   if(VOTED.has(b.battleUid)){toast(t("dup"));return}
-  if(b.stageEnd<=Date.now()){toast(t("closed"));return}
+  if(b.stageEnd<=arenaNow()){toast(t("closed"));return}
   side=s;const c=s==="R"?"var(--red)":"var(--blue)";
   $("sh").innerHTML=`<h3 style="color:${c}">${t("yourVote")} ${s==="R"?"RED":"BLUE"}</h3><p class="note">${t("hint")}</p><textarea id="ct" maxlength="300" rows="4" placeholder="${t("ph")}"></textarea><div class="row"><span class="note" id="cc">0/300</span><span class="err" id="er"></span></div><button class="send" id="sd" style="background:${c}">${t("send")}</button><button class="cancel" id="cx">${t("cancel")}</button>`;
   $("ov").classList.add("on");
   $("ct").oninput=()=>{$("cc").textContent=$("ct").value.length+"/300";$("er").textContent=""};
   $("cx").onclick=closeV;$("sd").onclick=()=>submit(n);setTimeout(()=>$("ct").focus(),350);
 }
-function submit(n){
+async function submit(n){
   if(busy)return;
   const v=$("ct").value.trim();
   if(!v){$("er").textContent=t("e0");return}
@@ -927,12 +959,27 @@ function submit(n){
   if(!b.battleUid)b.battleUid=newBattleUid();
   const uid=b.battleUid;
   if(VOTED.has(uid)){$("er").textContent=t("dup");return}
-  if(b.stageEnd<=Date.now()){toast(t("closed"));return}
+  if(b.stageEnd<=arenaNow()){toast(t("closed"));return}
   busy=true;$("sd").textContent=t("sending");$("sd").disabled=true;
   // Final validation immediately before mutation
   const b2=arenaBattles.find(x=>x.id===n);
-  if(!b2||b2.stage!=="v"||b2.stageEnd<=Date.now()||!b2.battleUid||VOTED.has(b2.battleUid)){
+  if(!b2||b2.stage!=="v"||b2.stageEnd<=arenaNow()||!b2.battleUid||VOTED.has(b2.battleUid)){
     busy=false;toast(t("closed"));closeV();return;
+  }
+  if(window.FaceArenaSync?.isOnline()){
+    const targetPhotoId=side==="R"?b2.redPhotoId:b2.bluePhotoId;
+    if(!targetPhotoId){busy=false;toast("Не удалось определить участника. Обновите арену.");return}
+    try{
+      const result=await window.FaceArenaSync.submitVote(b2.battleUid,targetPhotoId,v);
+      busy=false;closeV();window.FaceArenaAudio?.play("voteSuccess");
+      toast(result?.ok===false?"Голос принят. Серверный таймер временно недоступен.":t("ok"));
+      if(location.hash==="#battle-"+n)bview(n);
+    }catch(error){
+      busy=false;
+      const send=$("sd");if(send){send.disabled=false;send.textContent=t("send")}
+      const err=$("er");if(err)err.textContent=error?.message||"Не удалось отправить голос";
+    }
+    return;
   }
   VOTED.add(b2.battleUid);
   if(side==="R")b2.redVotes++;else b2.blueVotes++;
@@ -946,7 +993,7 @@ $("ov").onclick=e=>{if(e.target==$("ov"))closeV()};
 addEventListener("keydown",e=>{if(e.key==="Escape")closeV()});
 
 function statusLabel(st){
-  return t({queued:"stQueued",matched:"stMatched",confirmed:"stConfirmed",voting:"stVoting",completed:"stCompleted",cancelled:"stCancelled"}[st]||"stQueued");
+  return t({queued:"stQueued",matched:"stMatched",confirmed:"stConfirmed",voting:"stVoting",champion:"stChampion",completed:"stCompleted",cancelled:"stCancelled"}[st]||"stQueued");
 }
 function renderQueue(){
   // FIFO: only status===queued, ordered by queuedAt
@@ -964,9 +1011,10 @@ function renderQueue(){
   if(show.length){
     list+=`<h2>${t("qYours")}</h2><div class="q-list">`+show.map(p=>{
       const canCancel=p.status==="queued";
-      const canFind=p.status==="queued";
-      const canOpenMatch=p.status==="matched";
-      const canOpenBattle=p.status==="confirmed"||p.status==="voting";
+      const canCancelMatch=p.status==="matched"&&p.confirmUntil>arenaNow()&&!!p.battleUid;
+      const canFind=p.status==="queued"&&!window.FaceArenaSync?.isOnline();
+      const canOpenMatch=p.status==="matched"&&!window.FaceArenaSync?.isOnline();
+      const canOpenBattle=!!p.battleId;
       const frameCls=p.side?`frame-${p.side}`:"";
       const qIdx=qOrder.findIndex(x=>x.id===p.id);
       const posLabel=qIdx>=0?` · позиция ${qIdx+1} (впереди: ${qIdx})`:"";
@@ -977,6 +1025,7 @@ function renderQueue(){
           ${canFind?`<button class="btn-sm-blue" data-act="find" data-id="${p.id}">${t("findPair")}</button>`:""}
           ${canOpenMatch?`<button class="btn-sm-blue" data-act="openmatch" data-id="${p.id}">Открыть таймер</button>`:""}
           ${canOpenBattle?`<button class="btn-sm-blue" data-act="openbattle" data-id="${p.id}">Открыть</button>`:""}
+          ${canCancelMatch?`<button class="btn-sm-muted" data-act="cancelmatch" data-id="${p.id}">Отменить участие</button>`:""}
           ${canCancel?`<button class="btn-sm-muted" data-act="del" data-id="${p.id}">Удалить</button>`:""}
         </div>
       </div>`;
@@ -1008,9 +1057,15 @@ function renderQueue(){
       if(act==="find") startMatch(id);
       else if(act==="openmatch") location.hash="match-"+encodeURIComponent(id);
       else if(act==="openbattle"){const p=photos.find(x=>String(x.id)===String(id));if(p&&p.battleId)location.hash="battle-"+p.battleId}
+      else if(act==="cancelmatch"){
+        const p=photos.find(x=>String(x.id)===String(id));
+        if(p?.battleUid)window.FaceArenaSync.cancelMatch(p.battleUid).then(result=>toast(result?.ok===false?"Участие отменено. Серверный таймер временно недоступен.":"Участие отменено, обе фотографии возвращены в очередь")).catch(error=>toast(error?.message||"Окно отмены уже закрыто"));
+      }
       else if(act==="del"){
         const p=photos.find(x=>String(x.id)===String(id));
-        if(p&&p.status==="queued"){photos=photos.filter(x=>String(x.id)!==String(id));toast("Фото удалено из очереди");saveState();renderQueue();updateArenaStats()}
+        if(window.FaceArenaSync?.isOnline()){
+          window.FaceArenaSync.deletePhoto(id).then(result=>toast(result?.ok===false?"Фото удалено. Серверный таймер временно недоступен.":"Фото удалено")).catch(error=>toast(error?.message||"Не удалось удалить фото"));
+        }else if(p&&p.status==="queued"){photos=photos.filter(x=>String(x.id)!==String(id));toast("Фото удалено из очереди");saveState();renderQueue();updateArenaStats()}
         else toast("Нельзя удалить: фото уже в баттле");
       }
     };
@@ -1251,9 +1306,18 @@ function handleFile(f){
   reader.readAsDataURL(f);
 }
 
-function confirmAdd(){
+async function confirmAdd(){
   if(!pendingUrl){toast(t("upNoFile"));return}
   if(activeCount()>=MAX_ACTIVE){toast(t("upLimit"));return}
+  if(window.FaceArenaSync?.isOnline()){
+    try{
+      const result=await window.FaceArenaSync.uploadPhoto(pendingFile);
+      pendingFile=null;pendingUrl=null;
+      toast(result?.coordinatorAvailable===false?"Фото сохранено. Серверный таймер временно недоступен.":"Фото добавлено в общую очередь");
+      location.hash="queue";
+    }catch(error){toast(error?.message||"Не удалось загрузить фото");}
+    return;
+  }
   const id=Date.now()+"_"+Math.random().toString(36).slice(2,8);
   photos.push({id,dataUrl:pendingUrl,status:"queued",queuedAt:Date.now(),queueSeq:photos.reduce((m,x)=>Math.max(m,Number.isFinite(x.queueSeq)?x.queueSeq:-1),-1)+1});
   tryFillSlots();
@@ -1291,8 +1355,8 @@ function renderProfile(){
 
   let histHtml="";
   if(history.length){
-    histHtml=`<h2>${t("prHist")}</h2><div class="hist">`+history.map(h=>`
-      <div class="hist-item" data-hid="${h.photoId}">
+    histHtml=`<h2>${t("prHist")}</h2><div class="hist">`+history.map((h,i)=>`
+      <div class="hist-item" data-result="${esc(historyResultKey(h,i))}">
         <div class="sides">
           <img src="${h.myImg||face(1,"R")}" alt="">
           <span class="vs-s">VS</span>
@@ -1322,9 +1386,9 @@ function renderProfile(){
       <div class="stat"><b>${battles}</b><span>${t("prBattles")}</span></div>
     </div>
     ${(()=>{
-      const mine=Object.values(participantStats);
+      const mine=Object.values(participantStats).filter(x=>x.ownerId===window.FaceArenaSync?.getUser()?.id);
       const def=mine.reduce((s,x)=>s+(x.defenses||0),0);
-      const champ=photos.some(x=>x.status==="champion");
+      const champ=mine.some(x=>x.isChampion);
       return `<div class="pr-stats" style="margin-top:8px">
         <div class="stat"><b>${champ?"👑":"—"}</b><span>Статус</span></div>
         <div class="stat"><b>${def}</b><span>Защит титула</span></div>
@@ -1336,10 +1400,14 @@ function renderProfile(){
     ${archHtml}`;
 
   $("pv").querySelectorAll(".hist-item").forEach(el=>{
-    el.onclick=()=>{location.hash="result-"+el.dataset.hid};
+    el.onclick=()=>{location.hash="result-"+encodeURIComponent(el.dataset.result)};
   });
   $("pv").querySelectorAll(".rm").forEach(b=>b.onclick=()=>{
     const id=b.dataset.id;
+    if(window.FaceArenaSync?.isOnline()){
+      window.FaceArenaSync.deletePhoto(id).then(()=>toast("Фото удалено из архива (история сохранена)")).catch(error=>toast(error?.message||"Не удалось удалить фото"));
+      return;
+    }
     photos=photos.filter(x=>String(x.id)!==String(id));
     saveState();
     toast("Фото удалено из архива (история сохранена)");
@@ -1370,6 +1438,7 @@ function renderSettings(){
         <li><button type="button" class="menu-item" data-go="privacy">Приватность и безопасность</button></li>
         <li><button type="button" class="menu-item" data-go="data">Данные</button></li>
         <li><button type="button" class="menu-item" data-go="support">Поддержка</button></li>
+        <li><button type="button" class="menu-item danger" data-go="signout">Выйти из аккаунта</button></li>
       </ul>
       <div class="settings-menu-sep"></div>
       <div class="settings-menu-foot">
@@ -1436,9 +1505,9 @@ function renderSettings(){
     <div id="setSubData" class="settings-sub">
       <button type="button" class="settings-back" id="backFromData">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Данные</h2>
-      <p class="set-info">Данные хранятся только в этом браузере и пока не синхронизируются между устройствами.</p>
-      <p class="set-info">Сброс удалит фотографии, голоса, комментарии, историю и локальные настройки профиля только в этом браузере.</p>
-      <button type="button" class="menu-item danger" id="setResetBtn">Сбросить данные</button>
+      <p class="set-info">Аккаунт, фотографии, очередь, голоса и результаты хранятся на сервере и синхронизируются между устройствами.</p>
+      <p class="set-info">Очистка локального кэша не удаляет серверные фотографии и историю.</p>
+      <button type="button" class="menu-item danger" id="setResetBtn">Очистить локальный кэш</button>
     </div>
 
     <div id="setSubSupport" class="settings-sub">
@@ -1471,6 +1540,7 @@ function renderSettings(){
       else if(go==="privacy")showSub("setSubPrivacy");
       else if(go==="data")showSub("setSubData");
       else if(go==="support")showSub("setSubSupport");
+      else if(go==="signout")window.FaceArenaSync?.signOut();
     };
   });
 
@@ -1524,11 +1594,14 @@ function renderSettings(){
   };
 
   const sp=$("saveProfile");
-  if(sp)sp.onclick=()=>{
+  if(sp)sp.onclick=async()=>{
     const name=($("setName").value||"").trim().slice(0,24);
     const handle=($("setHandle").value||"").trim().replace(/^@/,"").replace(/[^\w.]/g,"").slice(0,20);
     if(!name){toast("Укажите имя");return}
     if(!handle){toast("Укажите никнейм");return}
+    if(window.FaceArenaSync?.isOnline()){
+      try{await window.FaceArenaSync.updateProfile(name,handle)}catch(error){toast(error?.message||"Не удалось сохранить профиль");return}
+    }
     profile={name,handle};
     saveState();
     toast("Профиль сохранён");
@@ -1536,8 +1609,38 @@ function renderSettings(){
   };
 }
 
+function historyResultKey(h,index){
+  return String(h.resultId||(h.battleUid?String(h.battleUid)+":"+String(h.photoId):String(h.photoId)+":"+String(h.completedAt||index)));
+}
+function renderResults(){
+  const rows=(arenaResults.length?arenaResults:history).map((h,i)=>({...h,_resultKey:historyResultKey(h,i)}));
+  const content=rows.length?'<div class="hist">'+rows.map(h=>`
+    <div class="hist-item" role="button" tabindex="0" data-result="${esc(h._resultKey)}">
+      <div class="sides">
+        <img src="${h.myImg||face(1,"R")}" alt="">
+        <span class="vs-s">VS</span>
+        <img src="${h.opponentImg||face(2,"B")}" alt="">
+      </div>
+      <div style="text-align:right">
+        <div class="res ${esc(h.result)}">${h.result==="red"?"Победа RED":h.result==="blue"?"Победа BLUE":h.result==="win"?t("prWin"):h.result==="lose"?t("prLose"):"Ничья"}</div>
+        <div style="font-size:11px;color:var(--mu);margin-top:2px">${Number(h.myVotes)||0} : ${Number(h.oppVotes)||0}</div>
+        <div style="font-size:10px;color:var(--mu);margin-top:3px">Баттл №${esc(h.battleId||h.laneId||"—")}</div>
+      </div>
+    </div>`).join("")+'</div>':'<div class="empty-box"><p>Завершённые баттлы появятся здесь.</p></div>';
+  $("iv").innerHTML=`
+    ${hdrHTML()}
+    <h1 class="sec-h">Итоги</h1>
+    <p class="sec-lead">Результаты завершённых баттлов. Записи остаются здесь после освобождения активных слотов.</p>
+    ${content}`;
+  $("iv").querySelectorAll("[data-result]").forEach(el=>{
+    const open=()=>{location.hash="result-"+encodeURIComponent(el.dataset.result)};
+    el.onclick=open;
+    el.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();open()}};
+  });
+}
+
 function renderResult(photoId){
-  const h=history.find(x=>String(x.photoId)===String(photoId));
+  const h=(arenaResults||[]).find((x,i)=>historyResultKey(x,i)===String(photoId))||history.find((x,i)=>historyResultKey(x,i)===String(photoId))||history.find(x=>String(x.photoId)===String(photoId));
   if(!h){location.hash="profile";return}
   $("rv").innerHTML=`
     ${hdrHTML()}
@@ -1545,22 +1648,22 @@ function renderResult(photoId){
     <h1 class="sec-h">${t("resTitle")}</h1>
 <div class="result-detail">
       <div class="match-duel">
-        <div><img src="${h.myImg}" alt=""><div style="font-size:12px;margin-top:6px">Вы · ${h.side}</div></div>
-        <div><img src="${h.opponentImg}" alt=""><div style="font-size:12px;margin-top:6px">${esc(h.opponentName||"opponent")}</div></div>
+        <div><img src="${h.myImg}" alt=""><div style="font-size:12px;margin-top:6px">RED · ${esc(h.myName||"Участник")}</div></div>
+        <div><img src="${h.opponentImg}" alt=""><div style="font-size:12px;margin-top:6px">BLUE · ${esc(h.opponentName||"Участник")}</div></div>
       </div>
-      <div class="score" style="color:${h.result==="win"?"#4ade80":h.result==="lose"?"var(--red)":"var(--mu)"}">${t(h.result==="win"?"prWin":h.result==="lose"?"prLose":"prDraw")}</div>
+      <div class="score" style="color:${h.result==="red"?"var(--red)":h.result==="blue"?"var(--blue)":h.result==="win"?"#4ade80":h.result==="lose"?"var(--red)":"var(--mu)"}">${h.result==="red"?"Победа RED":h.result==="blue"?"Победа BLUE":"Ничья"}</div>
       <div style="text-align:center;font:800 20px var(--hd)">${h.myVotes} : ${h.oppVotes}</div>
       <p class="note" style="text-align:center">Баттл №${h.battleId} · ${new Date(h.completedAt).toLocaleString("ru")}</p>
     </div>`;
   $("bkR").onclick=()=>{location.hash="profile"};
 }
 
-const views={av:$("av"),bv:$("bv"),qv:$("qv"),uv:$("uv"),pv:$("pv"),sv:$("sv"),mv:$("mv"),rv:$("rv")};
+const views={av:$("av"),bv:$("bv"),qv:$("qv"),uv:$("uv"),pv:$("pv"),sv:$("sv"),mv:$("mv"),rv:$("rv"),iv:$("iv")};
 function hideAll(){Object.values(views).forEach(v=>{if(v){v.hidden=true;v.classList.remove("is-on","is-leave","settings-menu")}})}
 function setTab(i){
   document.querySelectorAll(".tabs button").forEach((b,j)=>b.classList.toggle("on",j===i));
   $("ind").style.transform=`translateX(${i*100}%)`;
-  $("ind").style.width="25%";
+  $("ind").style.width="20%";
 }
 function showView(el){
   if(!el)return;
@@ -1589,6 +1692,7 @@ function show(){
     } else if(hash==="queue"){renderQueue();target=views.qv;setTab(1)}
     else if(hash==="upload"){renderUpload();target=views.uv;setTab(2)}
     else if(hash==="profile"){renderProfile();target=views.pv;setTab(3)}
+    else if(hash==="results"){renderResults();target=views.iv;setTab(4)}
     else if(hash==="settings"){renderSettings();target=views.sv;setTab(3)}
     else {renderArenaGrid();target=views.av;setTab(0)}
     if(target!==views.mv)clearInterval(matchTimerId);
@@ -1605,17 +1709,38 @@ function show(){
 }
 
 addEventListener("hashchange",show);
+window.addEventListener("face-arena-snapshot",event=>{
+  const snapshot=event.detail;
+  if(!snapshot)return;
+  photos=snapshot.photos||[];
+  arenaBattles=snapshot.arenaBattles||createDefaultArena();
+  history=snapshot.history||[];
+  arenaResults=snapshot.arenaResults||[];
+  VOTED=snapshot.VOTED||new Set();
+  MY=snapshot.MY||{};
+  profile=snapshot.profile||profile;
+  participantStats=snapshot.participantStats||{};
+  updateArenaStats();
+  const hash=location.hash.slice(1);
+  if(hash==="results")renderResults();
+  else if(hash.startsWith("result-"))renderResult(decodeURIComponent(hash.slice(7)));
+  else if(/^battle-\d+$/.test(hash))bview(Number(hash.slice(7)));
+  else if(hash==="queue")renderQueue();
+  else if(hash==="profile")renderProfile();
+  else renderArenaGrid();
+});
 renderArenaGrid();
 show();
 setInterval(()=>{tickArena();tick2()},1000);
 
 const IC={
+  results:'<path d="M4 5h16M4 12h16M4 19h16"/><path d="m7 9 2 2 4-4"/>',
   arena:'<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>',
   q:'<path d="M4 6h16M4 12h16M4 18h10"/>',
   up:'<path d="M12 5v14M5 12h14"/>',
   pr:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>'
 };
-["arena","q","up","pr"].forEach((k,i)=>{
+["arena","q","up","pr","results"].forEach((k,i)=>{
   const b=document.createElement("button");
   if(!i)b.className="on";
   b.innerHTML=`<svg viewBox="0 0 24 24">${IC[k]}</svg>${t(k)}`;
@@ -1623,7 +1748,8 @@ const IC={
     if(i===0)location.hash="";
     else if(i===1)location.hash="queue";
     else if(i===2)location.hash="upload";
-    else location.hash="profile";
+    else if(i===3)location.hash="profile";
+    else location.hash="results";
   };
   $("tabs").appendChild(b);
 });
