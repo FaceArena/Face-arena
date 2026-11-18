@@ -1542,7 +1542,28 @@ function renderSettings(){
     <div id="setSubPrivacy" class="settings-sub">
       <button type="button" class="settings-back" id="backFromPrivacy">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Приватность и безопасность</h2>
-      <p class="set-info">Настройки видимости профиля, блокировок и жалоб пока не активны: серверные аккаунты и система модерации ещё не подключены.</p>
+      <div class="set-row">
+        <div><div class="lbl">Публичный профиль</div><div class="sub">Разрешить другим участникам видеть имя и никнейм</div></div>
+        <button type="button" class="set-toggle" id="privacyProfileToggle" aria-label="Публичный профиль"></button>
+      </div>
+      <div class="set-row">
+        <div><div class="lbl">Публичная история боёв</div><div class="sub">Разрешить просмотр истории другим участникам</div></div>
+        <button type="button" class="set-toggle" id="privacyHistoryToggle" aria-label="Публичная история боёв"></button>
+      </div>
+      <div class="set-row">
+        <div><div class="lbl">Уведомления о безопасности</div><div class="sub">Сохранить предпочтение для системных уведомлений</div></div>
+        <button type="button" class="set-toggle" id="privacySecurityToggle" aria-label="Уведомления о безопасности"></button>
+      </div>
+      <div class="set-row" style="display:block">
+        <div class="lbl">Активные сеансы</div>
+        <div class="sub" id="currentSessionInfo">Это устройство</div>
+        <button type="button" class="menu-item" id="revokeOtherSessions" style="margin-top:8px;padding:10px 0;color:#fff">Завершить другие сеансы</button>
+      </div>
+      <div class="set-row" style="display:block">
+        <div class="lbl">Удаление аккаунта</div>
+        <div class="sub">Удаление аккаунта и фотографий требует отдельной процедуры, чтобы не повредить сохранённые результаты боёв.</div>
+        <button type="button" class="menu-item danger" id="accountDeletionInfo" style="padding:10px 0">Подробнее</button>
+      </div>
     </div>
 
     <div id="setSubData" class="settings-sub">
@@ -1672,6 +1693,55 @@ function renderSettings(){
     ta.setAttribute("aria-pressed",String(prefAnim));
     toast(prefAnim?"Анимации включены":"Анимации отключены");
   };
+
+  const privacyKeys=[
+    ["privacyProfileToggle","profile_public"],
+    ["privacyHistoryToggle","history_public"],
+    ["privacySecurityToggle","security_notifications"]
+  ];
+  const syncPrivacy=()=>{
+    const settings=window.FaceArenaSync?.lastSnapshot?.settings||{};
+    for(const [id,key] of privacyKeys){
+      const el=$(id);if(!el)continue;
+      const value=settings[key]!==false;
+      el.classList.toggle("on",value);
+      el.setAttribute("aria-pressed",String(value));
+      el.disabled=!window.FaceArenaSync?.isOnline?.();
+    }
+  };
+  syncPrivacy();
+  for(const [id,key] of privacyKeys){
+    const el=$(id);if(!el)continue;
+    el.onclick=async()=>{
+      const settings=window.FaceArenaSync?.lastSnapshot?.settings||{};
+      const next=settings[key]===false;
+      el.disabled=true;
+      try{
+        await window.FaceArenaSync.updatePrivacySettings({[key]:next});
+        syncPrivacy();
+        toast("Настройка сохранена на сервере");
+      }catch(error){
+        syncPrivacy();
+        toast(error?.message||"Не удалось сохранить настройку");
+      }finally{el.disabled=false;}
+    };
+  }
+  const sessionInfo=$("currentSessionInfo");
+  if(sessionInfo){
+    const ua=navigator.userAgent||"";
+    const device=/iPhone|iPad|iPod/.test(ua)?"Текущее устройство: Apple":/Android/.test(ua)?"Текущее устройство: Android":/Mac/.test(ua)?"Текущее устройство: Mac":/Windows/.test(ua)?"Текущее устройство: Windows":"Текущее устройство";
+    sessionInfo.textContent=device+" · другие сеансы можно завершить ниже";
+  }
+  const revokeBtn=$("revokeOtherSessions");
+  if(revokeBtn)revokeBtn.onclick=async()=>{
+    if(!confirm("Завершить все остальные сеансы FACE ARENA? Текущий сеанс останется активным."))return;
+    revokeBtn.disabled=true;
+    try{await window.FaceArenaSync.revokeOtherSessions();toast("Другие сеансы завершены");}
+    catch(error){toast(error?.message||"Не удалось завершить сеансы");}
+    finally{revokeBtn.disabled=false;}
+  };
+  const deletionInfo=$("accountDeletionInfo");
+  if(deletionInfo)deletionInfo.onclick=()=>toast("Удаление будет включено после безопасного переноса исторических результатов в обезличенный архив");
 
   const sp=$("saveProfile");
   if(sp)sp.onclick=async()=>{
