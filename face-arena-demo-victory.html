@@ -259,6 +259,7 @@ html.no-anim .card{opacity:1}
 .pr-av{width:72px;height:72px;border-radius:50%;overflow:hidden;background:var(--s);flex:none}
 .pr-av img{width:100%;height:100%;object-fit:cover}
 .pr-name{font:800 18px var(--hd)}
+.verified-badge{display:inline-grid;place-items:center;vertical-align:middle;margin-left:5px;width:16px;height:16px;border-radius:50%;background:#2589ff;color:#fff;font:800 11px/1 var(--bd);box-shadow:0 0 0 1.5px rgba(37,137,255,.2);flex:0 0 auto}
 .pr-handle{font-size:13px;color:var(--mu);margin-top:2px}
 .pr-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px}
 .pr-stats .stat{text-align:center;padding:12px 8px}
@@ -495,6 +496,7 @@ document.querySelectorAll("[data-i]").forEach(e=>e.textContent=t(e.dataset.i));
 const pl=(n,f)=>{const m=n%10,h=n%100;return n+" "+(m==1&&h!=11?f[0]:m>=2&&m<=4&&(h<12||h>14)?f[1]:f[2])};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const verifiedBadge=verified=>verified?`<span class="verified-badge" title="Подтверждённый аккаунт" aria-label="Подтверждённый аккаунт">✓</span>`:"";
 const fmt=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(Math.max(0,s%60)).padStart(2,"0");
 const elapsedQueue=ms=>{const sec=Math.max(0,Math.floor((Date.now()-Number(ms||Date.now()))/1000));return sec>=3600?String(Math.floor(sec/3600)).padStart(2,"0")+":"+String(Math.floor(sec%3600/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0"):fmt(sec)};
 function tickQueueWaits(){document.querySelectorAll("[data-queued-at]").forEach(el=>{el.textContent="В очереди · "+elapsedQueue(el.dataset.queuedAt)})}
@@ -533,7 +535,7 @@ let VOTED=new Set(); // Set of battleUid strings
 let MY={}; // { [battleUid]: [{s,v}] }
 let pendingUrl=null, pendingFile=null, isPublishingPhoto=false;
 let matchTimerId=null;
-let profile={name:"Вы",handle:"user"}
+let profile={name:"Вы",handle:"user",isVerified:false,role:"user"}
 let prefAnim=(()=>{try{const saved=localStorage.getItem(ANIM_PREF_KEY);return saved===null?true:saved==="true"}catch{return true}})();
 let participantStats={}; // account-level stats for the signed-in user's own profile
 let topArenaRanking=null; // server-authoritative public aggregate; null means use local fallback
@@ -671,7 +673,7 @@ function renderTopArenaHTML(){
     rows.slice(0,10).map((r,i)=>`<div class="top-item ${i===0?"gold":""}">
       <div class="pos">${i+1}</div>
       <img src="${r.img}" alt="">
-      <div><div class="nm">${esc(r.name)} ${r.isLegendary?'<span class="champion-tag legendary-tag">ЛЕГЕНДАРНЫЙ ЧЕМПИОН</span>':r.isChampion?'<span class="champion-tag">ЧЕМПИОН</span>':''}</div>
+      <div><div class="nm">${esc(r.name)}${verifiedBadge(r.isVerified)} ${r.isLegendary?'<span class="champion-tag legendary-tag">ЛЕГЕНДАРНЫЙ ЧЕМПИОН</span>':r.isChampion?'<span class="champion-tag">ЧЕМПИОН</span>':''}</div>
       <div class="meta">${r.isChampion&&r.laneId?"Линия "+r.laneId+" · ":""}Серия ${r.streak} · Защит ${r.defenses}</div></div>
       <div class="stats"><b>${r.wins}</b><div>побед</div><div style="margin-top:2px">${r.losses} пор.</div></div>
     </div>`).join("")+`</div></div>`;
@@ -709,14 +711,16 @@ function renderArenaGrid(){
     const streak=b.championStatus==="initial"?`<div class="streak">Начальный чемпион</div>`:b.championStreak?`<div class="streak">Серия: ${b.championStreak}</div>`:"";
     const redOwnerId=photos.find(p=>String(p.id)===String(b.redPhotoId))?.ownerId||null;
   const blueOwnerId=photos.find(p=>String(p.id)===String(b.bluePhotoId))?.ownerId||null;
+  const redVerified=!!photos.find(p=>String(p.id)===String(b.redPhotoId))?.isVerified;
+  const blueVerified=!!photos.find(p=>String(p.id)===String(b.bluePhotoId))?.isVerified;
   const lead=tot?(rp>55?"R":(rp<45?"B":"eq")):"eq";
     const rCls=lead==="R"?"dom":(lead==="B"?"weak":"");
     const bCls=lead==="B"?"dom":(lead==="R"?"weak":"");
     const vsCls=lead==="R"?"push-b":(lead==="B"?"push-r":"");
     return `<article class="card" tabindex="0" role="button" aria-label="${t("battle")}${b.id}" style="--i:${i}" data-id="${b.id}">
 <div class="top"><span class="num">Линия ${String(b.id).padStart(2,"0")}</span><span class="chip ${w&&isActive?"":isActive?"v":""}">${chipText}</span></div>
-<div class="duel"><div class="ph R ${rCls}">${crownR}<img alt="" loading="lazy" fetchpriority="auto" decoding="async" src="${redSrc}"><span class="side">RED</span><div class="nm">${esc(redNm)}</div></div>
-<div class="ph B ${bCls}">${crownB}<img alt="" loading="lazy" fetchpriority="auto" decoding="async" src="${blueSrc}"><span class="side">BLUE</span><div class="nm">${esc(blueNm)}</div></div><div class="vs ${vsCls}">VS</div></div>${streak}
+<div class="duel"><div class="ph R ${rCls}">${crownR}<img alt="" loading="lazy" fetchpriority="auto" decoding="async" src="${redSrc}"><span class="side">RED</span><div class="nm">${esc(redNm)}${verifiedBadge(redVerified)}</div></div>
+<div class="ph B ${bCls}">${crownB}<img alt="" loading="lazy" fetchpriority="auto" decoding="async" src="${blueSrc}"><span class="side">BLUE</span><div class="nm">${esc(blueNm)}${verifiedBadge(blueVerified)}</div></div><div class="vs ${vsCls}">VS</div></div>${streak}
 <div class="bar ${tot?"":"zero"} ${lead!=="eq"?"fight":""}" style="--p:${rp};--sx:${rp/100}"><u data-p="${rp/100}"></u>${lead!=="eq"?`<i class="clash"></i>`:""}</div>
 <div class="pct">${tot?`<span class="r ${lead==="R"?"lead":""}">RED ${rp}%</span><span class="m">${pl(tot,["голос","голоса","голосов"])}</span><span class="b ${lead==="B"?"lead":""}">${100-rp}% BLUE</span>`:`<span class="m">${t("noVotes")}</span>`}</div>
 ${isActive?`<div class="tm"><small>${confirming?"Отмена участия":t(w?"tWait":"tVote")}</small><b class="cd">${fmt(left)}</b></div><div class="tl"><u style="transform:scaleX(${left/STAGE_SEC})"></u></div>`:""}</article>`;
@@ -1537,7 +1541,7 @@ function renderProfile(){
 <div class="pr-head">
       <div class="pr-av"><img src="${avSrc}" alt=""></div>
       <div>
-        <div class="pr-name">${dispName}</div>
+        <div class="pr-name">${dispName}${verifiedBadge(profile.isVerified)}</div>
         <div class="pr-handle">@${dispHandle}</div>
       </div>
     </div>
@@ -1611,7 +1615,7 @@ async function renderPublicProfile(userId){
     host.innerHTML=`
       ${hdrHTML()}<h1 class="sec-h">Профиль участника</h1><p class="sec-lead">Публичный профиль FACE ARENA</p>
       <div class="pr-head"><div class="pr-av">${photosList[0]?`<img data-photo-path="${esc(photosList[0].object_path)}" src="${esc(photoUrl(photosList[0]))}" alt="">`:""}</div>
-      <div><div class="pr-name">${esc(data.display_name||"Участник")}</div><div class="pr-handle">@${esc(data.handle||"user")}</div></div></div>
+      <div><div class="pr-name">${esc(data.display_name||"Участник")}${verifiedBadge(data.is_verified)}</div><div class="pr-handle">@${esc(data.handle||"user")}</div></div></div>
       <div class="pr-stats"><div class="stat"><b>${photosList.length}</b><span>Фото в профиле</span></div>
       <div class="stat"><b>${photosList.filter(p=>p.status==="completed"||p.status==="cancelled").length}</b><span>В архиве</span></div>
       <div class="stat"><b>${photosList.filter(p=>["queued","matched","confirmed","voting","champion"].includes(p.status)).length}</b><span>Активные</span></div></div>
@@ -2175,7 +2179,7 @@ window.addEventListener("face-arena-snapshot",event=>{
   const snapshot=event.detail;
   if(!snapshot){
     photos=[];history=[];arenaResults=[];VOTED=new Set();MY={};participantStats={};
-    arenaBattles=createDefaultArena();profile={name:"Вы",handle:"user"};
+    arenaBattles=createDefaultArena();profile={name:"Вы",handle:"user",isVerified:false,role:"user"};
     updateArenaStats();
     const activeHash=location.hash.slice(1);
     // Re-render the current route after an account change so private DOM and
