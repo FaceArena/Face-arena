@@ -1005,10 +1005,19 @@ function tick2(){
   if(b.stage!=="m"&&b.stage!=="w"&&b.stage!=="v"){e.textContent=t("ending");return}
   const s=Math.max(0,Math.ceil((b.stageEnd-arenaNow())/1000));
   if(!$("bv").hidden&&s>=1&&s<=3)window.FaceArenaAudio?.play("countdown");
-  // If a viewer opened during the 10-second cancellation window, start voting
-  // automatically once it expires. Participants must never register as viewers.
-  if(!$("bv").hidden&&location.hash==="#battle-"+b.id&&
-     (b.stage==="w"||(b.stage==="m"&&s===0))&&!b.isParticipant){
+  // The server keeps a battle in "waiting" until someone opens it after
+  // the cancellation window. Refresh at expiry so the participant/viewer UI
+  // transitions correctly; only non-participants may register the visit.
+  const sync=window.FaceArenaSync;
+  if(!$("bv").hidden&&location.hash==="#battle-"+b.id&&b.stage==="m"&&s===0&&
+     sync?.isOnline?.()&&!b._stageRefreshRequested&&Date.now()>=(b._stageRefreshRetryAt||0)){
+    b._stageRefreshRequested=true;
+    sync.loadSnapshot().finally(()=>{
+      b._stageRefreshRequested=false;
+      b._stageRefreshRetryAt=Date.now()+2000;
+    });
+  }
+  if(!$("bv").hidden&&location.hash==="#battle-"+b.id&&b.stage==="w"&&!b.isParticipant){
     requestBattleVisit(b);
   }
   e.textContent=s?fmt(s):t("ending");
