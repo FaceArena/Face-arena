@@ -357,38 +357,75 @@
             return { s: member?.side === "left" ? "R" : "B", v: v.comment, author: profiles.get(v.voter_id)?.display_name || "Участник" };
           });
         }
+        // Lifetime standings and consecutive-win streaks belong to accounts, not photos.
         const participantStats = {};
-        const getStats = (photoId) => {
-          if (!photoId) return null;
-          if (!participantStats[photoId]) {
-            const row = photosById.get(photoId);
-            const p = row ? profiles.get(row.owner_id) || {} : {};
-            participantStats[photoId] = {
+        const getStats = (ownerId, photoId = null) => {
+          if (!ownerId) return null;
+          if (!participantStats[ownerId]) {
+            const row = photoId ? photosById.get(photoId) : null;
+            const p = profiles.get(ownerId) || {};
+            participantStats[ownerId] = {
               wins: 0, losses: 0, defenses: 0, currentStreak: 0, bestStreak: 0,
-              name: p.display_name || "Участник", ownerId: row?.owner_id || null,
+              topArenaQualified: false, isLegendary: false,
+              name: p.display_name || "Участник", ownerId,
               img: row ? c.storage.from("arena-photos").getPublicUrl(row.object_path).data.publicUrl : "",
               isChampion: false, laneId: null
             };
           }
-          return participantStats[photoId];
+          const stats = participantStats[ownerId];
+          if (!stats.img && photoId) {
+            const row = photosById.get(photoId);
+            if (row) stats.img = c.storage.from("arena-photos").getPublicUrl(row.object_path).data.publicUrl;
+          }
+          return stats;
         };
-        for (const result of [...resultRes.data].sort((a,b) => Date.parse(a.completed_at)-Date.parse(b.completed_at))) {
-          const leftStats = getStats(result.left_photo_id);
-          const rightStats = getStats(result.right_photo_id);
+        const chronologicalResults = [...resultRes.data].sort((a,b) =>
+          Date.parse(a.completed_at) - Date.parse(b.completed_at) || String(a.id).localeCompare(String(b.id))
+        );
+        for (const result of chronologicalResults) {
+          const leftOwner = photosById.get(result.left_photo_id)?.owner_id;
+          const rightOwner = photosById.get(result.right_photo_id)?.owner_id;
+          const leftStats = getStats(leftOwner, result.left_photo_id);
+          const rightStats = getStats(rightOwner, result.right_photo_id);
+          if (!leftStats || !rightStats) continue;
           if (result.winner_photo_id === result.left_photo_id) {
-            leftStats.wins++; leftStats.currentStreak++; leftStats.bestStreak = Math.max(leftStats.bestStreak,leftStats.currentStreak);
-            rightStats.losses++; rightStats.currentStreak = 0;
+            leftStats.wins++;
+            leftStats.currentStreak++;
+            leftStats.bestStreak = Math.max(leftStats.bestStreak, leftStats.currentStreak);
+            leftStats.topArenaQualified ||= leftStats.bestStreak >= 5;
             if (!result.opening) leftStats.defenses++;
+            rightStats.losses++;
+            rightStats.currentStreak = 0;
           } else if (result.winner_photo_id === result.right_photo_id) {
-            rightStats.wins++; rightStats.currentStreak++; rightStats.bestStreak = Math.max(rightStats.bestStreak,rightStats.currentStreak);
-            leftStats.losses++; leftStats.currentStreak = 0;
+            rightStats.wins++;
+            rightStats.currentStreak++;
+            rightStats.bestStreak = Math.max(rightStats.bestStreak, rightStats.currentStreak);
+            rightStats.topArenaQualified ||= rightStats.bestStreak >= 5;
+            if (!result.opening) rightStats.defenses++;
+            leftStats.losses++;
+            leftStats.currentStreak = 0;
+          } else {
+            // A draw interrupts the win streak without adding a loss.
+            leftStats.currentStreak = 0;
+            rightStats.currentStreak = 0;
           }
         }
+        for (const stats of Object.values(participantStats)) {
+          stats.topArenaQualified ||= stats.bestStreak >= 5;
+          stats.isLegendary = stats.currentStreak >= 10;
+        }
         for (const lane of laneRes.data) {
+          // During an opening battle champion_photo_id temporarily stores the first
+          // entrant; it is not a title holder until the opening battle is completed.
+          const activeBattle = activeByLane.get(lane.lane_id);
+          if (activeBattle?.opening) continue;
           if (lane.champion_photo_id) {
-            const championStats = getStats(lane.champion_photo_id);
-            championStats.isChampion = true;
-            championStats.laneId = lane.lane_id;
+            const ownerId = photosById.get(lane.champion_photo_id)?.owner_id;
+            const championStats = getStats(ownerId, lane.champion_photo_id);
+            if (championStats) {
+              championStats.isChampion = true;
+              championStats.laneId = lane.lane_id;
+            }
           }
         }
         const myProfile = profiles.get(this.user.id) || {};

@@ -163,10 +163,12 @@
   }
   function buildRanking(participantStats,photos){
     return Object.keys(participantStats||{}).filter(id=>!DEMO_ID.test(id)).map(id=>{
-      const s=participantStats[id]||{},p=(photos||[]).find(x=>idEq(x.id,id));
+      const s=participantStats[id]||{},p=(photos||[]).find(x=>idEq(x.ownerId??x.userId??x.id,id));
       if(s.isDemo||s.demoOnly||p&&(p.isDemo||p.demoOnly))return null;
-      return {id,name:s.name||"Участник",img:s.img||(p&&p.dataUrl)||"",wins:s.wins||0,losses:s.losses||0,defenses:s.defenses||0,streak:s.currentStreak||0,best:s.bestStreak||0,isChampion:!!s.isChampion||!!(p&&p.status==="champion"),laneId:s.laneId||null};
-    }).filter(Boolean).sort((a,b)=>Number(b.isChampion)-Number(a.isChampion)||b.defenses-a.defenses||b.wins-a.wins||b.streak-a.streak||String(a.id).localeCompare(String(b.id)));
+      const best=Number(s.bestStreak)||0,streak=Number(s.currentStreak)||0;
+      if(Number(s.wins||0)<5||best<5)return null;
+      return {id,name:s.name||"Участник",img:s.img||(p&&p.dataUrl)||"",wins:Number(s.wins)||0,losses:Number(s.losses)||0,defenses:Number(s.defenses)||0,streak,best,isChampion:!!s.isChampion||!!(p&&p.status==="champion"),isLegendary:streak>=10,laneId:s.laneId||null};
+    }).filter(Boolean).sort((a,b)=>b.wins-a.wins||b.streak-a.streak||b.best-a.best||String(a.id).localeCompare(String(b.id)));
   }
   return {normalizeQueue,selectNextAssignment,assignChallenger,resolveBattle,cancelBattle,buildRanking};
 });
