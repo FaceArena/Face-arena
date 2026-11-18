@@ -35,6 +35,11 @@
     .verified-pill{display:inline-flex;align-items:center;gap:5px;color:#8bc4ff;font-size:11px;font-weight:750;margin-left:7px}
     .verify-btn{min-width:132px;flex:none}.verify-btn.granted{background:#123126;border-color:#28664d;color:#8de2bd}
     @media(max-width:560px){.user-row{align-items:flex-start;flex-direction:column}.verify-btn{width:100%}}
+    .result-list{display:grid;gap:9px}
+    .result-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px;background:var(--panel);border:1px solid var(--line);border-radius:13px}
+    .result-main{min-width:0}.result-title{font-weight:750;overflow-wrap:anywhere}.result-meta{font-size:11px;color:var(--muted);overflow-wrap:anywhere;margin-top:4px}
+    .result-actions{display:flex;gap:8px;flex:none}.result-hidden{color:#ffb7a5;font-weight:700}
+    @media(max-width:560px){.result-row{align-items:flex-start;flex-direction:column}.result-actions{width:100%}.result-actions .btn{flex:1}}
     .photo{overflow:hidden;background:var(--panel);border:1px solid var(--line);border-radius:14px}
     .photo .image{width:100%;height:220px;object-fit:cover;display:block;background:#080a0e}
     .no-image{height:160px;display:grid;place-items:center;color:var(--muted);background:#0b0e14}
@@ -87,6 +92,15 @@
         <div class="meta" id="userCount" style="margin-bottom:12px">Пользователи</div>
         <div id="users" class="user-list"><div class="empty">Загрузка пользователей…</div></div>
       </section>
+      <section class="panel" style="margin-bottom:16px">
+        <div class="toolbar">
+          <input class="search" id="resultSearch" type="search" placeholder="Поиск по участникам, ID баттла или результата">
+          <button class="btn" id="refreshResults">Обновить итоги</button>
+          <button class="btn danger" id="hideAllResults">Очистить историю итогов</button>
+        </div>
+        <div class="meta" id="resultCount" style="margin-bottom:12px">История итогов</div>
+        <div id="results" class="result-list"><div class="empty">Загрузка итогов…</div></div>
+      </section>
       <section class="panel">
         <div class="toolbar">
           <input class="search" id="search" type="search" placeholder="Поиск по имени, handle или ID">
@@ -100,7 +114,7 @@
         <summary>Журнал событий и ошибок</summary>
         <ol id="logs"><li>Панель запущена.</li></ol>
       </details>
-      <footer>Доступ к операциям дополнительно проверяется сервером в Edge Function. Удаление Storage-файла необратимо; записи и результаты баттлов сохраняются.</footer>
+      <footer>Доступ к операциям дополнительно проверяется сервером в Edge Function. Удаление Storage-файла необратимо. Итоги можно скрывать и восстанавливать; игровая статистика при этом сохраняется.</footer>
     </section>
   </main>
 
@@ -122,6 +136,7 @@
     let supabase;
     let photos = [];
     let users = [];
+    let results = [];
     let busy = false;
     let loading = false;
 
@@ -294,6 +309,99 @@
         busy = false;
       }
     }
+    function renderResults() {
+      const term = $("resultSearch").value.trim().toLowerCase();
+      const visible = results.filter(r => [r.left_name,r.left_handle,r.right_name,r.right_handle,r.id,r.battle_id,r.lane_id].join(" ").toLowerCase().includes(term));
+      const hiddenCount = results.filter(r => r.is_hidden).length;
+      $("resultCount").textContent = `Итогов: ${results.length} · в истории: ${results.length-hiddenCount} · скрыто: ${hiddenCount}`;
+      if (!visible.length) {
+        $("results").innerHTML = '<div class="empty">Итоги не найдены.</div>';
+        return;
+      }
+      $("results").innerHTML = visible.map(r => {
+        const outcome = r.no_contest ? "Без результата" : r.is_draw ? "Ничья" : r.winner_photo_id === r.left_photo_id ? "Победа левого участника" : "Победа правого участника";
+        const status = r.is_hidden ? '<span class="result-hidden">Скрыт из истории</span>' : "В истории";
+        const action = r.is_hidden
+          ? `<button class="btn primary" data-result-id="${escapeHtml(r.id)}" data-result-hidden="false">Восстановить</button>`
+          : `<button class="btn danger" data-result-id="${escapeHtml(r.id)}" data-result-hidden="true">Удалить из истории</button>`;
+        return `<article class="result-row">
+          <div class="result-main">
+            <div class="result-title">${escapeHtml(r.left_name)} (@${escapeHtml(r.left_handle)}) — ${escapeHtml(r.right_name)} (@${escapeHtml(r.right_handle)})</div>
+            <div class="result-meta">${outcome} · Голоса: ${r.left_votes} : ${r.right_votes} · Линия ${r.lane_id} · ${escapeHtml(r.completed_at ? new Date(r.completed_at).toLocaleString("ru-RU") : "—")}</div>
+            <div class="result-meta">ID итога: ${escapeHtml(r.id)} · ID баттла: ${escapeHtml(r.battle_id)}</div>
+            <div class="result-meta">${status}</div>
+          </div>
+          <div class="result-actions">${action}</div>
+        </article>`;
+      }).join("");
+      $("results").querySelectorAll("[data-result-id]").forEach(button => {
+        button.addEventListener("click", () => setResultHidden(button.dataset.resultId, button.dataset.resultHidden === "true"));
+      });
+    }
+    async function loadResults() {
+      $("refreshResults").disabled = true;
+      $("results").innerHTML = '<div class="empty">Загружаем итоги…</div>';
+      try {
+        const result = await callAdmin("list_results");
+        results = Array.isArray(result.results) ? result.results : [];
+        renderResults();
+        log("История итогов загружена: " + results.length + " записей.");
+      } catch (error) {
+        $("results").innerHTML = '<div class="empty">Не удалось загрузить итоги.</div>';
+        notice("Ошибка загрузки итогов: " + error.message, true);
+        log("Ошибка загрузки итогов: " + error.message, true);
+      } finally {
+        $("refreshResults").disabled = false;
+      }
+    }
+    async function setResultHidden(resultId, hidden) {
+      if (busy) return;
+      const result = results.find(r => r.id === resultId);
+      if (!result) return;
+      const action = hidden ? "убрать из истории" : "восстановить в истории";
+      if (!confirm(`Подтвердить: ${action} этот итог?\n\nСами данные баттла и рейтинговая статистика останутся без изменений.`)) return;
+      busy = true;
+      try {
+        await callAdmin("set_result_hidden", { result_id:resultId, is_hidden:hidden });
+        log(`Итог ${resultId}: ${hidden ? "скрыт" : "восстановлен"}.`);
+        notice(hidden ? "Итог удалён из пользовательской истории. Статистика сохранена." : "Итог восстановлен в истории.");
+        await loadResults();
+      } catch (error) {
+        notice("Не удалось изменить историю: " + error.message, true);
+        log("Ошибка изменения итога " + resultId + ": " + error.message, true);
+      } finally {
+        busy = false;
+      }
+    }
+    async function hideAllResults() {
+      if (busy) return;
+      const count = results.filter(r => !r.is_hidden).length;
+      if (!count) {
+        notice("В истории нет видимых итогов.");
+        return;
+      }
+      if (!confirm(`Скрыть все итоги из пользовательской истории? Будет скрыто записей: ${count}.\n\nРезультаты баттлов, победы, поражения, серии и TOP ARENA сохранятся. Операцию можно отменить восстановлением итогов.`)) return;
+      const phrase = prompt('Для подтверждения введи точно: СКРЫТЬ ВСЕ ИТОГИ');
+      if (phrase !== "СКРЫТЬ ВСЕ ИТОГИ") {
+        log("Очистка истории итогов отменена: фраза подтверждения не совпала.");
+        return;
+      }
+      busy = true;
+      $("hideAllResults").disabled = true;
+      try {
+        const result = await callAdmin("hide_all_results", { confirmation:"HIDE_ALL_ARENA_RESULTS" });
+        notice(`Скрыто итогов: ${result.hidden}. Игровая статистика сохранена.`);
+        log(`Все видимые итоги скрыты: ${result.hidden}.`);
+        await loadResults();
+      } catch (error) {
+        notice("Не удалось очистить историю: " + error.message, true);
+        log("Ошибка очистки истории итогов: " + error.message, true);
+        await loadResults();
+      } finally {
+        busy = false;
+        $("hideAllResults").disabled = false;
+      }
+    }
     async function loadPhotos() {
       if (loading) return;
       loading = true;
@@ -383,7 +491,7 @@
         }
         showDashboard(result.user);
         log("Администратор подтверждён через Supabase Auth: " + result.user.id);
-        await Promise.all([loadPhotos(), loadUsers()]);
+        await Promise.all([loadPhotos(), loadUsers(), loadResults()]);
       } catch (error) {
         showAuth("Не удалось проверить доступ", error.message, "return");
         log("Ошибка запуска: " + error.message, true);
@@ -405,8 +513,11 @@
     $("returnApp").addEventListener("click", () => { window.location.href = "./"; });
     $("refresh").addEventListener("click", loadPhotos);
     $("refreshUsers").addEventListener("click", loadUsers);
+    $("refreshResults").addEventListener("click", loadResults);
+    $("resultSearch").addEventListener("input", renderResults);
+    $("hideAllResults").addEventListener("click", hideAllResults);
     $("userSearch").addEventListener("input", renderUsers);
-    $("reload").addEventListener("click", () => { loadPhotos(); loadUsers(); });
+    $("reload").addEventListener("click", () => { loadPhotos(); loadUsers(); loadResults(); });
     $("search").addEventListener("input", renderPhotos);
     $("deleteAll").addEventListener("click", deleteAll);
     $("logout").addEventListener("click", async () => {
