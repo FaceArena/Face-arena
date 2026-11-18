@@ -8,10 +8,7 @@
     if (error) console.warn("[FACE ARENA handled error]", error);
     const raw = String(error?.message || error || "").trim();
     const message = raw.toLowerCase();
-    const errorCode = String(error?.code || error?.cause?.code || "");
-    if (errorCode === "23505" || /duplicate key value violates unique constraint.*arena_profiles_handle_lower_uidx/i.test(raw)) {
-      return "Этот никнейм уже занят. Выберите другой.";
-    }
+    if (/этот никнейм уже занят/i.test(message)) return "Этот никнейм уже занят. Выберите другой.";
     if (!message) return fallback;
     if (/invalid login credentials|invalid email or password|email or password is incorrect/.test(message)) return "Неверный email или пароль.";
     if (/email not confirmed|email_not_confirmed|confirm your email/.test(message)) return "Подтвердите email по ссылке в письме, затем войдите.";
@@ -986,6 +983,7 @@
       const { error } = await this.client.from("arena_profiles").update({
         display_name:name,handle:handle,updated_at:new Date().toISOString()
       }).eq("user_id",this.user.id);
+      if (error?.code === "23505") throw new Error("Этот никнейм уже занят. Выберите другой.");
       if (error) throw error;
       await this.loadSnapshot();
     }
