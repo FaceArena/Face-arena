@@ -565,7 +565,9 @@
           const votes = battle ? (votesByBattle.get(battle.id) || []) : [];
           const redVotes = left ? votes.filter(v => v.target_photo_id === left.photo_id).length : 0;
           const blueVotes = right ? votes.filter(v => v.target_photo_id === right.photo_id).length : 0;
+          // Ignore stale lane pointers when the referenced photo is absent or removed.
           const champ = lane.champion_photo_id ? photoMap.get(lane.champion_photo_id) : null;
+          const validChampionPhotoId = champ ? lane.champion_photo_id : null;
           const me = members.find(x => x.owner_id === this.user.id);
           const confirming = !!battle && battle.stage === "waiting" && battle.confirm_until && Date.parse(battle.confirm_until) > this.serverNow();
           const stage = !battle ? "empty" : (confirming ? "m" : battle.stage === "waiting" ? "w" : "v");
@@ -579,11 +581,11 @@
             redImg: leftPhoto?.dataUrl || "", blueImg: rightPhoto?.dataUrl || "",
             redPhotoId: leftPhoto?.id || null, bluePhotoId: rightPhoto?.id || null,
             userPhotoId: me?.photo_id || null, isParticipant: !!me, userSide: me?.side === "left" ? "R" : me?.side === "right" ? "B" : null,
-            championPhotoId: battle?.opening ? null : lane.champion_photo_id,
+            championPhotoId: battle?.opening ? null : validChampionPhotoId,
             championSide: !battle ? (champ ? "R" : null) : !battle.opening && champ ? (leftPhoto?.id === champ.id ? "R" : rightPhoto?.id === champ.id ? "B" : null) : null,
-            championName: !battle?.opening ? champ?.name || null : null,
-            championImg: !battle?.opening ? champ?.dataUrl || null : null,
-            championStatus: !battle?.opening && lane.champion_photo_id ? (resultRes.data.some(result => !result.opening && !result.no_contest && result.winner_photo_id === lane.champion_photo_id) ? "confirmed" : "initial") : null,
+            championName: !battle?.opening && champ ? champ.name || null : null,
+            championImg: !battle?.opening && champ ? champ.dataUrl || null : null,
+            championStatus: !battle?.opening && validChampionPhotoId ? (resultRes.data.some(result => !result.opening && !result.no_contest && result.winner_photo_id === validChampionPhotoId) ? "confirmed" : "initial") : null,
             championStreak: 0, isMock: false, hasChampionWaiting: !battle && !!champ
           };
         });
