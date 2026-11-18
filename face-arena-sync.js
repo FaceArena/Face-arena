@@ -607,15 +607,22 @@
       for (const key of allowed) {
         if (typeof patch?.[key] === "boolean") {
           update[key] = patch[key];
-          this.privacyRevisions.set(key, (this.privacyRevisions.get(key) || 0) + 1);
         }
       }
       if (!Object.keys(update).length) return;
       update.updated_at = new Date().toISOString();
-      const { error } = await this.client.from("arena_user_settings").update(update).eq("user_id",userId);
-      if (error) throw error;
+      // Record the intended value before the network round-trip so concurrent
+      // snapshots cannot repaint the toggle with an older server value.
       for (const key of allowed) {
         if (typeof update[key] === "boolean") this.privacyOverrides.set(key, { value: update[key], updatedAt: update.updated_at });
+      }
+      const { error } = await this.client.from("arena_user_settings").update(update).eq("user_id",userId);
+      if (error) {
+        for (const key of allowed) {
+          const current = this.privacyOverrides.get(key);
+          if (current?.updatedAt === update.updated_at) this.privacyOverrides.delete(key);
+        }
+        throw error;
       }
       // Update only the settings snapshot. A full arena reload here made toggles
       // wait for unrelated photos, battles, votes and history queries.
