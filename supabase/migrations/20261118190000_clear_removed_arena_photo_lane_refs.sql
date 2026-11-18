@@ -27,15 +27,25 @@ execute function public.clear_removed_arena_photo_from_lanes();
 -- Repair existing orphaned lane references left by earlier photo deletions.
 update public.arena_lanes lane
    set champion_photo_id = case
-         when champion.status = 'removed' then null
+         when exists (
+           select 1 from public.arena_photos p
+            where p.id = lane.champion_photo_id and p.status = 'removed'
+         ) then null
          else lane.champion_photo_id
        end,
        challenger_photo_id = case
-         when challenger.status = 'removed' then null
+         when exists (
+           select 1 from public.arena_photos p
+            where p.id = lane.challenger_photo_id and p.status = 'removed'
+         ) then null
          else lane.challenger_photo_id
        end,
        updated_at = now()
-  from public.arena_photos champion,
-       public.arena_photos challenger
- where (lane.champion_photo_id = champion.id and champion.status = 'removed')
-    or (lane.challenger_photo_id = challenger.id and challenger.status = 'removed');
+ where exists (
+         select 1 from public.arena_photos p
+          where p.id = lane.champion_photo_id and p.status = 'removed'
+       )
+    or exists (
+         select 1 from public.arena_photos p
+          where p.id = lane.challenger_photo_id and p.status = 'removed'
+       );
