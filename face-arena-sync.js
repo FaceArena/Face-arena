@@ -759,16 +759,35 @@
     }
 
     async deletePhoto(photoId) {
-      const photo = this.lastSnapshot?.photos?.find(p => String(p.id) === String(photoId));
+      if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
+      const snapshot = this.lastSnapshot;
+      const photo = snapshot?.photos?.find(p => String(p.id) === String(photoId));
       const { error } = await this.client.rpc("delete_arena_photo",{p_photo_id:photoId});
       if (error) throw error;
+
+      // The database has marked this photo as removed and released its slot.
+      // Reflect that confirmed server result immediately instead of waiting for
+      // the coordinator/worker round-trip before enabling the next upload.
+      if (snapshot && this.lastSnapshot === snapshot) {
+        this.dispatch({
+          ...snapshot,
+          photos: (snapshot.photos || []).filter(p => String(p.id) !== String(photoId))
+        });
+      }
+
       if (photo?.objectPath && ["queued", "completed"].includes(photo.status)) {
         const { error: storageError } = await this.client.storage.from("arena-photos").remove([photo.objectPath]);
         if (storageError) console.warn("[FACE ARENA storage cleanup]", storageError);
       }
-      const coordinator = await this.wakeSafely();
+
+      // Reconcile against Supabase first. Coordinator wake is independent of
+      // slot release and must never hold the user's next upload hostage.
       await this.loadSnapshot();
-      return coordinator;
+      this.wakeSafely().then(result => {
+        if (!result.ok) console.warn("[FACE ARENA coordinator wake after delete]", result.error);
+        this.loadSnapshot();
+      });
+      return { ok: true };
     }
 
     async updateProfile(name,handle) {
