@@ -309,6 +309,7 @@
             championSide: !battle ? (champ ? "R" : null) : !battle.opening && champ ? (leftPhoto?.id === champ.id ? "R" : rightPhoto?.id === champ.id ? "B" : null) : null,
             championName: !battle?.opening ? champ?.name || null : null,
             championImg: !battle?.opening ? champ?.dataUrl || null : null,
+            championStatus: !battle?.opening && lane.champion_photo_id ? (resultRes.data.some(result => !result.opening && !result.no_contest && result.winner_photo_id === lane.champion_photo_id) ? "confirmed" : "initial") : null,
             championStreak: 0, isMock: false, hasChampionWaiting: !battle && !!champ
           };
         });
