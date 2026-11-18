@@ -1701,15 +1701,22 @@ function renderSettings(){
     ["privacySecurityToggle","security_notifications"]
   ];
   const syncPrivacy=()=>{
-    const settings=window.FaceArenaSync?.lastSnapshot?.settings||{};
+    const sync=window.FaceArenaSync;
+    const online=!!sync?.isOnline?.();
+    const settings=sync?.lastSnapshot?.settings||{};
     for(const [id,key] of privacyKeys){
       const el=$(id);if(!el)continue;
       const value=settings[key]!==false;
       el.classList.toggle("on",value);
       el.setAttribute("aria-pressed",String(value));
-      el.disabled=!window.FaceArenaSync?.isOnline?.();
+      el.disabled=!online;
+      el.setAttribute("aria-disabled",String(!online));
     }
   };
+  // Settings may open before Supabase restores the session.
+  if(window._faPrivacySnapshotHandler)window.removeEventListener("face-arena-snapshot",window._faPrivacySnapshotHandler);
+  window._faPrivacySnapshotHandler=()=>syncPrivacy();
+  window.addEventListener("face-arena-snapshot",window._faPrivacySnapshotHandler);
   syncPrivacy();
   for(const [id,key] of privacyKeys){
     const el=$(id);if(!el)continue;
