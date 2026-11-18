@@ -383,6 +383,9 @@
           Date.parse(a.completed_at) - Date.parse(b.completed_at) || String(a.id).localeCompare(String(b.id))
         );
         for (const result of chronologicalResults) {
+          // Opening battles are setup matches: keep them in history, but never
+          // count them toward account wins, losses, streaks, or TOP ARENA.
+          if (result.opening) continue;
           const leftOwner = photosById.get(result.left_photo_id)?.owner_id;
           const rightOwner = photosById.get(result.right_photo_id)?.owner_id;
           const leftStats = getStats(leftOwner, result.left_photo_id);
