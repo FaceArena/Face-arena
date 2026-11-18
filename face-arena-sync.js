@@ -14,6 +14,7 @@
       this.lastSnapshot = null;
       this.serverTimeOffset = 0;
       this.clockSyncTimer = null;
+      this.authGeneration = 0;
     }
 
     async init() {
@@ -26,35 +27,42 @@
       });
       this.mountAuthGate();
       this.client.auth.onAuthStateChange((_event, session) => {
-        queueMicrotask(async () => {
-          this.user = session?.user || null;
-          this.ready = !!this.user;
-          this.renderAuthGate();
-          if (this.user) {
-            await this.loadSnapshot();
-            this.startClockSync();
-            this.subscribe();
-            const coordinator = await this.wakeSafely();
-            if (!coordinator.ok) console.warn("[FACE ARENA coordinator unavailable]", coordinator.error);
-          } else {
-            this.stopClockSync();
-            this.unsubscribe();
-            this.dispatch(null);
-          }
-        });
+        queueMicrotask(() => this.handleSession(session));
       });
       const { data, error } = await this.client.auth.getSession();
       if (error) this.showMessage(error.message);
-      this.user = data.session?.user || null;
-      this.ready = !!this.user;
-      this.renderAuthGate();
-      if (this.user) {
-        await this.loadSnapshot();
-        this.startClockSync();
-        this.subscribe();
-        const coordinator = await this.wakeSafely();
-        if (!coordinator.ok) console.warn("[FACE ARENA coordinator unavailable]", coordinator.error);
+      await this.handleSession(data.session);
+    }
+
+    async handleSession(session) {
+      const nextUser = session?.user || null;
+      const previousId = this.user?.id || null;
+      const nextId = nextUser?.id || null;
+      if (previousId !== nextId) {
+        // Invalidate the previous account's in-memory snapshot before rendering the next one.
+        this.authGeneration++;
+        this.lastSnapshot = null;
+        this.serverTimeOffset = 0;
+        this.pendingReload = !!this.loading;
+        this.stopClockSync();
+        this.unsubscribe();
+        this.dispatch(null);
       }
+      this.user = nextUser;
+      this.ready = !!nextUser;
+      this.renderAuthGate();
+      if (!nextUser) {
+        this.stopClockSync();
+        this.unsubscribe();
+        return;
+      }
+      await this.loadSnapshot();
+      // A slower previous-session request must never start services for a newer account.
+      if (this.user?.id !== nextId) return;
+      this.startClockSync();
+      this.subscribe();
+      const coordinator = await this.wakeSafely();
+      if (!coordinator.ok) console.warn("[FACE ARENA coordinator unavailable]", coordinator.error);
     }
 
     isOnline() { return !!this.client && !!this.user && this.ready; }
@@ -214,6 +222,8 @@
       if (!this.isOnline()) return this.lastSnapshot;
       if (this.loading) { this.pendingReload = true; return this.lastSnapshot; }
       this.loading = true;
+      const requestUserId = this.user.id;
+      const requestGeneration = this.authGeneration;
       try {
         const c = this.client;
         const clockSync = this.syncServerClock().catch(error => {
@@ -381,7 +391,9 @@
           }
         }
         const myProfile = profiles.get(this.user.id) || {};
+        if (this.user?.id !== requestUserId || this.authGeneration !== requestGeneration) return null;
         const snapshot = {
+          userId: requestUserId,
           photos, arenaBattles, history, arenaResults, VOTED, MY, profiles: profileRes.data,
           profile: { name: myProfile.display_name || this.user.user_metadata?.display_name || "Участник", handle: myProfile.handle || "user" },
           participantStats
