@@ -104,7 +104,10 @@
       if (!this.isOnline() || !this.lastSnapshot) return false;
       const snapshot = this.lastSnapshot;
       const { data, error } = await this.client.rpc("get_top_arena_ranking");
-      if (error) throw error;
+      if (error) {
+        if (this.lastSnapshot === snapshot) this.dispatch({ ...snapshot, topArenaRanking: [] });
+        throw error;
+      }
       if (this.lastSnapshot !== snapshot || this.user?.id !== snapshot.userId) return false;
       const photosById = new Map((snapshot.photos || []).map(photo => [String(photo.id), photo]));
       this.dispatch({ ...snapshot, topArenaRanking: this.mapTopArenaRanking(data || [], photosById) });
@@ -367,7 +370,7 @@
           return data || [];
         }).catch(error => {
           console.warn("[FACE ARENA TOP ARENA ranking]", error);
-          return null;
+          return [];
         });
         const [photoRes, profileRes, laneRes, battleRes, resultRes, topRankingRows] = await Promise.all([
           this.fetchAllRows(() => c.from("arena_photos").select("id,owner_id,object_path,status,created_at").order("created_at", { ascending: true }).order("id", { ascending: true })),
