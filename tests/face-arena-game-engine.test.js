@@ -56,7 +56,7 @@ test("one vote is insufficient: challenger returns to queue and incumbent keeps 
  const r=E.resolveBattle(state,1,100);
  assert.equal(r.result.noContest,true);
  assert.equal(r.state.lanes[0].championPhotoId,"incumbent");
- assert.equal(r.state.photos[0].status,"queued");
+ assert.equal(r.state.photos.find(p=>p.id==="challenger").status,"queued");
  assert.equal(r.state.history.length,0);
  assert.equal(r.state.pairExclusions.length,1);
  assert.equal(E.selectNextAssignment(r.state.photos,r.state.lanes,r.state.pairExclusions),null);
