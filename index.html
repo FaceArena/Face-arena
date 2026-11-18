@@ -15,9 +15,8 @@
 color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html{scroll-padding-top:env(safe-area-inset-top,0px);background:var(--bg)}
 *,*::before,*::after{box-sizing:inherit}
-/* Hide text until webfonts ready — prevents system→web font flash */
-html:not(.fonts-ready) body{opacity:0}
-html.fonts-ready body{opacity:1;transition:opacity .15s ease}
+/* Keep content visible while web fonts load; avoid full-page opacity flash */
+html,body{opacity:1}
 body{margin:0;background:var(--bg);color:var(--tx);font:400 14px/1.45 var(--bd);padding-bottom:88px;overflow-x:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 .wrap{max-width:1180px;margin:0 auto;padding:0 12px}
 header{display:flex;align-items:center;justify-content:space-between;padding:14px 0 6px;gap:8px}
@@ -40,7 +39,7 @@ h1{font:800 clamp(28px,8.5vw,72px)/.95 var(--hd);letter-spacing:-.02em;margin:16
 .grid{display:grid;gap:12px;grid-template-columns:repeat(2,1fr);contain:content}
 @media(min-width:640px){.grid{gap:16px}}
 @media(min-width:1000px){.grid{grid-template-columns:repeat(3,1fr)}}
-.card{background:var(--c);border-radius:16px;padding:10px;cursor:pointer;opacity:0;animation:in .22s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:calc(min(var(--i),5)*20ms);transition:transform .18s cubic-bezier(.2,.7,.2,1);-webkit-tap-highlight-color:transparent;touch-action:manipulation;will-change:transform,opacity;transform:translateZ(0);contain:layout style}
+.card{background:var(--c);border-radius:16px;padding:10px;cursor:pointer;opacity:1;animation:none;transition:transform .18s cubic-bezier(.2,.7,.2,1);-webkit-tap-highlight-color:transparent;touch-action:manipulation;will-change:auto;transform:translateZ(0);contain:layout style}
 @keyframes in{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
 .card:hover{transform:translateY(-2px)}.card:active{transform:scale(.97)}
 .card:focus-visible{outline:2px solid #fff;outline-offset:2px}
@@ -1292,9 +1291,13 @@ function handleFile(f){
         const ctx=c.getContext("2d");
         if(!ctx){pendingUrl=e.target.result;pendingFile=f;renderUpload();return}
         ctx.drawImage(img,0,0,w,h);
-        pendingUrl=c.toDataURL("image/jpeg",0.85);
-        pendingFile=f;
-        renderUpload();
+        c.toBlob(blob=>{
+          if(!blob){pendingUrl=e.target.result;pendingFile=f;renderUpload();return}
+          pendingUrl=c.toDataURL("image/jpeg",0.82);
+          const base=(f.name||"photo").replace(/\\.[^.]+$/,"");
+          pendingFile=new File([blob],base+".jpg",{type:"image/jpeg",lastModified:Date.now()});
+          renderUpload();
+        },"image/jpeg",0.82);
       }catch(err){
         toast("Не удалось обработать изображение");
         pendingUrl=null;pendingFile=null;renderUpload();
@@ -1305,7 +1308,6 @@ function handleFile(f){
   };
   reader.readAsDataURL(f);
 }
-
 async function confirmAdd(){
   if(!pendingUrl){toast(t("upNoFile"));return}
   if(activeCount()>=MAX_ACTIVE){toast(t("upLimit"));return}
