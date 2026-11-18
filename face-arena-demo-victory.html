@@ -993,6 +993,11 @@ function requestBattleVisit(b){
   b._visitRequested=true;
   sync.registerVisit(b.battleUid).then(result=>{
     if(result?.ok===false)toast("Голосование открыто, но серверный таймер временно недоступен");
+    const latest=arenaBattles.find(x=>x.id===b.id);
+    if(latest&&(latest.stage==="m"||latest.stage==="w")){
+      latest._visitRequested=false;
+      latest._visitRetryAt=Date.now()+3000;
+    }
   }).catch(error=>{
     b._visitRequested=false;
     b._visitRetryAt=Date.now()+3000;
