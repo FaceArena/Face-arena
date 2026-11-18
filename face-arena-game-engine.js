@@ -89,8 +89,10 @@
       const pStats=stats[String(p.id)]||(stats[String(p.id)]={wins:0,losses:0,defenses:0,currentStreak:0,bestStreak:0,name:p.name||"Участник",img:p.dataUrl||"",isChampion:false,laneId:null});
       const oStats=stats[String(openingOpponent.id)]||(stats[String(openingOpponent.id)]={wins:0,losses:0,defenses:0,currentStreak:0,bestStreak:0,name:openingOpponent.name||"Участник",img:openingOpponent.dataUrl||"",isChampion:false,laneId:null});
       let winner=null,loser=null;
-      if(outcome==="win"){winner=p;loser=openingOpponent;pStats.wins++;pStats.currentStreak++;pStats.bestStreak=Math.max(pStats.bestStreak,pStats.currentStreak);oStats.losses++;oStats.currentStreak=0}
-      else if(outcome==="lose"){winner=openingOpponent;loser=p;oStats.wins++;oStats.currentStreak++;oStats.bestStreak=Math.max(oStats.bestStreak,oStats.currentStreak);pStats.losses++;pStats.currentStreak=0}
+      // Opening matches establish the first lane holder only. They do not
+      // affect lifetime standings, losses, or consecutive-win streaks.
+      if(outcome==="win"){winner=p;loser=openingOpponent}
+      else if(outcome==="lose"){winner=openingOpponent;loser=p}
       else{p.status="completed";p.result="draw";p.completedAt=now;p.battleId=null;openingOpponent.status="completed";openingOpponent.result="draw";openingOpponent.completedAt=now;openingOpponent.battleId=null}
       if(winner){
         winner.status="champion";winner.result="win";winner.completedAt=null;winner.battleId=lane.id;
