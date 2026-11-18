@@ -475,7 +475,7 @@
           this.fetchAllRows(() => c.from("arena_profiles").select("user_id,display_name,handle,is_verified").order("user_id", { ascending: true })),
           c.from("arena_lanes").select("lane_id,champion_photo_id,challenger_photo_id").order("lane_id"),
           c.from("arena_battles").select("id,lane_id,opening,stage,started_at,confirm_until,stage_ends_at,finished_at").in("stage", ["waiting","voting"]),
-          this.fetchAllRows(() => c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,no_contest,completed_at").order("completed_at", { ascending: false }).order("id", { ascending: false })),
+          this.fetchAllRows(() => c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,no_contest,completed_at,is_hidden").order("completed_at", { ascending: false }).order("id", { ascending: false })),
           topRankingPromise
         ]);
         await clockSync;
@@ -588,7 +588,8 @@
           };
         });
 
-        const arenaResults = resultRes.data.map(result => {
+        const visibleResultRows = resultRes.data.filter(result => !result.is_hidden);
+        const arenaResults = visibleResultRows.map(result => {
           const leftPhoto = photosById.get(result.left_photo_id);
           const rightPhoto = photosById.get(result.right_photo_id);
           const leftProfile = profiles.get(leftPhoto?.owner_id) || {};
@@ -607,7 +608,7 @@
           };
         });
         const history = [];
-        for (const result of resultRes.data) {
+        for (const result of visibleResultRows) {
           const leftPhoto = photosById.get(result.left_photo_id);
           const rightPhoto = photosById.get(result.right_photo_id);
           const myPhoto = leftPhoto?.owner_id === this.user.id ? leftPhoto : rightPhoto?.owner_id === this.user.id ? rightPhoto : null;
