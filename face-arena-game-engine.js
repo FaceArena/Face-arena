@@ -31,7 +31,9 @@
     return lane.stage==="empty"||lane.stage==="done"||lane.stage==="cancelled"||lane.stage==null;
   }
   function ownerOf(photo){return photo.userId??photo.ownerId??"__local_user__"}
-  function selectNextAssignment(photos,lanes){
+  function pairKey(a,b){return [String(a),String(b)].sort().join("::")}
+  function selectNextAssignment(photos,lanes,pairExclusions=[]){
+    const excludedPairs=new Set(pairExclusions.map(pair=>Array.isArray(pair)?pairKey(pair[0],pair[1]):pairKey(pair.photoLow??pair.low,pair.photoHigh??pair.high)));
     const normalized=normalizeQueue(photos);
     const ordered=normalized.filter(p=>p.status==="queued"&&activeForOwner(normalized,p)<=3).sort(queueCompare);
     const occupied=new Set(),reservedLanes=new Set();
@@ -41,13 +43,13 @@
     for(const lane of availableLanes){
       if(lane.championPhotoId){
         const champion=normalized.find(p=>idEq(p.id,lane.championPhotoId));
-        const challenger=ordered.find(p=>!occupied.has(String(p.id))&&(!champion||ownerOf(p)!==ownerOf(champion)));
+        const challenger=ordered.find(p=>!occupied.has(String(p.id))&&(!champion||ownerOf(p)!==ownerOf(champion))&&(!champion||!excludedPairs.has(pairKey(champion.id,p.id))));
         if(challenger)return {photoId:challenger.id,laneId:lane.id};
         continue;
       }
-      const first=ordered.find(p=>!occupied.has(String(p.id))&&ordered.some(q=>!idEq(q.id,p.id)&&!occupied.has(String(q.id))&&ownerOf(q)!==ownerOf(p)));
+      const first=ordered.find(p=>!occupied.has(String(p.id))&&ordered.some(q=>!idEq(q.id,p.id)&&!occupied.has(String(q.id))&&ownerOf(q)!==ownerOf(p)&&!excludedPairs.has(pairKey(p.id,q.id))));
       if(!first)continue;
-      const second=ordered.find(q=>!idEq(q.id,first.id)&&!occupied.has(String(q.id))&&ownerOf(q)!==ownerOf(first));
+      const second=ordered.find(q=>!idEq(q.id,first.id)&&!occupied.has(String(q.id))&&ownerOf(q)!==ownerOf(first)&&!excludedPairs.has(pairKey(first.id,q.id)));
       if(second)return {photoId:first.id,opponentPhotoId:second.id,laneId:lane.id,opening:true};
     }
     return null;
@@ -83,6 +85,25 @@
     const openingOpponent=lane.openingOpponentPhotoId!=null?next.photos.find(x=>idEq(x.id,lane.openingOpponentPhotoId)):null;
     const mine=p.side==="R"?Number(lane.redVotes)||0:Number(lane.blueVotes)||0;
     const theirs=p.side==="R"?Number(lane.blueVotes)||0:Number(lane.redVotes)||0;
+    const totalVotes=mine+theirs;
+    const noContest=totalVotes<2||(totalVotes===2&&mine===1&&theirs===1);
+    if(noContest){
+      const pairIds=openingOpponent?[p.id,openingOpponent.id]:[p.id,lane.championPhotoId].filter(Boolean);
+      if(pairIds.length===2){
+        next.pairExclusions=next.pairExclusions||[];
+        if(!next.pairExclusions.some(pair=>pairKey(pair[0],pair[1])===pairKey(pairIds[0],pairIds[1])))next.pairExclusions.push(pairIds);
+      }
+      for(const participant of [p,openingOpponent].filter(Boolean)){
+        participant.status=participant.id===lane.championPhotoId?"champion":"queued";
+        participant.battleId=null;participant.battleUid=null;participant.targetLaneId=null;
+        participant.side=null;participant.opponentName=null;participant.opponentImg=null;
+        participant.completedAt=null;participant.matchedAt=null;participant.matchDeadline=null;
+        participant.openingOpponentPhotoId=null;participant.openingPairPrimaryId=null;
+      }
+      lane.userPhotoId=null;lane.openingOpponentPhotoId=null;lane.openingOpponentName=null;lane.openingOpponentImg=null;
+      lane.stage="done";lane._finalized=true;lane.redVotes=0;lane.blueVotes=0;
+      return {state:next,changed:true,result:{laneId:lane.id,battleUid:uid,outcome:"no-contest",noContest:true,opening:!!openingOpponent,championPhotoId:lane.championPhotoId,completedPhotoIds:[],wasChampion:idEq(p.id,lane.championPhotoId)}};
+    }
     const outcome=mine>theirs?"win":mine<theirs?"lose":"draw";
     if(openingOpponent&&!lane.championPhotoId){
       const stats=next.participantStats||(next.participantStats={});
