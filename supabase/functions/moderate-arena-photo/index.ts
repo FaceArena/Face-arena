@@ -109,30 +109,9 @@ Deno.serve(async (req: Request) => {
         temperature: 0,
         max_completion_tokens: 220,
         reasoning_effort: "none",
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "face_arena_photo_moderation",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                decision: { type: "string", enum: ["allow", "reject", "review"] },
-                confidence: { type: "number", minimum: 0, maximum: 1 },
-                categories: {
-                  type: "array",
-                  items: {
-                    type: "string",
-                    enum: ["nudity_or_sexual_content", "graphic_violence", "hate_or_extremism", "advertising_or_spam", "other"]
-                  }
-                },
-                reason: { type: "string" }
-              },
-              required: ["decision", "confidence", "categories", "reason"],
-              additionalProperties: false
-            }
-          }
-        },
+        // Qwen 3.8 supports JSON Object Mode, but Groq strict JSON Schema mode
+        // is currently limited to GPT-OSS models. Keep schema validation server-side.
+        response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
@@ -156,7 +135,9 @@ Deno.serve(async (req: Request) => {
     });
 
     if (!groqResponse.ok) {
-      console.error("[moderate-arena-photo] Groq returned HTTP", groqResponse.status);
+      const providerError = await groqResponse.text();
+      // Log only a short provider diagnostic; never log the API key or image payload.
+      console.error("[moderate-arena-photo] Groq HTTP", groqResponse.status, providerError.slice(0, 700));
       return reply({ error: "Не удалось проверить фотографию. Попробуйте ещё раз позже." }, 503);
     }
 
