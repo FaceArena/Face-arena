@@ -603,6 +603,18 @@
       await this.loadSnapshot();
     }
 
+    async getPublicProfile(userId) {
+      if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
+      if (typeof userId !== "string" || !/^[0-9a-f-]{36}$/i.test(userId)) throw new Error("Некорректный профиль.");
+      const { data, error } = await this.client.rpc("get_public_arena_profile", { p_user_id: userId });
+      if (error) throw error;
+      return data || null;
+    }
+
+    getPhotoPublicUrl(objectPath) {
+      return this.client.storage.from("arena-photos").getPublicUrl(objectPath).data.publicUrl;
+    }
+
     async listSessions() {
       if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
       const { data, error } = await this.client.rpc("get_my_auth_sessions");
