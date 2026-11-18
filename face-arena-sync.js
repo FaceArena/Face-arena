@@ -596,6 +596,10 @@
       update.updated_at = new Date().toISOString();
       const { error } = await this.client.from("arena_user_settings").update(update).eq("user_id",this.user.id);
       if (error) throw error;
+      // Reflect the committed server value immediately; loadSnapshot may already be running.
+      if (this.lastSnapshot?.userId === this.user.id) {
+        this.dispatch({ ...this.lastSnapshot, settings: { ...(this.lastSnapshot.settings || {}), ...update } });
+      }
       await this.loadSnapshot();
     }
 
