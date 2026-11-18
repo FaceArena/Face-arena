@@ -641,7 +641,7 @@ function renderArenaGrid(){
     const chipText=confirming?"10 секунд на отмену":!isActive?(b.hasChampionWaiting||b.championPhotoId?"Чемпион ждёт":b.stage==="done"?"Итоги":"Слот свободен"):t(w?"wait":"vote");
     const crownR=b.championSide==="R"&&b.championPhotoId?`<span class="champ-badge">👑</span>`:"";
     const crownB=b.championSide==="B"&&b.championPhotoId?`<span class="champ-badge">👑</span>`:"";
-    const streak=b.championStreak?`<div class="streak">Серия: ${b.championStreak}</div>`:"";
+    const streak=b.championStatus==="initial"?`<div class="streak">Начальный чемпион</div>`:b.championStreak?`<div class="streak">Серия: ${b.championStreak}</div>`:"";
     const lead=tot?(rp>55?"R":(rp<45?"B":"eq")):"eq";
     const rCls=lead==="R"?"dom":(lead==="B"?"weak":"");
     const bCls=lead==="B"?"dom":(lead==="R"?"weak":"");
