@@ -189,6 +189,8 @@
             photo.objectPath && photo.status !== "removed" &&
             (photo.ownerId === this.user.id || ["matched", "champion", "completed"].includes(photo.status))
           ).map(photo => photo.objectPath),
+          // Refresh other users' public-profile avatars as well as arena photos.
+          ...(snapshot.profiles || []).map(profile => profile.avatar_path),
           snapshot.profile?.avatarPath
         ].filter(Boolean);
         const [signed, rankingResult] = await Promise.all([
