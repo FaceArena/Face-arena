@@ -415,6 +415,10 @@
           stats.isLegendary = stats.currentStreak >= 10;
         }
         for (const lane of laneRes.data) {
+          // During an opening battle champion_photo_id temporarily stores the first
+          // entrant; it is not a title holder until the opening battle is completed.
+          const activeBattle = activeByLane.get(lane.lane_id);
+          if (activeBattle?.opening) continue;
           if (lane.champion_photo_id) {
             const ownerId = photosById.get(lane.champion_photo_id)?.owner_id;
             const championStats = getStats(ownerId, lane.champion_photo_id);
