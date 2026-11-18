@@ -41,6 +41,7 @@ function detectImage(bytes: Uint8Array): { mime: string; ext: string } | null {
 }
 
 Deno.serve(async (req: Request) => {
+  let pendingModeration: { admin: any; userId: string; hash: string } | null = null;
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return reply({ error: "Method not allowed" }, 405);
 
@@ -89,15 +90,43 @@ Deno.serve(async (req: Request) => {
     if (countError) throw countError;
     if ((count || 0) >= 3) return reply({ error: "Достигнут лимит: одновременно можно иметь не более 3 активных фотографий." }, 409);
 
-    const { data: rateAllowed, error: rateError } = await admin.rpc("claim_arena_photo_moderation_attempt", {
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    const contentHash = Array.from(new Uint8Array(digest))
+      .map((value) => value.toString(16).padStart(2, "0"))
+      .join("");
+
+    const { data: claim, error: claimError } = await admin.rpc("claim_arena_photo_moderation", {
       p_owner_id: userId,
+      p_content_sha256: contentHash,
     });
-    if (rateError) throw rateError;
-    if (rateAllowed !== true) {
-      return reply({ error: "Слишком много попыток проверки. Подождите 10 минут и попробуйте снова." }, 429);
+    if (claimError) throw claimError;
+
+    if (claim?.status === "processing") {
+      return reply({ error: "Эта фотография уже проверяется. Подождите немного." }, 409);
+    }
+    if (claim?.status === "blocked") {
+      const minutes = Math.max(1, Math.ceil(Number(claim.retry_after_seconds || 1800) / 60));
+      return reply({ error: `Слишком много неподходящих фотографий. Повторите попытку через ${minutes} мин.` }, 429);
+    }
+    if (claim?.status === "rate_limited") {
+      return reply({
+        error: claim.scope === "daily"
+          ? "Достигнут дневной лимит проверок фотографий. Попробуйте завтра."
+          : "Слишком много попыток проверки. Подождите 10 минут и попробуйте снова.",
+      }, 429);
+    }
+    if (!["claimed", "cached"].includes(claim?.status)) {
+      throw new Error("Unexpected photo moderation claim result");
     }
 
-    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    let decision: "allow" | "reject";
+    let reason = typeof claim.reason === "string" ? claim.reason : "";
+
+    if (claim.status === "cached") {
+      decision = claim.decision;
+    } else {
+      pendingModeration = { admin, userId, hash: contentHash };
+      const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${groqKey}`,
@@ -134,14 +163,18 @@ Deno.serve(async (req: Request) => {
       }),
     });
 
-    if (!groqResponse.ok) {
-      const providerError = await groqResponse.text();
-      // Log only a short provider diagnostic; never log the API key or image payload.
-      console.error("[moderate-arena-photo] Groq HTTP", groqResponse.status, providerError.slice(0, 700));
-      return reply({ error: "Не удалось проверить фотографию. Попробуйте ещё раз позже." }, 503);
-    }
+      if (!groqResponse.ok) {
+        const providerError = await groqResponse.text();
+        // Log only a short provider diagnostic; never log the API key or image payload.
+        console.error("[moderate-arena-photo] Groq HTTP", groqResponse.status, providerError.slice(0, 700));
+        await admin.rpc("finish_arena_photo_moderation", {
+          p_owner_id: userId, p_content_sha256: contentHash, p_decision: "error", p_reason: "",
+        });
+        pendingModeration = null;
+        return reply({ error: "Не удалось проверить фотографию. Попробуйте ещё раз позже." }, 503);
+      }
 
-    const groqData = await groqResponse.json();
+      const groqData = await groqResponse.json();
     const message = groqData?.choices?.[0]?.message;
     const raw = message?.content;
     // Some vision-model responses include surrounding whitespace or fenced JSON.
@@ -166,28 +199,42 @@ Deno.serve(async (req: Request) => {
       typeof moderation.confidence === "number" &&
       moderation.confidence >= 0 && moderation.confidence <= 1 &&
       typeof moderation.reason === "string";
-    if (!valid) {
-      console.error("[moderate-arena-photo] Invalid moderation response", {
-        contentType: typeof raw,
-        contentLength: rawText.length,
-        finishReason: groqData?.choices?.[0]?.finish_reason ?? "unknown",
-        hasMessage: Boolean(message),
-        hasRefusal: Boolean(message?.refusal),
-      });
-      return reply({ error: "Не удалось проверить фотографию. Попробуйте ещё раз." }, 503);
-    }
+      if (!valid) {
+        console.error("[moderate-arena-photo] Invalid moderation response", {
+          contentType: typeof raw,
+          contentLength: rawText.length,
+          finishReason: groqData?.choices?.[0]?.finish_reason ?? "unknown",
+          hasMessage: Boolean(message),
+          hasRefusal: Boolean(message?.refusal),
+        });
+        await admin.rpc("finish_arena_photo_moderation", {
+          p_owner_id: userId, p_content_sha256: contentHash, p_decision: "error", p_reason: "",
+        });
+        pendingModeration = null;
+        return reply({ error: "Не удалось проверить фотографию. Попробуйте ещё раз." }, 503);
+      }
 
-    const confidence = moderation.confidence;
-    const reason = moderation.reason.trim().slice(0, 500) || "Фотография не прошла проверку";
-    // Binary rule: only a clearly detected real person in a genuine photo is allowed.
-    // Any uncertainty, illustration, or missing person is rejected; no manual-review path.
-    const decision: "allow" | "reject" =
-      moderation.decision === "allow" &&
-      moderation.person_present === true &&
-      moderation.is_illustration === false &&
-      confidence >= 0.85
-        ? "allow"
-        : "reject";
+      const confidence = moderation.confidence;
+      reason = moderation.reason.trim().slice(0, 500) || "Фотография не прошла проверку";
+      // Binary rule: only a clearly detected real person in a genuine photo is allowed.
+      // Any uncertainty, illustration, or missing person is rejected; no manual-review path.
+      decision =
+        moderation.decision === "allow" &&
+        moderation.person_present === true &&
+        moderation.is_illustration === false &&
+        confidence >= 0.85
+          ? "allow"
+          : "reject";
+
+      const { error: finishError } = await admin.rpc("finish_arena_photo_moderation", {
+        p_owner_id: userId,
+        p_content_sha256: contentHash,
+        p_decision: decision,
+        p_reason: reason,
+      });
+      if (finishError) throw finishError;
+      pendingModeration = null;
+    }
 
     const id = crypto.randomUUID();
     if (decision === "reject") {
@@ -218,6 +265,15 @@ Deno.serve(async (req: Request) => {
     }
 
   } catch (error) {
+    if (pendingModeration) {
+      await pendingModeration.admin.rpc("finish_arena_photo_moderation", {
+        p_owner_id: pendingModeration.userId,
+        p_content_sha256: pendingModeration.hash,
+        p_decision: "error",
+        p_reason: "",
+      }).catch(() => undefined);
+      pendingModeration = null;
+    }
     console.error("[moderate-arena-photo]", error instanceof Error ? error.message : "Unknown error");
     return reply({ error: "Не удалось обработать фотографию. Попробуйте ещё раз позже." }, 500);
   }
