@@ -643,9 +643,10 @@
           participantStats,
           topArenaRanking
         };
-        await this.preloadCriticalImages(snapshot);
         if (this.user?.id !== requestUserId || this.authGeneration !== requestGeneration) return null;
+        // Publish battle data immediately; image preloading must never delay the first arena render.
         this.dispatch(snapshot);
+        this.preloadCriticalImages(snapshot).catch(error => console.warn("[FACE ARENA image preload]", error));
         return snapshot;
       } catch (error) {
         console.error("[FACE ARENA sync]", error);
