@@ -9,7 +9,7 @@
     const raw = String(error?.message || error || "").trim();
     const message = raw.toLowerCase();
     if (/этот никнейм уже занят/i.test(message)) return "Этот никнейм уже занят. Выберите другой.";
-    if (!message) return fallback;
+    if (/не подходит для участия/i.test(message)) return "Эта фотография не подходит для участия. Выберите другую.";\n    if (!message) return fallback;
     if (/invalid login credentials|invalid email or password|email or password is incorrect/.test(message)) return "Неверный email или пароль.";
     if (/email not confirmed|email_not_confirmed|confirm your email/.test(message)) return "Подтвердите email по ссылке в письме, затем войдите.";
     if (/user already registered|already registered|email.*already.*(exist|use)/.test(message)) return "Аккаунт с таким email уже существует. Попробуйте войти.";
@@ -847,16 +847,36 @@
     async uploadPhoto(file) {
       if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
       if (!file) throw new Error("Не выбран файл фотографии.");
-      const ext = (file.type.split("/")[1] || "jpg").replace("jpeg","jpg");
-      const path = this.user.id + "/" + crypto.randomUUID() + "." + ext;
-      const upload = await this.client.storage.from("arena-photos").upload(path,file,{contentType:file.type,upsert:false,cacheControl:"60"});
-      if (upload.error) throw upload.error;
-      const enqueue = await this.client.rpc("enqueue_arena_photo",{p_object_path:path});
-      if (enqueue.error) {
-        await this.client.storage.from("arena-photos").remove([path]);
-        throw enqueue.error;
+      if (!["image/jpeg","image/png","image/webp"].includes(file.type)) throw new Error("Поддерживаются JPEG, PNG и WebP.");
+      if (file.size > 5 * 1024 * 1024) throw new Error("Размер фотографии не должен превышать 5 МБ.");
+
+      const { data: sessionData, error: sessionError } = await this.client.auth.getSession();
+      if (sessionError) throw sessionError;
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Сеанс завершён. Войдите в аккаунт снова.");
+
+      const form = new FormData();
+      form.append("file", file, file.name || "battle-photo");
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/moderate-arena-photo`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          apikey: SUPABASE_KEY
+        },
+        body: form
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result?.message || result?.error || "Не удалось проверить фотографию. Попробуйте ещё раз.");
       }
-      // Show the accepted photo immediately; the authoritative snapshot will reconcile it.
+      if (result?.decision === "review") {
+        return { moderation: "review", coordinatorAvailable: null, coordinatorError: null };
+      }
+      if (result?.decision !== "allow" || !result?.photo_id || !result?.object_path) {
+        throw new Error("Сервис не подтвердил загрузку фотографии. Попробуйте ещё раз.");
+      }
+
+      const path = result.object_path;
       let publicUrl = "";
       try {
         publicUrl = (await this.createPhotoSignedUrlMap([path], 900)).get(path) || "";
@@ -865,22 +885,20 @@
       }
       const current = this.lastSnapshot || {};
       const optimisticPhoto = {
-        id: enqueue.data, ownerId: this.user.id, userId: this.user.id,
+        id: result.photo_id, ownerId: this.user.id, userId: this.user.id,
         name: current.profile?.name || "Вы", handle: current.profile?.handle || "",
         dataUrl: publicUrl, objectPath: path, status: "queued", queuedAt: Date.now()
       };
       this.dispatch({
         ...current,
-        photos: [...(current.photos || []).filter(photo => String(photo.id) !== String(enqueue.data)), optimisticPhoto]
+        photos: [...(current.photos || []).filter(photo => String(photo.id) !== String(result.photo_id)), optimisticPhoto]
       });
-      // Refresh the queue immediately and wake the coordinator in parallel.
-      // Do not make the upload button wait for either background operation.
       this.loadSnapshot();
-      this.wakeSafely().then(result => {
-        if (!result.ok) console.warn("[FACE ARENA coordinator wake after upload]", result.error);
+      this.wakeSafely().then(coordinator => {
+        if (!coordinator.ok) console.warn("[FACE ARENA coordinator wake after upload]", coordinator.error);
         this.loadSnapshot();
       });
-      return { photoId: enqueue.data, coordinatorAvailable: null, coordinatorError: null };
+      return { photoId: result.photo_id, coordinatorAvailable: null, coordinatorError: null };
     }
 
     async registerVisit(battleId) {
