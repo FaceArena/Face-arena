@@ -2115,9 +2115,6 @@ function finishFaBoot(){
   faBootLoader?.classList.add("is-hidden");
   setTimeout(()=>faBootLoader?.remove(),350);
 }
-window.addEventListener("face-arena-snapshot",event=>{
-  if(event.detail || !window.FaceArenaSync?.isOnline?.()) finishFaBoot();
-},{once:false});
 window.addEventListener("face-arena-sync-failed",finishFaBoot,{once:true});
 setTimeout(finishFaBoot,12000);
 addEventListener("hashchange",show);
@@ -2142,6 +2139,7 @@ window.addEventListener("face-arena-snapshot",event=>{
     else if(activeHash==="settings")renderSettings();
     else if(activeHash==="upload")renderUpload();
     else if(activeHash==="")renderArenaGrid();
+    if(!window.FaceArenaSync?.isOnline?.()) requestAnimationFrame(()=>requestAnimationFrame(finishFaBoot));
     return;
   }
   photos=snapshot.photos||[];
@@ -2168,6 +2166,8 @@ window.addEventListener("face-arena-snapshot",event=>{
   else if(hash==="profile")renderProfile();
   else if(hash==="upload")renderUpload();
   else if(hash==="")renderArenaGrid();
+  // Reveal the arena only after the snapshot has been applied to the active view.
+  requestAnimationFrame(()=>requestAnimationFrame(finishFaBoot));
   // Settings has its own focused snapshot listener; do not rebuild it on every arena update.
 });
 renderArenaGrid();
