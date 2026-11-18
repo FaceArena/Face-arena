@@ -123,8 +123,9 @@
         }));
         const byId = new Map(photos.map(photo => [String(photo.id), photo]));
         const imageFor = (photoId, fallback) => {
-          const photo = photoId == null ? null : byId.get(String(photoId));
-          return photo ? photo.dataUrl : fallback || "";
+          if (photoId == null) return fallback || "";
+          const photo = byId.get(String(photoId));
+          return photo ? photo.dataUrl : "";
         };
         const arenaBattles = (snapshot.arenaBattles || []).map(battle => ({
           ...battle,
@@ -152,6 +153,9 @@
       } catch (error) {
         console.warn("[FACE ARENA signed photo URL refresh]", error);
         await this.loadSnapshot();
+        const current = this.lastSnapshot;
+        const urls = Object.fromEntries((current?.photos || []).filter(photo => photo.objectPath && photo.dataUrl).map(photo => [photo.objectPath, photo.dataUrl]));
+        window.dispatchEvent(new CustomEvent("face-arena-photo-urls-refreshed", { detail: { urls } }));
         return false;
       } finally {
         this.photoUrlRefreshInFlight = false;
