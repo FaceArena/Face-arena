@@ -21,6 +21,8 @@ jobs:
           node-version: 22
       - name: Check engine syntax
         run: node --check face-arena-game-engine.js
+      - name: Check game audio syntax
+        run: node --check face-arena-audio.js
       - name: Check Supabase sync client syntax
         run: node --check face-arena-sync.js
       - name: Check Cloudflare Worker syntax
