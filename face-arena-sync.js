@@ -139,7 +139,8 @@
             console.warn("[FACE ARENA photo unavailable]", item.error);
             continue;
           }
-          if (item.path && item.signedUrl) signed.set(item.path, item.signedUrl);
+          const resolvedPath = item.path || batch[data.indexOf(item)];
+          if (resolvedPath && item.signedUrl) signed.set(resolvedPath, item.signedUrl);
         }
       }
       return signed;
@@ -933,8 +934,20 @@
         throw error;
       }
       let avatarUrl = "";
-      try { avatarUrl = (await this.createPhotoSignedUrlMap([path],900)).get(path) || ""; }
-      catch (error) { console.warn("[FACE ARENA avatar URL]",error); }
+      try {
+        avatarUrl = (await this.createPhotoSignedUrlMap([path],900)).get(path) || "";
+        // Some Storage API responses omit the path field for a successful signed URL.
+        // Fall back to the single-object API so the newly uploaded avatar is not left blank.
+        if (!avatarUrl) {
+          const signed = await this.client.storage.from("arena-photos").createSignedUrl(path,900);
+          if (signed.error) throw signed.error;
+          avatarUrl = signed.data?.signedUrl || "";
+        }
+        if (!avatarUrl) throw new Error("Supabase не вернул ссылку на фотографию");
+      } catch (error) {
+        console.error("[FACE ARENA avatar URL]",error);
+        throw new Error("Фото сохранено, но ссылка на него не создана. Повторите загрузку.");
+      }
       const current = this.lastSnapshot || {};
       this.dispatch({ ...current, profile:{ ...current.profile, avatarPath:path, avatarUrl } });
       if (oldPath && oldPath !== path) {
