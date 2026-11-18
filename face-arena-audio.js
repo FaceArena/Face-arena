@@ -96,7 +96,7 @@
     }
     buffers[kind]=buffer;return buffer;
   }
-  function play(name,force){
+  function playNow(name,force){
     if(!force&&(!settings.enabled||settings.volume===0))return false;
     if(!["victory","champion","defeat","titleLost"].includes(name))return false;
     const now=Date.now();
@@ -110,12 +110,22 @@
       lastPlayed.set(name,now);return true;
     }catch(_){return false}
   }
+  function play(name,force){
+    const ctx=getContext();if(!ctx)return false;
+    if(ctx.state==="running")return playNow(name,force);
+    // iOS Safari may suspend Web Audio after the app is backgrounded.
+    // Try to resume rather than silently dropping later game effects.
+    unlock().then(ok=>{if(ok)playNow(name,force);});
+    return false;
+  }
   function preview(){
     if(!settings.enabled||settings.volume===0)return Promise.resolve(false);
-    return unlock().then(ok=>ok?play("victory",true):false);
+    return unlock().then(ok=>ok?playNow("victory",true):false);
   }
-  // Unlock audio only; never attach sound to ordinary interface interactions.
-  document.addEventListener("pointerdown",unlock,{once:true,passive:true});
-  document.addEventListener("keydown",unlock,{once:true});
+  // Repeated gestures allow recovery after iOS suspends the audio context.
+  document.addEventListener("pointerdown",unlock,{passive:true});
+  document.addEventListener("touchend",unlock,{passive:true});
+  document.addEventListener("keydown",unlock);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)unlock();});
   window.FaceArenaAudio={play,preview,unlock,getSettings(){return {...settings}},setEnabled,setVolume};
 })();
