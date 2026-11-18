@@ -494,6 +494,7 @@ const MAX_ACTIVE=3, MAX_SIZE=5*1024*1024, MATCH_SEC=10, STAGE_SEC=70, MAX_BATTLE
 function arenaNow(){return window.FaceArenaSync?.isOnline?.()&&typeof window.FaceArenaSync.serverNow==="function"?window.FaceArenaSync.serverNow():Date.now()}
 const ACTIVE_STATUSES=new Set(["queued","matched","confirmed","voting","champion"]);
 const LS_KEY="face_arena_demo_v2";
+const ANIM_PREF_KEY="face_arena_pref_anim_v1";
 let photos=[];
 let arenaBattles=[];
 let history=[];
@@ -504,7 +505,7 @@ let MY={}; // { [battleUid]: [{s,v}] }
 let pendingUrl=null, pendingFile=null, isPublishingPhoto=false;
 let matchTimerId=null;
 let profile={name:"Вы",handle:"user"}
-let prefAnim=true;
+let prefAnim=(()=>{try{const saved=localStorage.getItem(ANIM_PREF_KEY);return saved===null?true:saved==="true"}catch{return true}})();
 let participantStats={}; // photoId -> {wins,losses,defenses,bestStreak,name,img}
 let _uidSeq=0;
 function newBattleUid(){return "b_"+Date.now().toString(36)+"_"+((++_uidSeq)%1e6).toString(36)+"_"+Math.random().toString(36).slice(2,7)}
@@ -551,7 +552,7 @@ function loadState(){
     VOTED=new Set(data.voted||[]);
     MY=data.my||{};
     profile=data.profile||{name:"Вы",handle:"user"};
-    prefAnim=data.prefAnim!==false;
+    if(localStorage.getItem(ANIM_PREF_KEY)===null)prefAnim=data.prefAnim!==false;
     _uidSeq=data._uidSeq||0;
     participantStats=data.participantStats||{};
     // Ensure every active battle has a battleUid
@@ -566,7 +567,7 @@ function loadState(){
 }
 function resetData(){
   if(!confirm("Сбросить все данные?\\n\\nБудут удалены фото, голоса, комментарии, история и настройки профиля."))return;
-  localStorage.removeItem(LS_KEY);location.hash="";location.reload();
+  localStorage.removeItem(LS_KEY);localStorage.removeItem(ANIM_PREF_KEY);location.hash="";location.reload();
 }
 function applyAnimPref(){
   const root=document.documentElement;
@@ -1323,12 +1324,29 @@ ${preview}
   const rep=$("repBtn");if(rep)rep.onclick=()=>{pendingFile=null;pendingUrl=null;renderUpload()};
   const add=$("addBtn");if(add)add.onclick=()=>confirmAdd();
   const can=$("cancelPrev");if(can)can.onclick=()=>{pendingFile=null;pendingUrl=null;renderUpload()};
-  $("uv").querySelectorAll(".rm").forEach(b=>b.onclick=()=>{
+  $("uv").querySelectorAll(".rm").forEach(b=>b.onclick=async()=>{
     const id=b.dataset.id;
     const p=photos.find(x=>String(x.id)===String(id));
-    if(p&&p.status==="queued"){
-      photos=photos.filter(x=>String(x.id)!==String(id));toast("Фото удалено");saveState();renderUpload();updateArenaStats();
-    } else toast("Нельзя удалить после подтверждения баттла");
+    if(!p||p.status!=="queued"){toast("Нельзя удалить после подтверждения баттла");return}
+    const sync=window.FaceArenaSync;
+    if(sync?.isOnline?.()){
+      b.disabled=true;
+      try{
+        await sync.deletePhoto(id);
+        toast("Фото удалено");
+        renderUpload();
+        updateArenaStats();
+      }catch(error){
+        b.disabled=false;
+        toast(error?.message||"Не удалось удалить фото");
+      }
+      return;
+    }
+    photos=photos.filter(x=>String(x.id)!==String(id));
+    toast("Фото удалено");
+    saveState();
+    renderUpload();
+    updateArenaStats();
   });
 }
 
@@ -1602,7 +1620,7 @@ function renderSettings(){
     <div id="setSubNotifications" class="settings-sub">
       <button type="button" class="settings-back" id="backFromNotifications">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Уведомления</h2>
-      <p class="set-info">Уведомления о битвах, результатах и чемпионских вызовах станут доступны после подключения аккаунтов и серверной синхронизации.</p>
+      <p class="set-info">Доставка push-уведомлений о битвах, результатах и чемпионских вызовах пока не подключена.</p>
     </div>
 
     <div id="setSubPrivacy" class="settings-sub">
@@ -1755,6 +1773,7 @@ function renderSettings(){
   if(ta)ta.onclick=()=>{
     prefAnim=!prefAnim;
     applyAnimPref();
+    try{localStorage.setItem(ANIM_PREF_KEY,String(prefAnim))}catch(error){console.warn("[FACE ARENA animation preference]",error)}
     saveState();
     ta.classList.toggle("on",prefAnim);
     ta.setAttribute("aria-pressed",String(prefAnim));
