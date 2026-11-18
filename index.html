@@ -1600,16 +1600,32 @@ function renderSettings(){
 
   const audio=window.FaceArenaAudio;
   if(audio){
-    const soundSettings=audio.getSettings();
     const togSound=$("togSound"),soundVolume=$("soundVolume"),soundValue=$("soundVolumeValue"),soundPreview=$("soundPreview");
     const syncSound=()=>{
       const current=audio.getSettings();
-      if(togSound){togSound.classList.toggle("on",current.enabled);togSound.setAttribute("aria-pressed",String(current.enabled));}
+      if(togSound){
+        togSound.classList.toggle("on",!!current.enabled);
+        togSound.setAttribute("aria-pressed",String(!!current.enabled));
+        togSound.dataset.enabled=String(!!current.enabled);
+      }
       if(soundVolume)soundVolume.value=String(current.volume);
       if(soundValue)soundValue.textContent=current.volume+"%";
     };
     syncSound();
-    if(togSound)togSound.onclick=()=>{audio.setEnabled(!audio.getSettings().enabled);syncSound();};
+    if(togSound){
+      togSound.addEventListener("click",()=>{
+        const next=!audio.getSettings().enabled;
+        try{
+          const result=audio.setEnabled(next);
+          syncSound();
+          // Audio permission can fail independently; the user's preference remains saved.
+          Promise.resolve(result).catch(()=>{}).finally(syncSound);
+        }catch(error){
+          syncSound();
+          toast("Не удалось изменить настройку звука");
+        }
+      });
+    }
     if(soundVolume)soundVolume.oninput=()=>{audio.setVolume(Number(soundVolume.value));if(soundValue)soundValue.textContent=soundVolume.value+"%";};
     if(soundPreview)soundPreview.onclick=()=>{
       soundPreview.disabled=true;
