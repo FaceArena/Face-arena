@@ -38,11 +38,11 @@
   }
   function setEnabled(value){
     settings.enabled=!!value;
-    if(master&&context)master.gain.setTargetAtTime(settings.enabled?settings.volume/100:0,context.currentTime,.04);
+    const ctx=getContext();
+    if(master&&ctx)master.gain.setTargetAtTime(settings.enabled?settings.volume/100:0,ctx.currentTime,.025);
     persist();
-    // Enabling from the settings button is a direct user gesture.
-    // Resume/create Web Audio here so iOS Safari does not leave sound suspended.
-    if(settings.enabled)unlock();
+    // Call resume synchronously from the actual settings-button gesture.
+    return settings.enabled?unlock():Promise.resolve(true);
   }
   function setVolume(value){
     settings.volume=Math.max(0,Math.min(100,Number(value)||0));
@@ -143,8 +143,39 @@
     return false;
   }
   function preview(){
-    if(!settings.enabled||settings.volume===0)return Promise.resolve(false);
-    return unlock().then(ok=>ok?playNow("victory",true):false);
+    // Preview is an explicit user action: allow it even when game sounds are muted.
+    // Queue the buffer source before awaiting resume; this is more reliable on iOS Safari,
+    // where audio started only after an async continuation can be rejected by gesture policy.
+    if(settings.volume===0)return Promise.resolve(false);
+    const ctx=getContext();
+    if(!ctx||!master)return Promise.resolve(false);
+    const buffer=renderBuffer("victory");
+    if(!buffer)return Promise.resolve(false);
+    try{
+      const source=ctx.createBufferSource();
+      source.buffer=buffer;
+      const previewGain=ctx.createGain();
+      previewGain.gain.value=.92;
+      source.connect(previewGain);
+      previewGain.connect(master);
+      master.gain.setTargetAtTime(settings.volume/100,ctx.currentTime,.015);
+      const resumed=ctx.state==="running"?Promise.resolve(true):ctx.resume();
+      source.start(0);
+      source.onended=()=>{
+        if(context&&master)master.gain.setTargetAtTime(settings.enabled?settings.volume/100:0,context.currentTime,.08);
+      };
+      return Promise.resolve(resumed).then(()=>{
+        unlocked=ctx.state==="running";
+        if(!unlocked)master.gain.setTargetAtTime(settings.enabled?settings.volume/100:0,ctx.currentTime,.05);
+        return unlocked;
+      }).catch(()=>{
+        if(master&&context)master.gain.setTargetAtTime(settings.enabled?settings.volume/100:0,context.currentTime,.05);
+        return false;
+      });
+    }catch(_){
+      if(master&&context)master.gain.setTargetAtTime(settings.enabled?settings.volume/100:0,context.currentTime,.05);
+      return Promise.resolve(false);
+    }
   }
   // Repeated gestures allow recovery after iOS suspends the audio context.
   document.addEventListener("pointerdown",unlock,{passive:true});
