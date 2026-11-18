@@ -1724,15 +1724,22 @@ function renderSettings(){
     ["privacyHistoryToggle","history_public"],
     ["privacySecurityToggle","security_notifications"]
   ];
+  const privacyOptimistic={};
+  const privacyConfirmed={};
+  const privacyWrites=new Map();
+  const privacyVersions=new Map();
   const syncPrivacy=()=>{
     const sync=window.FaceArenaSync;
     const online=!!sync?.isOnline?.();
     const settings=sync?.lastSnapshot?.settings||{};
     for(const [id,key] of privacyKeys){
       const el=$(id);if(!el)continue;
-      const value=settings[key]!==false;
+      const serverValue=settings[key]!==false;
+      if(!Object.prototype.hasOwnProperty.call(privacyConfirmed,key))privacyConfirmed[key]=serverValue;
+      const value=Object.prototype.hasOwnProperty.call(privacyOptimistic,key)?privacyOptimistic[key]:serverValue;
       el.classList.toggle("on",value);
       el.setAttribute("aria-pressed",String(value));
+      // Do not disable an authenticated toggle while its server write is pending.
       el.disabled=!online;
       el.setAttribute("aria-disabled",String(!online));
     }
@@ -1744,18 +1751,40 @@ function renderSettings(){
   syncPrivacy();
   for(const [id,key] of privacyKeys){
     const el=$(id);if(!el)continue;
-    el.onclick=async()=>{
-      const settings=window.FaceArenaSync?.lastSnapshot?.settings||{};
-      const next=settings[key]===false;
-      el.disabled=true;
-      try{
-        await window.FaceArenaSync.updatePrivacySettings({[key]:next});
-        syncPrivacy();
-        toast("Настройка сохранена на сервере");
-      }catch(error){
-        syncPrivacy();
-        toast(error?.message||"Не удалось сохранить настройку");
-      }finally{el.disabled=false;}
+    el.onclick=()=>{
+      const sync=window.FaceArenaSync;
+      if(!sync?.isOnline?.()){toast("Сначала войдите в аккаунт");return;}
+      const current=Object.prototype.hasOwnProperty.call(privacyOptimistic,key)
+        ?privacyOptimistic[key]
+        :(sync.lastSnapshot?.settings?.[key]!==false);
+      const next=!current;
+      const version=(privacyVersions.get(key)||0)+1;
+      privacyVersions.set(key,version);
+      privacyOptimistic[key]=next;
+      el.classList.toggle("on",next);
+      el.setAttribute("aria-pressed",String(next));
+      // Queue writes per setting so rapid taps cannot arrive out of order.
+      const previous=privacyWrites.get(key)||Promise.resolve();
+      const write=previous.catch(()=>{}).then(()=>sync.updatePrivacySettings({[key]:next}));
+      privacyWrites.set(key,write);
+      write.then(()=>{
+        privacyConfirmed[key]=next;
+        if(privacyVersions.get(key)===version){
+          delete privacyOptimistic[key];
+          syncPrivacy();
+          toast("Настройка сохранена");
+        }
+      }).catch(error=>{
+        if(privacyVersions.get(key)===version){
+          privacyOptimistic[key]=privacyConfirmed[key]??(sync.lastSnapshot?.settings?.[key]!==false);
+          syncPrivacy();
+          delete privacyOptimistic[key];
+          syncPrivacy();
+          toast(error?.message||"Не удалось сохранить настройку");
+        }
+      }).finally(()=>{
+        if(privacyWrites.get(key)===write)privacyWrites.delete(key);
+      });
     };
   }
   const sessionInfo=$("currentSessionInfo");
