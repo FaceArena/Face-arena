@@ -125,7 +125,12 @@
         const { data, error } = await this.client.storage.from("arena-photos").createSignedUrls(batch, expiresIn);
         if (error) throw error;
         for (const item of data || []) {
-          if (item.error) throw new Error(item.error);
+          // A missing/deleted object must not prevent the rest of the arena snapshot
+          // from loading. Keep that one image blank and continue with the others.
+          if (item.error) {
+            console.warn("[FACE ARENA photo unavailable]", item.error);
+            continue;
+          }
           if (item.path && item.signedUrl) signed.set(item.path, item.signedUrl);
         }
       }
