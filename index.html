@@ -243,7 +243,7 @@ html.no-anim .card{opacity:1}
 .hist-item .vs-s{font:800 10px var(--hd);color:var(--mu)}
 .hist-item .res{font:800 12px var(--hd);letter-spacing:.06em}
 .hist-item .res.win{color:#4ade80}.hist-item .res.lose{color:var(--red)}.hist-item .res.draw{color:var(--mu)}.hist-item .res.red{color:var(--red)}.hist-item .res.blue{color:var(--blue)}
-.champion-tag{display:inline-block;font:700 9px var(--bd);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#3a3010;color:#f0d060;margin-left:6px;vertical-align:middle}
+.champion-tag{display:inline-block;font:700 9px var(--bd);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#3a3010;color:#f0d060;margin-left:6px;vertical-align:middle}.legendary-tag{background:linear-gradient(135deg,#4a3410,#8a6818);color:#ffe89a}
 .btn-main{width:100%;border:0;border-radius:14px;min-height:52px;font:800 13px var(--hd);letter-spacing:.06em;color:#fff;background:var(--blue);cursor:pointer;touch-action:manipulation;margin-top:12px}
 .btn-main:disabled{opacity:.5}
 .btn-ghost{width:100%;border:0;border-radius:14px;min-height:48px;font:700 13px var(--bd);color:var(--mu);background:none;cursor:pointer;margin-top:6px}
@@ -591,18 +591,19 @@ function buildTopRanking(){
     }));
   }
   return Object.keys(participantStats).filter(id=>!/^demo[_-]|^mock[_-]|^bot[_-]/i.test(id)).map(id=>{
-    const s=participantStats[id],photo=photos.find(x=>String(x.id)===String(id));
-    return {id,name:s.name||profile.name||"Вы",img:s.img||(photo&&photo.dataUrl)||face(1,"R"),wins:s.wins||0,losses:s.losses||0,defenses:s.defenses||0,streak:s.currentStreak||0,best:s.bestStreak||0,isChampion:!!s.isChampion||!!(photo&&photo.status==="champion"),laneId:s.laneId||null};
-  }).sort((a,b)=>Number(b.isChampion)-Number(a.isChampion)||b.defenses-a.defenses||b.wins-a.wins||b.streak-a.streak||String(a.id).localeCompare(String(b.id)));
+    const s=participantStats[id]||{},best=Number(s.bestStreak)||0,streak=Number(s.currentStreak)||0;
+    if(!(s.topArenaQualified||best>=5))return null;
+    return {id,name:s.name||profile.name||"Вы",img:s.img||face(1,"R"),wins:Number(s.wins)||0,losses:Number(s.losses)||0,defenses:Number(s.defenses)||0,streak,best,isChampion:!!s.isChampion,isLegendary:streak>=10,laneId:s.laneId||null};
+  }).filter(Boolean).sort((a,b)=>b.wins-a.wins||b.streak-a.streak||b.best-a.best||String(a.id).localeCompare(String(b.id)));
 }
 function renderTopArenaHTML(){
   const rows=buildTopRanking();
-  if(!rows.length)return `<div class="top-arena"><h2><span>★</span> TOP ARENA</h2><div class="empty-box"><p>Пока нет чемпионов. Победите в баттле, чтобы попасть в рейтинг.</p></div></div>`;
+  if(!rows.length)return `<div class="top-arena"><h2><span>★</span> TOP ARENA</h2><div class="empty-box"><p>Для входа в TOP ARENA нужно одержать 5 побед подряд.</p></div></div>`;
   return `<div class="top-arena"><h2><span>★</span> TOP ARENA</h2><div class="top-list">`+
     rows.slice(0,10).map((r,i)=>`<div class="top-item ${i===0?"gold":""}">
       <div class="pos">${i+1}</div>
       <img src="${r.img}" alt="">
-      <div><div class="nm">${esc(r.name)} ${r.isChampion?'<span class="champion-tag">ЧЕМПИОН</span>':''}</div>
+      <div><div class="nm">${esc(r.name)} ${r.isLegendary?'<span class="champion-tag legendary-tag">ЛЕГЕНДАРНЫЙ ЧЕМПИОН</span>':r.isChampion?'<span class="champion-tag">ЧЕМПИОН</span>':''}</div>
       <div class="meta">${r.isChampion&&r.laneId?"Линия "+r.laneId+" · ":""}Серия ${r.streak} · Защит ${r.defenses}</div></div>
       <div class="stats"><b>${r.wins}</b><div>побед</div><div style="margin-top:2px">${r.losses} пор.</div></div>
     </div>`).join("")+`</div></div>`;
