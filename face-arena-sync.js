@@ -360,6 +360,27 @@
       window.dispatchEvent(new CustomEvent(EVENT, { detail: snapshot }));
     }
 
+    async preloadCriticalImages(snapshot) {
+      const urls = [...new Set([
+        ...(snapshot.arenaBattles || []).flatMap(b => [b.redImg, b.blueImg, b.championImg]),
+        ...(snapshot.photos || []).filter(p => p.ownerId === snapshot.userId && ["queued","matched","champion"].includes(p.status)).map(p => p.dataUrl),
+        ...(snapshot.topArenaRanking || []).slice(0, 10).map(p => p.img)
+      ].filter(url => typeof url === "string" && /^https?:/i.test(url)))].slice(0, 24);
+      if (!urls.length) return;
+      const loads = urls.map(url => new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = url;
+        if (img.complete) resolve(img.naturalWidth > 0);
+      }));
+      // Never hold the app hostage to a slow or unavailable image CDN.
+      await Promise.race([
+        Promise.allSettled(loads),
+        new Promise(resolve => setTimeout(resolve, 2500))
+      ]);
+    }
+
     async loadSnapshot() {
       if (!this.isOnline()) return this.lastSnapshot;
       if (this.loading) { this.pendingReload = true; return this.lastSnapshot; }
@@ -622,11 +643,14 @@
           participantStats,
           topArenaRanking
         };
+        await this.preloadCriticalImages(snapshot);
+        if (this.user?.id !== requestUserId || this.authGeneration !== requestGeneration) return null;
         this.dispatch(snapshot);
         return snapshot;
       } catch (error) {
         console.error("[FACE ARENA sync]", error);
         this.showMessage(error?.message || "Не удалось загрузить данные арены.");
+        window.dispatchEvent(new CustomEvent("face-arena-sync-failed"));
         return null;
       } finally {
         this.loading = false;
