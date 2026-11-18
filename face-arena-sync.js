@@ -582,7 +582,7 @@
       const photo = this.lastSnapshot?.photos?.find(p => String(p.id) === String(photoId));
       const { error } = await this.client.rpc("delete_arena_photo",{p_photo_id:photoId});
       if (error) throw error;
-      if (photo?.status === "queued" && photo.objectPath) {
+      if (photo?.objectPath && ["queued", "completed"].includes(photo.status)) {
         const { error: storageError } = await this.client.storage.from("arena-photos").remove([photo.objectPath]);
         if (storageError) console.warn("[FACE ARENA storage cleanup]", storageError);
       }
