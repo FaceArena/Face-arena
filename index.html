@@ -1253,7 +1253,7 @@ function renderUpload(){
       <span>${t("upHint")}</span>
     </div>`;
   }
-  const actives=photos.filter(p=>ACTIVE_STATUSES.has(p.status));
+  const actives=getMyPhotos().filter(p=>ACTIVE_STATUSES.has(p.status));
   let my="";
   if(actives.length){
     my=`<h2>${t("upMy")} (${actives.length}/${MAX_ACTIVE})</h2>
