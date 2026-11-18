@@ -170,7 +170,7 @@
       errorEl.textContent = "";
       try {
         const result = this.authMode === "signup"
-          ? await this.client.auth.signUp({ email, password, options: { data: { display_name: name } } })
+          ? await this.client.auth.signUp({ email, password, options: { data: { display_name: name }, emailRedirectTo: location.origin + location.pathname } })
           : await this.client.auth.signInWithPassword({ email, password });
         if (result.error) throw result.error;
         if (this.authMode === "signup" && !result.data.session) {
