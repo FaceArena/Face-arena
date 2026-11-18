@@ -1480,7 +1480,7 @@ function renderSettings(){
         <li><button type="button" class="menu-item" data-go="notifications">Уведомления</button></li>
         <li><button type="button" class="menu-item" data-go="privacy">Приватность и безопасность</button></li>
         <li><button type="button" class="menu-item" data-go="data">Данные</button></li>
-        <li><button type="button" class="menu-item" data-go="support">Поддержка</button></li>
+        <li><button type="button" class="menu-item" data-go="about">О нас</button></li>
         <li><button type="button" class="menu-item danger" data-go="signout">Выйти из аккаунта</button></li>
       </ul>
       <div class="settings-menu-sep"></div>
@@ -1553,22 +1553,24 @@ function renderSettings(){
       <button type="button" class="menu-item danger" id="setResetBtn">Очистить локальный кэш</button>
     </div>
 
-    <div id="setSubSupport" class="settings-sub">
-      <button type="button" class="settings-back" id="backFromSupport">← Назад</button>
-      <h2 class="sec-h" style="margin-top:4px">Поддержка</h2>
-      <p class="set-info">Канал связи с поддержкой будет добавлен перед запуском публичной версии FACE ARENA.</p>
+    <div id="setSubAbout" class="settings-sub">
+      <button type="button" class="settings-back" id="backFromAbout">← Назад</button>
+      <h2 class="sec-h" style="margin-top:4px">О нас</h2>
+      <p class="set-info"><strong>FACE ARENA</strong> — платформа соревновательных фотобаттлов.</p>
+      <p class="set-info">Участники выходят на арену в парных поединках, а сообщество голосует и оставляет комментарии. Победитель продолжает борьбу и защищает титул.</p>
+      <p class="set-info">Результаты боёв, достижения и история участия сохраняются в профиле.</p>
     </div>
   `;
 
   const showSub=(id)=>{
     $("setMain").style.display="none";
-    ["setSubProfile","setSubAnim","setSubSound","setSubNotifications","setSubPrivacy","setSubData","setSubSupport"].forEach(k=>{
+    ["setSubProfile","setSubAnim","setSubSound","setSubNotifications","setSubPrivacy","setSubData","setSubAbout"].forEach(k=>{
       const el=$(k);if(el)el.classList.toggle("on",k===id);
     });
   };
   const showMain=()=>{
     $("setMain").style.display="";
-    ["setSubProfile","setSubAnim","setSubSound","setSubNotifications","setSubPrivacy","setSubData","setSubSupport"].forEach(k=>{
+    ["setSubProfile","setSubAnim","setSubSound","setSubNotifications","setSubPrivacy","setSubData","setSubAbout"].forEach(k=>{
       const el=$(k);if(el)el.classList.remove("on");
     });
   };
@@ -1582,12 +1584,12 @@ function renderSettings(){
       else if(go==="notifications")showSub("setSubNotifications");
       else if(go==="privacy")showSub("setSubPrivacy");
       else if(go==="data")showSub("setSubData");
-      else if(go==="support")showSub("setSubSupport");
+      else if(go==="about")showSub("setSubAbout");
       else if(go==="signout")window.FaceArenaSync?.signOut();
     };
   });
 
-  ["backFromProfile","backFromAnim","backFromSound","backFromNotifications","backFromPrivacy","backFromData","backFromSupport"].forEach(id=>{
+  ["backFromProfile","backFromAnim","backFromSound","backFromNotifications","backFromPrivacy","backFromData","backFromAbout"].forEach(id=>{
     const el=$(id);if(el)el.onclick=showMain;
   });
 
