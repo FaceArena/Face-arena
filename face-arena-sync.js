@@ -397,7 +397,8 @@
             leftStats.currentStreak++;
             leftStats.bestStreak = Math.max(leftStats.bestStreak, leftStats.currentStreak);
             leftStats.topArenaQualified ||= leftStats.bestStreak >= 5;
-            if (!result.opening) leftStats.defenses++;
+            // In regular battles the left side is the incumbent champion, so only its win is a defense.
+            leftStats.defenses++;
             rightStats.losses++;
             rightStats.currentStreak = 0;
           } else if (result.winner_photo_id === result.right_photo_id) {
@@ -405,7 +406,7 @@
             rightStats.currentStreak++;
             rightStats.bestStreak = Math.max(rightStats.bestStreak, rightStats.currentStreak);
             rightStats.topArenaQualified ||= rightStats.bestStreak >= 5;
-            if (!result.opening) rightStats.defenses++;
+            // A challenger victory transfers the title; it is not a successful defense.
             leftStats.losses++;
             leftStats.currentStreak = 0;
           } else {
