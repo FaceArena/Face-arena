@@ -2139,8 +2139,8 @@ function finishFaBoot(){
   if(faBootMinTimer)return;
   faBootMinTimer=setTimeout(()=>{
     if(faBootFinished)return;
-    faBootFinished=true;
     setFaBootProgress(1,"Арена готова");
+    faBootFinished=true;
     setTimeout(()=>{
       faBootLoader?.classList.add("is-hidden");
       setTimeout(()=>faBootLoader?.remove(),750);
