@@ -9,6 +9,7 @@
       this.client = null;
       this.user = null;
       this.channel = null;
+      this.visibilityChannel = null;
       this.ready = false;
       this.loading = false;
       this.lastSnapshot = null;
@@ -616,21 +617,34 @@
     }
 
     subscribe() {
-      if (!this.isOnline() || this.channel) return;
-      this.channel = this.client.channel("face-arena-live")
-        .on("postgres_changes", { event: "*", schema: "public", table: "arena_photos" }, () => this.loadSnapshot())
-        .on("postgres_changes", { event: "*", schema: "public", table: "arena_lanes" }, () => this.loadSnapshot())
-        .on("postgres_changes", { event: "*", schema: "public", table: "arena_battles" }, () => this.loadSnapshot())
-        .on("postgres_changes", { event: "*", schema: "public", table: "arena_battle_participants" }, () => this.loadSnapshot())
-        .on("postgres_changes", { event: "*", schema: "public", table: "arena_votes" }, () => this.loadSnapshot())
-        .on("postgres_changes", { event: "*", schema: "public", table: "arena_results" }, () => this.loadSnapshot())
-        .on("postgres_changes", { event: "*", schema: "public", table: "arena_profiles" }, () => this.loadSnapshot())
-        .subscribe();
+      if (!this.isOnline()) return;
+      if (!this.channel) {
+        this.channel = this.client.channel("face-arena-live")
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_photos" }, () => this.loadSnapshot())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_lanes" }, () => this.loadSnapshot())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_battles" }, () => this.loadSnapshot())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_battle_participants" }, () => this.loadSnapshot())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_votes" }, () => this.loadSnapshot())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_results" }, () => this.loadSnapshot())
+          .on("postgres_changes", { event: "*", schema: "public", table: "arena_profiles" }, () => this.loadSnapshot())
+          .subscribe();
+      }
+      if (!this.visibilityChannel) {
+        this.visibilityChannel = this.client.channel("arena-visibility-events", { config: { private: true } })
+          .on("broadcast", { event: "visibility_changed" }, () => this.loadSnapshot())
+          .subscribe(status => {
+            if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+              console.warn("[FACE ARENA visibility realtime]", status);
+            }
+          });
+      }
     }
 
     unsubscribe() {
       if (this.channel) this.client.removeChannel(this.channel);
+      if (this.visibilityChannel) this.client.removeChannel(this.visibilityChannel);
       this.channel = null;
+      this.visibilityChannel = null;
     }
 
     async wake() {
