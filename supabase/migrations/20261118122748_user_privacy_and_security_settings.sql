@@ -1,13 +1,42 @@
-create table if not exists public.arena_user_settings (user_id uuid primary key references auth.users(id) on delete cascade, profile_public boolean not null default true, history_public boolean not null default true, security_notifications boolean not null default true, updated_at timestamptz not null default now());
+create table if not exists public.arena_user_settings (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  profile_public boolean not null default true,
+  history_public boolean not null default true,
+  security_notifications boolean not null default true,
+  updated_at timestamptz not null default now()
+);
 alter table public.arena_user_settings enable row level security;
+drop policy if exists "Users read own arena settings" on public.arena_user_settings;
 create policy "Users read own arena settings" on public.arena_user_settings for select to authenticated using ((select auth.uid()) = user_id);
+drop policy if exists "Users insert own arena settings" on public.arena_user_settings;
 create policy "Users insert own arena settings" on public.arena_user_settings for insert to authenticated with check ((select auth.uid()) = user_id);
+drop policy if exists "Users update own arena settings" on public.arena_user_settings;
 create policy "Users update own arena settings" on public.arena_user_settings for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 grant select, insert, update on public.arena_user_settings to authenticated;
-create or replace function private.arena_user_setting_enabled(p_user_id uuid, p_setting text) returns boolean language sql stable security definer set search_path = pg_catalog, public, private as $$ select coalesce((select case p_setting when 'profile_public' then s.profile_public when 'history_public' then s.history_public when 'security_notifications' then s.security_notifications else false end from public.arena_user_settings s where s.user_id = p_user_id), true); $$;
+
+create or replace function private.arena_user_setting_enabled(p_user_id uuid, p_setting text)
+returns boolean language sql stable security definer
+set search_path = pg_catalog, public, private
+as $$
+  select coalesce((select case p_setting
+    when 'profile_public' then s.profile_public
+    when 'history_public' then s.history_public
+    when 'security_notifications' then s.security_notifications
+    else false end
+    from public.arena_user_settings s where s.user_id = p_user_id), true);
+$$;
 revoke all on function private.arena_user_setting_enabled(uuid,text) from public, anon, authenticated;
 grant execute on function private.arena_user_setting_enabled(uuid,text) to authenticated;
+
 drop policy if exists "Authenticated users can read arena profiles" on public.arena_profiles;
-create policy "Users can read public arena profiles or their own" on public.arena_profiles for select to authenticated using (user_id = (select auth.uid()) or private.arena_user_setting_enabled(user_id,'profile_public'));
+create policy "Users can read public arena profiles or their own" on public.arena_profiles
+for select to authenticated
+using (user_id = (select auth.uid()) or private.arena_user_setting_enabled(user_id,'profile_public'));
+
 drop policy if exists "Authenticated users can read arena results" on public.arena_results;
-create policy "Users can read public arena results or their own" on public.arena_results for select to authenticated using (exists (select 1 from public.arena_photos lp where lp.id = arena_results.left_photo_id and (lp.owner_id = (select auth.uid()) or private.arena_user_setting_enabled(lp.owner_id,'history_public'))) or exists (select 1 from public.arena_photos rp where rp.id = arena_results.right_photo_id and (rp.owner_id = (select auth.uid()) or private.arena_user_setting_enabled(rp.owner_id,'history_public'))));
+create policy "Users can read public arena results or their own" on public.arena_results
+for select to authenticated
+using (
+  exists (select 1 from public.arena_photos lp where lp.id = arena_results.left_photo_id and (lp.owner_id = (select auth.uid()) or private.arena_user_setting_enabled(lp.owner_id,'history_public')))
+  or exists (select 1 from public.arena_photos rp where rp.id = arena_results.right_photo_id and (rp.owner_id = (select auth.uid()) or private.arena_user_setting_enabled(rp.owner_id,'history_public')))
+);
