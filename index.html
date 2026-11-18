@@ -2316,7 +2316,6 @@ saveState();
     loadPhotos();
   }
   async function loadPhotos() {
-    if (adminBusy) return;
     const stats = document.getElementById("faAdminStats");
     const list = document.getElementById("faAdminPhotos");
     const notice = document.getElementById("faAdminNotice");
@@ -2366,7 +2365,6 @@ saveState();
   }
   async function deleteAllPhotos() {
     if (adminBusy || !isAdmin()) return;
-    const photosCount = document.querySelectorAll("#faAdminPhotos [data-admin-delete]").length;
     if (!confirm("ВНИМАНИЕ: будут безвозвратно удалены все файлы фотографий, включая фото активных баттлов и чемпионов. История и записи результатов сохранятся, но изображения восстановить нельзя. Продолжить?")) return;
     const phrase = prompt("Для подтверждения введи точно: УДАЛИТЬ ВСЕ ФОТО");
     if (phrase !== "УДАЛИТЬ ВСЕ ФОТО") return;
