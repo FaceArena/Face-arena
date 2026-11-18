@@ -1735,7 +1735,8 @@ function renderSettings(){
     for(const [id,key] of privacyKeys){
       const el=$(id);if(!el)continue;
       const serverValue=settings[key]!==false;
-      if(!Object.prototype.hasOwnProperty.call(privacyConfirmed,key))privacyConfirmed[key]=serverValue;
+      if(!Object.prototype.hasOwnProperty.call(privacyOptimistic,key)&&!privacyWrites.has(key))privacyConfirmed[key]=serverValue;
+      else if(!Object.prototype.hasOwnProperty.call(privacyConfirmed,key))privacyConfirmed[key]=serverValue;
       const value=Object.prototype.hasOwnProperty.call(privacyOptimistic,key)?privacyOptimistic[key]:serverValue;
       el.classList.toggle("on",value);
       el.setAttribute("aria-pressed",String(value));
