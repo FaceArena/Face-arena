@@ -25,6 +25,22 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .logo i b:first-child{background:var(--red);transform:skewX(-14deg)}.logo i b:last-child{background:var(--blue);transform:skewX(-14deg)}
 .hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0;height:28px}
 .btn-gear{width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:var(--mu);display:grid;place-items:center;cursor:pointer;touch-action:manipulation;padding:0;-webkit-tap-highlight-color:transparent;flex-shrink:0}
+.btn-notifications{position:relative;width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:var(--mu);display:grid;place-items:center;cursor:pointer;padding:0;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+.btn-notifications:active{color:#fff;background:var(--s)}
+.btn-notifications svg{width:17px;height:17px;display:block}
+.notification-count{position:absolute;top:-3px;right:-4px;min-width:15px;height:15px;padding:0 4px;border-radius:99px;background:var(--red);color:#fff;font:800 9px/15px var(--bd);text-align:center;box-sizing:border-box;border:1px solid #080808}
+.notification-count[hidden]{display:none}
+.notification-list{display:grid;gap:8px;margin-top:14px}
+.notification-item{display:grid;grid-template-columns:7px minmax(0,1fr) auto;gap:11px;align-items:center;padding:13px 12px;border-radius:13px;background:var(--c);cursor:pointer;touch-action:manipulation}
+.notification-item.unread{background:#111;box-shadow:inset 0 0 0 1px rgba(52,120,255,.32)}
+.notification-item:active{opacity:.82}
+.notification-dot{width:6px;height:6px;border-radius:50%;background:transparent}
+.notification-item.unread .notification-dot{background:var(--blue);box-shadow:0 0 8px rgba(52,120,255,.55)}
+.notification-copy{min-width:0}
+.notification-copy strong{display:block;font-size:13px;line-height:1.35}
+.notification-copy p{margin:4px 0 0;color:var(--mu);font-size:11px;line-height:1.45}
+.notification-copy time{display:block;margin-top:6px;color:#777;font-size:10px}
+.notification-arrow{color:#777;font-size:18px;line-height:1}
 .btn-gear:active{color:#fff;background:var(--s)}
 .btn-gear svg{width:16px;height:16px;display:block}
 .live{font:600 11px var(--bd);letter-spacing:.14em;text-transform:uppercase;color:var(--mu);display:flex;align-items:center;gap:6px;height:28px;line-height:1}
@@ -427,7 +443,7 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
   </div>
 </div>
 <div class="wrap" id="av">
-<header><div class="logo"><i><b></b><b></b></i>FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span data-i="live"></span></div><button type="button" class="btn-gear"  aria-label="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
+<header><div class="logo"><i><b></b><b></b></i>FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span data-i="live"></span></div><button type="button" class="btn-notifications" data-notifications-open aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span class="notification-count" hidden></span></button><button type="button" class="btn-gear"  aria-label="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
 <h1 data-i="title"></h1>
 <p class="lead" data-i="lead"></p>
 <div class="stats" id="stats"></div>
@@ -448,7 +464,7 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 <div class="toast" id="toast" role="status"></div>
 <div class="ov" id="ov"><div class="sh" id="sh" role="dialog" aria-modal="true"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./face-arena-sync.js?v=20261119-friendly-errors-v1"></script>
+<script src="./face-arena-sync.js?v=20261119-notifications-v1"></script>
 <script src="./face-arena-audio.js"></script>
 <script src="./face-arena-game-engine.js"></script>
 <script>
@@ -515,8 +531,16 @@ const elapsedQueue=ms=>{const sec=Math.max(0,Math.floor((Date.now()-Number(ms||D
 function tickQueueWaits(){document.querySelectorAll("[data-queued-at]").forEach(el=>{el.textContent="В очереди · "+elapsedQueue(el.dataset.queuedAt)})}
 const toast=m=>{const e=$("toast");e.textContent=m;e.classList.add("show");clearTimeout(toast.h);toast.h=setTimeout(()=>e.classList.remove("show"),2400)};
 const GEAR_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+function notificationBellHTML(){
+  const count=Number(window.FaceArenaSync?.lastSnapshot?.unreadNotificationsCount)||0;
+  return '<button type="button" class="btn-notifications" data-notifications-open aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span class="notification-count" '+(count?"":"hidden")+">"+(count>99?"99+":count)+"</span></button>';
+}
+function syncNotificationBadges(){
+  const count=Number(window.FaceArenaSync?.lastSnapshot?.unreadNotificationsCount)||0;
+  document.querySelectorAll(".notification-count").forEach(el=>{el.textContent=count>99?"99+":String(count);el.hidden=count===0;});
+}
 function hdrHTML(showGear=true){
-  return `<header><div class="logo"><i><b></b><b></b></i>FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span>${t("live")}</span></div>${showGear?`<button type="button" class="btn-gear"  aria-label="Настройки">${GEAR_SVG}</button>`:""}</div></header>`;
+  return `<header><div class="logo"><i><b></b><b></b></i>FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span>${t("live")}</span></div>${notificationBellHTML()}${showGear?`<button type="button" class="btn-gear"  aria-label="Настройки">${GEAR_SVG}</button>`:""}</div></header>`;
 }
 function bindGear(){
   document.querySelectorAll(".btn-gear").forEach(g=>{
@@ -525,6 +549,8 @@ function bindGear(){
 }
 // Global capture: works even if header re-rendered
 document.addEventListener("click",function(e){
+  const notification=e.target.closest&&e.target.closest("[data-notifications-open]");
+  if(notification){e.preventDefault();location.hash="notifications";return;}
   const g=e.target.closest&&e.target.closest(".btn-gear");
   if(g){e.preventDefault();location.hash="settings"}
 },true);
@@ -1744,7 +1770,12 @@ function renderSettings(){
     <div id="setSubNotifications" class="settings-sub">
       <button type="button" class="settings-back" id="backFromNotifications">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Уведомления</h2>
-      <p class="set-info">Доставка push-уведомлений о битвах, результатах и чемпионских вызовах пока не подключена.</p>
+      <div class="set-row">
+        <div><div class="lbl">События арены</div><div class="sub">Начало битвы, победы, поражения и защита титула</div></div>
+        <button type="button" class="set-toggle" id="togBattleNotifications" aria-label="Уведомления о событиях арены"></button>
+      </div>
+      <p class="set-info">Уведомления сохраняются в аккаунте и обновляются внутри приложения. Push на закрытом устройстве пока не подключён.</p>
+      <button type="button" class="menu-item" id="openNotificationsCenter" style="margin-top:8px;padding:12px 0;color:#fff">Открыть центр уведомлений</button>
     </div>
 
     <div id="setSubPrivacy" class="settings-sub">
@@ -1833,6 +1864,9 @@ function renderSettings(){
     const el=$(id);if(el)el.onclick=showMain;
   });
 
+  const openNotificationsCenter=$("openNotificationsCenter");
+  if(openNotificationsCenter)openNotificationsCenter.onclick=()=>{location.hash="notifications"};
+
   const closeSettings=()=>{location.hash=""};
   const cx=$("setCloseX");if(cx)cx.onclick=closeSettings;
   const ex=$("setExit");if(ex)ex.onclick=closeSettings;
@@ -1907,7 +1941,8 @@ function renderSettings(){
   const privacyKeys=[
     ["privacyProfileToggle","profile_public"],
     ["privacyHistoryToggle","history_public"],
-    ["privacySecurityToggle","security_notifications"]
+    ["privacySecurityToggle","security_notifications"],
+    ["togBattleNotifications","battle_notifications"]
   ];
   const privacyOptimistic={};
   const privacyConfirmed={};
@@ -2120,6 +2155,43 @@ function renderResults(){
   });
 }
 
+function renderNotifications(){
+  const sync=window.FaceArenaSync;
+  const rows=sync?.lastSnapshot?.notifications||[];
+  const online=!!sync?.isOnline?.();
+  const unread=rows.filter(item=>!item.read_at).length;
+  let content="";
+  if(!online)content='<div class="empty-box"><p>Войдите в аккаунт, чтобы просматривать уведомления.</p></div>';
+  else if(!rows.length)content='<div class="empty-box"><p>Пока уведомлений нет. Здесь появятся сообщения о начале битв и их результатах.</p></div>';
+  else content='<div class="notification-list">'+rows.map(item=>{
+    const date=Date.parse(item.created_at);
+    const when=Number.isFinite(date)?new Date(date).toLocaleString("ru-RU",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"";
+    return '<div class="notification-item '+(item.read_at?"":"unread")+'" role="button" tabindex="0" data-notification-id="'+esc(item.id)+'"><span class="notification-dot" aria-hidden="true"></span><div class="notification-copy"><strong>'+esc(item.title||"Уведомление")+'</strong><p>'+esc(item.body||"")+'</p><time>'+esc(when)+'</time></div><span class="notification-arrow" aria-hidden="true">›</span></div>';
+  }).join("")+'</div>';
+  $("nfv").innerHTML=hdrHTML()+'<h1 class="sec-h">Уведомления</h1><p class="sec-lead">'+(unread?"Непрочитанных: "+unread:"Все события арены в одном месте.")+'</p>'+(unread?'<button type="button" class="menu-item" id="markAllNotificationsRead" style="width:auto;padding:8px 0;color:#fff">Отметить всё прочитанным</button>':"")+content;
+  const markAll=$("markAllNotificationsRead");
+  if(markAll)markAll.onclick=async()=>{
+    markAll.disabled=true;
+    try{await sync.markAllNotificationsRead();toast("Все уведомления прочитаны");}
+    catch(error){toast(window.FaceArenaErrors.message(error,"Не удалось обновить уведомления. Попробуйте позже."));markAll.disabled=false;}
+  };
+  $("nfv").querySelectorAll("[data-notification-id]").forEach(el=>{
+    const open=async()=>{
+      const item=rows.find(row=>String(row.id)===String(el.dataset.notificationId));
+      if(!item)return;
+      try{if(!item.read_at)await sync.markNotificationRead(item.id);}
+      catch(error){toast(window.FaceArenaErrors.message(error,"Не удалось открыть уведомление. Попробуйте ещё раз."));return;}
+      const payload=item.payload||{};
+      if(item.kind==="battle_started"){
+        const laneId=Number(payload.lane_id);
+        const active=(sync.lastSnapshot?.arenaBattles||[]).some(b=>Number(b.laneId||b.id)===laneId&&String(b.battleUid)===String(payload.battle_id));
+        location.hash=active&&laneId>=1&&laneId<=10?"battle-"+laneId:"queue";
+      }else if(payload.result_id){location.hash="result-"+encodeURIComponent(String(payload.result_id));}
+    };
+    el.onclick=open;
+    el.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();open();}};
+  });
+}
 function renderResult(photoId){
   const h=(arenaResults||[]).find((x,i)=>historyResultKey(x,i)===String(photoId))||history.find((x,i)=>historyResultKey(x,i)===String(photoId))||history.find(x=>String(x.photoId)===String(photoId));
   if(!h){location.hash="profile";return}
@@ -2196,6 +2268,7 @@ function show(){
     else if(/^profile-[0-9a-f-]{36}$/i.test(hash)){renderPublicProfile(decodeURIComponent(hash.slice(8)));target=views.pv;setTab(3)}
     else if(hash==="profile"){renderProfile();target=views.pv;setTab(3)}
     else if(hash==="results"){renderResults();target=views.iv;setTab(4)}
+    else if(hash==="notifications"){renderNotifications();target=views.nfv;setTab(3)}
     else if(hash==="settings"){renderSettings();target=views.sv;setTab(3)}
     else if(hash===""){renderArenaGrid();target=views.av;setTab(0)}
     else {renderNotFound();target=views.nfv;setTab(0)}
@@ -2203,7 +2276,7 @@ function show(){
     if(target)showView(target);
     // Hide bottom nav on settings (full-screen menu)
     const navEl=document.querySelector("nav");
-    if(navEl)navEl.style.display=(hash==="settings"||target===views.nfv)?"none":"";
+    if(navEl)navEl.style.display=(hash==="settings"||(target===views.nfv&&hash!=="notifications"))?"none":"";
     bindGear();
     window.scrollTo({top:0,behavior:reduce?"auto":"smooth"});
     _navLock=false;
@@ -2275,6 +2348,7 @@ window.addEventListener("face-arena-photo-urls-refreshed",event=>{
 window.addEventListener("face-arena-snapshot",event=>{
   const snapshot=event.detail;
   if(!snapshot){
+    syncNotificationBadges();
     photos=[];history=[];arenaResults=[];VOTED=new Set();MY={};participantStats={};
     arenaBattles=createDefaultArena();profile={name:"Вы",handle:"user",isVerified:false,role:"user"};
     updateArenaStats();
@@ -2288,6 +2362,7 @@ window.addEventListener("face-arena-snapshot",event=>{
     }
     else if(activeHash.startsWith("result-"))renderResult(decodeURIComponent(activeHash.slice(7)));
     else if(activeHash==="results")renderResults();
+    else if(activeHash==="notifications")renderNotifications();
     else if(activeHash==="queue")renderQueue();
     else if(activeHash==="profile")renderProfile();
     else if(activeHash==="settings")renderSettings();
@@ -2304,6 +2379,7 @@ window.addEventListener("face-arena-snapshot",event=>{
   profile=snapshot.profile||profile;
   participantStats=snapshot.participantStats||{};
   topArenaRanking=Array.isArray(snapshot.topArenaRanking)?snapshot.topArenaRanking:null;
+  syncNotificationBadges();
   if(location.hash.slice(1)==="settings"){
     const preview=$("profileAvatarPreview");
     if(preview){
@@ -2317,6 +2393,7 @@ window.addEventListener("face-arena-snapshot",event=>{
   updateArenaStats();
   const hash=location.hash.slice(1);
   if(hash==="results")renderResults();
+  else if(hash==="notifications")renderNotifications();
   else if(hash.startsWith("result-"))renderResult(decodeURIComponent(hash.slice(7)));
   else if(/^battle-\d+$/.test(hash)){
     const battleId=Number(hash.slice(7));
