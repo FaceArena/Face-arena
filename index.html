@@ -586,9 +586,11 @@ function updateArenaStats(){
 
 function buildTopRanking(){
   if(window.FaceArenaGameEngine){
-    return window.FaceArenaGameEngine.buildRanking(participantStats,photos).map(r=>({
-      ...r,name:r.name||profile.name||"Вы",img:r.img||face(1,"R")
-    }));
+    return window.FaceArenaGameEngine.buildRanking(participantStats,photos)
+      .filter(r=>Number(r?.wins)>=5&&Number(r?.best)>=5)
+      .map(r=>({
+        ...r,name:r.name||profile.name||"Вы",img:r.img||face(1,"R")
+      }));
   }
   return Object.keys(participantStats).filter(id=>!/^demo[_-]|^mock[_-]|^bot[_-]/i.test(id)).map(id=>{
     const s=participantStats[id]||{},best=Number(s.bestStreak)||0,streak=Number(s.currentStreak)||0;
@@ -597,7 +599,8 @@ function buildTopRanking(){
   }).filter(Boolean).sort((a,b)=>b.wins-a.wins||b.streak-a.streak||b.best-a.best||String(a.id).localeCompare(String(b.id)));
 }
 function renderTopArenaHTML(){
-  const rows=buildTopRanking();
+  // Final UI guard: stale cached engines or malformed snapshots cannot bypass qualification.
+  const rows=buildTopRanking().filter(r=>Number(r?.wins)>=5&&Number(r?.best)>=5);
   if(!rows.length)return `<div class="top-arena"><h2><span>★</span> TOP ARENA</h2><div class="empty-box"><p>Для входа в TOP ARENA нужно одержать 5 побед подряд.</p></div></div>`;
   return `<div class="top-arena"><h2><span>★</span> TOP ARENA</h2><div class="top-list">`+
     rows.slice(0,10).map((r,i)=>`<div class="top-item ${i===0?"gold":""}">
