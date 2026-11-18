@@ -2101,6 +2101,7 @@ window.addEventListener("face-arena-snapshot",event=>{
     // Re-render the current route after an account change so private DOM and
     // in-flight profile requests from the previous account cannot remain visible.
     if(/^profile-[0-9a-f-]{36}$/i.test(activeHash))renderPublicProfile(decodeURIComponent(activeHash.slice(8)));
+    else if(activeHash.startsWith("match-"))location.hash="queue";
     else if(/^battle-\d+$/.test(activeHash)){
       $("bv").innerHTML=`<div class="big"><p class="note">${window.FaceArenaSync?.isOnline?.()?"Загружаем бой…":"Войдите в аккаунт, чтобы открыть бой."}</p></div>`;
     }
