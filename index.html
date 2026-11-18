@@ -2008,7 +2008,7 @@ function renderSettings(){
     avatarChoose.disabled=true;avatarChoose.textContent="Загружаем…";
     try{
       await window.FaceArenaSync.uploadProfileAvatar(file);
-      profile=window.FaceArenaSync.getSnapshot?.()?.profile||profile;
+      profile=window.FaceArenaSync.lastSnapshot?.profile||profile;
       if(avatarPreview){avatarPreview.src=profile.avatarUrl||"";avatarPreview.hidden=!profile.avatarUrl}
       toast("Фотография профиля обновлена");
       renderProfile();
