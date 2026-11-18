@@ -83,6 +83,32 @@
     getUser() { return this.user; }
     isOnline() { return !!this.client && !!this.user && this.ready; }
     serverNow() { return Date.now() + (Number.isFinite(this.serverTimeOffset) ? this.serverTimeOffset : 0); }
+    mapTopArenaRanking(rows, photosById) {
+      if (!Array.isArray(rows)) return null;
+      return rows.map(row => ({
+        name: row.name || "Участник",
+        wins: Number(row.wins) || 0,
+        losses: Number(row.losses) || 0,
+        defenses: Number(row.defenses) || 0,
+        streak: Number(row.streak) || 0,
+        best: Number(row.best) || 0,
+        isChampion: !!row.is_champion,
+        isLegendary: !!row.is_legendary,
+        laneId: row.lane_id == null ? null : Number(row.lane_id),
+        photoId: row.photo_id || null,
+        img: row.photo_id ? photosById.get(String(row.photo_id))?.dataUrl || "" : ""
+      }));
+    }
+    async refreshTopArenaRanking() {
+      if (!this.isOnline() || !this.lastSnapshot) return false;
+      const snapshot = this.lastSnapshot;
+      const { data, error } = await this.client.rpc("get_top_arena_ranking");
+      if (error) throw error;
+      if (this.lastSnapshot !== snapshot || this.user?.id !== snapshot.userId) return false;
+      const photosById = new Map((snapshot.photos || []).map(photo => [String(photo.id), photo]));
+      this.dispatch({ ...snapshot, topArenaRanking: this.mapTopArenaRanking(data || [], photosById) });
+      return true;
+    }
     async createPhotoSignedUrlMap(paths, expiresIn = 900) {
       const unique = [...new Set((paths || []).filter(path => typeof path === "string" && path.length))];
       const signed = new Map();
@@ -115,7 +141,11 @@
       this.photoUrlRefreshInFlight = true;
       try {
         const paths = (snapshot.photos || []).filter(photo => photo.objectPath && photo.status !== "removed").map(photo => photo.objectPath);
-        const signed = await this.createPhotoSignedUrlMap(paths, 900);
+        const [signed, rankingResult] = await Promise.all([
+          this.createPhotoSignedUrlMap(paths, 900),
+          this.client.rpc("get_top_arena_ranking")
+        ]);
+        if (rankingResult.error) throw rankingResult.error;
         if (this.lastSnapshot !== snapshot || this.user?.id !== snapshot.userId) return false;
         const photos = (snapshot.photos || []).map(photo => ({
           ...photo,
@@ -146,8 +176,9 @@
         const participantStats = Object.fromEntries(Object.entries(snapshot.participantStats || {}).map(([id, stats]) => [
           id, { ...stats, img: imageFor(stats.photoId, stats.img) }
         ]));
+        const topArenaRanking = this.mapTopArenaRanking(rankingResult.data || [], byId);
         this.photoUrlsExpiresAt = Date.now() + 900000;
-        this.dispatch({ ...snapshot, photos, arenaBattles, arenaResults, history, participantStats });
+        this.dispatch({ ...snapshot, photos, arenaBattles, arenaResults, history, participantStats, topArenaRanking });
         window.dispatchEvent(new CustomEvent("face-arena-photo-urls-refreshed", { detail: { urls: Object.fromEntries(signed) } }));
         return true;
       } catch (error) {
@@ -330,12 +361,20 @@
           console.warn("[FACE ARENA server clock]", error);
           return false;
         });
-        const [photoRes, profileRes, laneRes, battleRes, resultRes] = await Promise.all([
+        const topRankingPromise = c.rpc("get_top_arena_ranking").then(({ data, error }) => {
+          if (error) throw error;
+          return data || [];
+        }).catch(error => {
+          console.warn("[FACE ARENA TOP ARENA ranking]", error);
+          return null;
+        });
+        const [photoRes, profileRes, laneRes, battleRes, resultRes, topRankingRows] = await Promise.all([
           this.fetchAllRows(() => c.from("arena_photos").select("id,owner_id,object_path,status,created_at").order("created_at", { ascending: true }).order("id", { ascending: true })),
           this.fetchAllRows(() => c.from("arena_profiles").select("user_id,display_name,handle").order("user_id", { ascending: true })),
           c.from("arena_lanes").select("lane_id,champion_photo_id,challenger_photo_id").order("lane_id"),
           c.from("arena_battles").select("id,lane_id,opening,stage,started_at,confirm_until,stage_ends_at,finished_at").in("stage", ["waiting","voting"]),
-          this.fetchAllRows(() => c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,no_contest,completed_at").order("completed_at", { ascending: false }).order("id", { ascending: false }))
+          this.fetchAllRows(() => c.from("arena_results").select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,no_contest,completed_at").order("completed_at", { ascending: false }).order("id", { ascending: false })),
+          topRankingPromise
         ]);
         await clockSync;
         for (const r of [photoRes,profileRes,laneRes,battleRes,resultRes]) if (r.error) throw r.error;
@@ -354,6 +393,7 @@
         const photosById = new Map(photoRows.map(p => [p.id, {
           ...p, dataUrl: signedPhotoUrls.get(p.object_path) || ""
         }]));
+        const topArenaRanking = this.mapTopArenaRanking(topRankingRows, photosById);
         const photos = visiblePhotoRows.map(p => {
           const profile = profiles.get(p.owner_id) || {};
           return {
@@ -557,7 +597,8 @@
           photos, arenaBattles, history, arenaResults, VOTED, MY, profiles: profileRes.data,
           profile: { name: myProfile.display_name || this.user.user_metadata?.display_name || "Участник", handle: myProfile.handle || "user" },
           settings: snapshotSettings,
-          participantStats
+          participantStats,
+          topArenaRanking
         };
         this.dispatch(snapshot);
         return snapshot;
@@ -742,6 +783,9 @@
       // wait for unrelated photos, battles, votes and history queries.
       if (this.user?.id === userId && this.lastSnapshot?.userId === userId) {
         this.dispatch({ ...this.lastSnapshot, settings: { ...(this.lastSnapshot.settings || {}), ...data } });
+      }
+      if (allowed.includes("profile_public")) {
+        this.refreshTopArenaRanking().catch(error => console.warn("[FACE ARENA TOP ARENA privacy refresh]", error));
       }
     }
 
