@@ -15,7 +15,7 @@
       this.serverTimeOffset = 0;
       this.clockSyncTimer = null;
       this.authGeneration = 0;
-      this.privacyRevisions = new Map();
+      this.privacyOverrides = new Map();
     }
 
     async init() {
@@ -226,7 +226,6 @@
       this.loading = true;
       const requestUserId = this.user.id;
       const requestGeneration = this.authGeneration;
-      const privacyRevisionAtStart = new Map(this.privacyRevisions);
       try {
         const c = this.client;
         let settingsRes = await c.from("arena_user_settings").select("profile_public,history_public,security_notifications,updated_at").eq("user_id", requestUserId).maybeSingle();
@@ -443,15 +442,16 @@
         }
         const myProfile = profiles.get(this.user.id) || {};
         if (this.user?.id !== requestUserId || this.authGeneration !== requestGeneration) return null;
-        // A snapshot that began before a privacy write must not overwrite its newer value.
+        // Keep a just-committed local privacy value if this snapshot read began
+        // before Supabase returned the updated row; newer remote rows win.
         const snapshotSettings = { ...settingsRes.data };
         for (const key of ["profile_public","history_public","security_notifications"]) {
-          const currentRevision = this.privacyRevisions.get(key) || 0;
-          const startedRevision = privacyRevisionAtStart.get(key) || 0;
-          if (currentRevision > startedRevision && this.lastSnapshot?.userId === requestUserId) {
-            snapshotSettings[key] = this.lastSnapshot.settings?.[key] ?? snapshotSettings[key];
-            snapshotSettings.updated_at = this.lastSnapshot.settings?.updated_at || snapshotSettings.updated_at;
-          }
+          const local = this.privacyOverrides.get(key);
+          if (!local) continue;
+          const serverUpdatedAt = Date.parse(snapshotSettings.updated_at || 0) || 0;
+          const localUpdatedAt = Date.parse(local.updatedAt || 0) || 0;
+          if (serverUpdatedAt <= localUpdatedAt) snapshotSettings[key] = local.value;
+          else this.privacyOverrides.delete(key);
         }
         const snapshot = {
           userId: requestUserId,
@@ -614,6 +614,9 @@
       update.updated_at = new Date().toISOString();
       const { error } = await this.client.from("arena_user_settings").update(update).eq("user_id",userId);
       if (error) throw error;
+      for (const key of allowed) {
+        if (typeof update[key] === "boolean") this.privacyOverrides.set(key, { value: update[key], updatedAt: update.updated_at });
+      }
       // Update only the settings snapshot. A full arena reload here made toggles
       // wait for unrelated photos, battles, votes and history queries.
       if (this.user?.id === userId && this.lastSnapshot?.userId === userId) {
