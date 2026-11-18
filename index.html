@@ -201,6 +201,8 @@ html.no-anim .card{opacity:1}
 .my-photos .ph-card.frame-B{box-shadow:inset 0 0 0 3px var(--blue)}
 .q-item .info b{display:block;font-size:13px;margin-bottom:2px}
 .q-item .info span{font-size:11px;color:var(--mu)}
+.queue-wait{display:block;margin-top:5px;color:#ffb454;font-size:10px;font-variant-numeric:tabular-nums}
+.queue-explain{margin:0 0 14px;padding:11px 13px;border-radius:12px;background:var(--c);color:var(--mu);font-size:11px;line-height:1.45}
 .q-item .st{font:700 10px var(--bd);letter-spacing:.08em;text-transform:uppercase;color:var(--mu)}
 .q-item .acts{display:flex;flex-direction:column;gap:4px}
 .q-item .acts button{border:0;border-radius:8px;padding:6px 10px;font:700 10px var(--bd);cursor:pointer;touch-action:manipulation}
@@ -436,6 +438,8 @@ const pl=(n,f)=>{const m=n%10,h=n%100;return n+" "+(m==1&&h!=11?f[0]:m>=2&&m<=4&
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const fmt=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(Math.max(0,s%60)).padStart(2,"0");
+const elapsedQueue=ms=>{const sec=Math.max(0,Math.floor((Date.now()-Number(ms||Date.now()))/1000));return sec>=3600?String(Math.floor(sec/3600)).padStart(2,"0")+":"+String(Math.floor(sec%3600/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0"):fmt(sec)};
+function tickQueueWaits(){document.querySelectorAll("[data-queued-at]").forEach(el=>{el.textContent="В очереди · "+elapsedQueue(el.dataset.queuedAt)})}
 const toast=m=>{const e=$("toast");e.textContent=m;e.classList.add("show");clearTimeout(toast.h);toast.h=setTimeout(()=>e.classList.remove("show"),2400)};
 const GEAR_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
 function hdrHTML(showGear=true){
@@ -1000,7 +1004,8 @@ function renderQueue(){
   const active=photos.filter(p=>ACTIVE_STATUSES.has(p.status));
   // Summary: position of the earliest queued photo in local FIFO
   let posHtml="—", aheadHtml="—";
-  if(qOrder.length){posHtml="1";aheadHtml="0"}
+  const myQueued=qOrder.filter(p=>!p.ownerId||p.ownerId===window.FaceArenaSync?.getUser?.()?.id);
+  if(myQueued.length){const firstPos=qOrder.findIndex(p=>String(p.id)===String(myQueued[0].id))+1;posHtml=String(firstPos);aheadHtml=String(Math.max(0,firstPos-1))}
   let statusHtml=`<span class="status-pill queued">${t("stQueued")}</span>`;
   if(active.length){const top=active.sort((a,b)=>(a.queuedAt||0)-(b.queuedAt||0))[0];statusHtml=`<span class="status-pill ${top.status}">${statusLabel(top.status)}</span>`}
 
@@ -1017,9 +1022,10 @@ function renderQueue(){
       const frameCls=p.side?`frame-${p.side}`:"";
       const qIdx=qOrder.findIndex(x=>x.id===p.id);
       const posLabel=qIdx>=0?` · позиция ${qIdx+1} (впереди: ${qIdx})`:"";
+      const waitLabel=p.status==="queued"?`<small class="queue-wait" data-queued-at="${Number(p.queuedAt)||Date.now()}">В очереди · ${elapsedQueue(p.queuedAt)}</small>`:"";
       return `<div class="q-item" style="--i:${show.indexOf(p)}">
         <img class="${frameCls}" src="${p.dataUrl}" alt="">
-        <div class="info"><b>Фото #${String(p.id).slice(-4)}</b><span>${statusLabel(p.status)}${p.side?` · ${p.side}`:""}${posLabel}</span></div>
+        <div class="info"><b>Фото #${String(p.id).slice(-4)}</b><span>${statusLabel(p.status)}${p.side?` · ${p.side}`:""}${posLabel}</span>${waitLabel}</div>
         <div class="acts">
           ${canFind?`<button class="btn-sm-blue" data-act="find" data-id="${p.id}">${t("findPair")}</button>`:""}
           ${canOpenMatch?`<button class="btn-sm-blue" data-act="openmatch" data-id="${p.id}">Открыть таймер</button>`:""}
@@ -1033,10 +1039,6 @@ function renderQueue(){
     list=`<div class="empty-box"><div style="font-size:28px;opacity:.5">📷</div><p>${t("qEmpty")}</p>
       <button class="btn-main" id="goUp">${t("upTitle")}</button></div>`;
   }
-  // Update summary position from FIFO
-  if(qOrder.length){
-    posHtml="1"; aheadHtml="0";
-  }
   
 
   $("qv").innerHTML=`
@@ -1048,6 +1050,7 @@ function renderQueue(){
       <div class="stat"><b>${aheadHtml}</b><span>${t("qAhead")}</span></div>
       <div class="stat" style="display:flex;align-items:center;justify-content:center">${statusHtml}</div>
     </div>
+    ${qOrder.length?`<p class="queue-explain">Фото уже принято сервером. Поиск соперника идёт автоматически — время зависит от свободной линии и появления подходящего соперника.</p>`:""}
     ${list}`;
   const go=$("goUp");if(go)go.onclick=()=>{location.hash="upload"};
   $("qv").querySelectorAll("[data-act]").forEach(btn=>{
@@ -1312,12 +1315,14 @@ async function confirmAdd(){
   if(!pendingUrl){toast(t("upNoFile"));return}
   if(activeCount()>=MAX_ACTIVE){toast(t("upLimit"));return}
   if(window.FaceArenaSync?.isOnline()){
+    const addButton=$("addBtn");
+    if(addButton){addButton.disabled=true;addButton.dataset.originalText=addButton.textContent;addButton.textContent="Загружаем фото…"}
     try{
       const result=await window.FaceArenaSync.uploadPhoto(pendingFile);
       pendingFile=null;pendingUrl=null;
       toast(result?.coordinatorAvailable===false?"Фото сохранено. Серверный таймер временно недоступен.":"Фото добавлено в общую очередь");
       location.hash="queue";
-    }catch(error){toast(error?.message||"Не удалось загрузить фото");}
+    }catch(error){toast(error?.message||"Не удалось загрузить фото");renderUpload();}
     return;
   }
   const id=Date.now()+"_"+Math.random().toString(36).slice(2,8);
@@ -1733,7 +1738,7 @@ window.addEventListener("face-arena-snapshot",event=>{
 });
 renderArenaGrid();
 show();
-setInterval(()=>{tickArena();tick2()},1000);
+setInterval(()=>{tickArena();tick2();tickQueueWaits()},1000);
 
 const IC={
   results:'<path d="M4 5h16M4 12h16M4 19h16"/><path d="m7 9 2 2 4-4"/>',
