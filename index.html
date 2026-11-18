@@ -380,9 +380,32 @@ html.no-anim .victory-rays{animation:none}
 html.no-anim .victory-photo{animation:none}
 html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 
+#fa-boot-loader{position:fixed;inset:0;z-index:200000;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 42%,rgba(24,91,155,.24),transparent 58%),#07111f;opacity:1;visibility:visible;transition:opacity .28s ease,visibility .28s ease}
+#fa-boot-loader.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
+.fa-boot-inner{display:flex;flex-direction:column;align-items:center;gap:20px;padding:28px;text-align:center}
+.fa-boot-logo{width:58px;height:42px;position:relative;display:flex;align-items:center;justify-content:center}
+.fa-boot-logo i{width:52px;height:30px;border:2px solid #8edfff;border-radius:22px;position:relative;display:block;box-shadow:0 0 24px rgba(72,190,255,.25);animation:faBootPulse 1.5s ease-in-out infinite}
+.fa-boot-logo i:before,.fa-boot-logo i:after{content:"";position:absolute;background:#07111f;border:2px solid #8edfff;border-bottom:0}
+.fa-boot-logo i:before{width:21px;height:17px;border-radius:18px 18px 0 0;left:7px;top:-11px}
+.fa-boot-logo i:after{width:17px;height:13px;border-radius:16px 16px 0 0;right:6px;top:-8px}
+.fa-boot-title{font:800 15px/1.2 Manrope,Arial,sans-serif;letter-spacing:.18em;color:#f2f8ff}
+.fa-boot-caption{font:500 13px/1.4 Manrope,Arial,sans-serif;color:#8fa9c4}
+.fa-boot-track{width:156px;height:3px;overflow:hidden;border-radius:8px;background:rgba(139,190,226,.16)}
+.fa-boot-track:after{content:"";display:block;width:42%;height:100%;border-radius:8px;background:linear-gradient(90deg,#48b9ff,#a1e7ff);animation:faBootProgress 1.15s ease-in-out infinite}
+@keyframes faBootPulse{50%{transform:scale(1.06);opacity:.72}}
+@keyframes faBootProgress{from{transform:translateX(-110%)}to{transform:translateX(250%)}}
+@media(prefers-reduced-motion:reduce){.fa-boot-logo i,.fa-boot-track:after{animation:none}}
 </style>
 </head>
 <body>
+<div id="fa-boot-loader" role="status" aria-live="polite">
+  <div class="fa-boot-inner">
+    <div class="fa-boot-logo" aria-hidden="true"><i></i></div>
+    <div class="fa-boot-title">FACE ARENA</div>
+    <div class="fa-boot-caption">Загружаем арену и фотографии…</div>
+    <div class="fa-boot-track" aria-hidden="true"></div>
+  </div>
+</div>
 <div class="wrap" id="av">
 <header><div class="logo"><i><b></b><b></b></i>FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span data-i="live"></span></div><button type="button" class="btn-gear"  aria-label="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
 <h1 data-i="title"></h1>
@@ -2090,6 +2113,17 @@ function show(){
   go();
 }
 
+const faBootLoader=document.getElementById("fa-boot-loader");
+let faBootFinished=false;
+function finishFaBoot(){
+  if(faBootFinished)return;
+  faBootFinished=true;
+  faBootLoader?.classList.add("is-hidden");
+  setTimeout(()=>faBootLoader?.remove(),350);
+}
+window.addEventListener("face-arena-snapshot",finishFaBoot,{once:true});
+window.addEventListener("face-arena-sync-failed",finishFaBoot,{once:true});
+setTimeout(finishFaBoot,12000);
 addEventListener("hashchange",show);
 window.addEventListener("face-arena-snapshot",event=>{
   const snapshot=event.detail;
