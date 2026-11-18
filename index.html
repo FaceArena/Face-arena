@@ -2135,9 +2135,9 @@ window.addEventListener("face-arena-snapshot",event=>{
   else if(hash==="queue")renderQueue();
   else if(/^profile-[0-9a-f-]{36}$/i.test(hash))renderPublicProfile(decodeURIComponent(hash.slice(8)));
   else if(hash==="profile")renderProfile();
+  else if(hash==="upload")renderUpload();
   else if(hash==="")renderArenaGrid();
-  // Upload and settings views do not depend on arena snapshots; avoid rebuilding
-  // hidden arena DOM during auth hydration and realtime updates.
+  // Settings has its own focused snapshot listener; do not rebuild it on every arena update.
 });
 renderArenaGrid();
 show();
