@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090b10">
+  <title>FACE ARENA — Администрирование</title>
+  <style>
+    :root{color-scheme:dark;--bg:#090b10;--panel:#11151d;--panel2:#151b25;--line:#252d3a;--text:#f3f6fb;--muted:#8994a5;--blue:#5798ff;--red:#ff656d;--green:#45cf9a;--radius:16px}
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(ellipse at 15% -10%,#17243a 0,transparent 42%),var(--bg);color:var(--text);font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+    button,input{font:inherit}
+    button{cursor:pointer}
+    .shell{width:min(1180px,100%);margin:auto;padding:28px 22px 60px}
+    header{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:26px}
+    .brand{display:flex;align-items:center;gap:12px}.mark{width:38px;height:38px;border-radius:12px;background:linear-gradient(145deg,#6db5ff,#315ee7);display:grid;place-items:center;font-weight:900;color:white;box-shadow:0 8px 28px #3976e544}
+    h1{font-size:20px;letter-spacing:.04em;margin:0}.sub{color:var(--muted);font-size:12px;margin-top:2px}
+    .top-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+    .pill{border:1px solid var(--line);border-radius:999px;padding:7px 11px;color:var(--muted);font-size:12px}
+    .btn{border:1px solid var(--line);background:#171e29;color:var(--text);padding:10px 14px;border-radius:11px;font-weight:650;transition:.15s}
+    .btn:hover{border-color:#52637c;background:#1b2635}.btn:disabled{opacity:.45;cursor:not-allowed}
+    .btn.primary{background:#2866d8;border-color:#3678ee}.btn.danger{background:#35191e;border-color:#693039;color:#ff9da2}
+    .panel{background:linear-gradient(180deg,#131923,#10141c);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:0 16px 45px #0003}
+    .auth{max-width:480px;margin:9vh auto;text-align:center;padding:32px}.auth h2{margin:0 0 8px}.auth p{color:var(--muted);margin:0 0 22px}
+    .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
+    .stat{padding:17px 18px;background:var(--panel);border:1px solid var(--line);border-radius:14px}
+    .stat .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em}.stat strong{display:block;font-size:27px;margin-top:4px;letter-spacing:-.04em}
+    .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+    .search{flex:1;min-width:190px;background:#0c1017;border:1px solid var(--line);border-radius:11px;padding:11px 13px;color:var(--text);outline:none}
+    .search:focus{border-color:var(--blue)}
+    .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+    .photo{overflow:hidden;background:var(--panel);border:1px solid var(--line);border-radius:14px}
+    .photo .image{width:100%;height:220px;object-fit:cover;display:block;background:#080a0e}
+    .no-image{height:160px;display:grid;place-items:center;color:var(--muted);background:#0b0e14}
+    .photo-body{padding:13px}.photo-title{font-weight:750;overflow-wrap:anywhere}.meta{font-size:11px;color:var(--muted);margin-top:5px;overflow-wrap:anywhere}
+    .status{display:inline-flex;border-radius:99px;padding:3px 8px;font-size:10px;font-weight:750;margin-top:9px;background:#17352c;color:#78e0b8}
+    .status.removed{background:#30262a;color:#ff9da2}
+    .photo-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px}
+    .empty{padding:35px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px}
+    .notice{margin:12px 0;padding:11px 13px;border-radius:10px;background:#111d2c;border:1px solid #253d5d;color:#b9d7ff;white-space:pre-wrap;overflow-wrap:anywhere}
+    .notice.error{background:#2a171b;border-color:#603039;color:#ffb0b5}
+    details{margin-top:18px;background:#0d1118;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+    summary{cursor:pointer;color:#b9c5d5;font-weight:650}
+    #logs{max-height:220px;overflow:auto;margin:10px 0 0;padding-left:18px;color:var(--muted);font:11px/1.6 ui-monospace,SFMono-Regular,monospace;white-space:pre-wrap}
+    footer{margin-top:20px;color:#687486;font-size:11px}
+    @media(max-width:640px){.shell{padding:18px 13px 40px}header{align-items:flex-start}.stats{grid-template-columns:1fr 1fr}.stat:last-child{grid-column:span 2}.stat strong{font-size:23px}.panel{padding:14px}.photo .image{height:190px}.top-actions .pill{display:none}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand">
+        <div class="mark">FA</div>
+        <div><h1>FACE ARENA</h1><div class="sub">Панель администратора</div></div>
+      </div>
+      <div class="top-actions">
+        <span class="pill" id="connection">Проверка сессии…</span>
+        <button class="btn" id="reload" hidden>Обновить</button>
+        <button class="btn" id="logout" hidden>Выйти</button>
+      </div>
+    </header>
+
+    <section class="panel auth" id="authBox">
+      <h2 id="authTitle">Проверяем доступ</h2>
+      <p id="authText">Проверка действующей сессии FACE ARENA.</p>
+      <button class="btn primary" id="googleLogin" hidden>Войти через Google</button>
+      <button class="btn" id="returnApp" hidden>Открыть FACE ARENA</button>
+    </section>
+
+    <section id="dashboard" hidden>
+      <div class="stats">
+        <div class="stat"><div class="label">Всего записей</div><strong id="total">—</strong></div>
+        <div class="stat"><div class="label">Активные фото</div><strong id="active">—</strong></div>
+        <div class="stat"><div class="label">Удалённые файлы</div><strong id="removed">—</strong></div>
+      </div>
+      <section class="panel">
+        <div class="toolbar">
+          <input class="search" id="search" type="search" placeholder="Поиск по имени, handle или ID">
+          <button class="btn" id="refresh">Обновить список</button>
+          <button class="btn danger" id="deleteAll">Удалить все фото</button>
+        </div>
+        <div id="notice" class="notice" role="status" hidden></div>
+        <div id="photos" class="cards"><div class="empty">Загрузка списка…</div></div>
+      </section>
+      <details>
+        <summary>Журнал событий и ошибок</summary>
+        <ol id="logs"><li>Панель запущена.</li></ol>
+      </details>
+      <footer>Доступ к операциям дополнительно проверяется сервером в Edge Function. Удаление Storage-файла необратимо; записи и результаты баттлов сохраняются.</footer>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js"></script>
+  <script>
+  (() => {
+    "use strict";
+
+    // Публичные параметры проекта. Publishable/anon key разрешено использовать в браузере.
+    // Никогда не вставляйте сюда service_role или secret key.
+    const SUPABASE_URL = "https://nvvkmjeobnnxlrpiuisf.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_-a7Qjy5NL3ZUaKfLpIi4Dg_x2hzmNKE";
+    const FUNCTION_NAME = "admin-photos";
+
+    const $ = id => document.getElementById(id);
+    const authBox = $("authBox");
+    const dashboard = $("dashboard");
+    const logs = $("logs");
+    let supabase;
+    let photos = [];
+    let busy = false;
+    let loading = false;
+
+    function log(message, isError = false) {
+      const item = document.createElement("li");
+      item.textContent = new Date().toLocaleTimeString("ru-RU") + " — " + message;
+      if (isError) item.style.color = "#ff9299";
+      logs.prepend(item);
+      while (logs.children.length > 60) logs.lastElementChild.remove();
+      console[isError ? "error" : "info"]("[FACE ARENA admin]", message);
+    }
+    function notice(message, isError = false) {
+      const el = $("notice");
+      el.hidden = !message;
+      el.textContent = message || "";
+      el.classList.toggle("error", isError);
+    }
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, ch => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+      })[ch]);
+    }
+    function showAuth(title, message, mode = "none") {
+      authBox.hidden = false;
+      dashboard.hidden = true;
+      $("authTitle").textContent = title;
+      $("authText").textContent = message;
+      $("googleLogin").hidden = mode !== "login";
+      $("returnApp").hidden = mode !== "return";
+      $("connection").textContent = "Нет доступа";
+      $("logout").hidden = true;
+      $("reload").hidden = true;
+    }
+    function showDashboard(user) {
+      authBox.hidden = true;
+      dashboard.hidden = false;
+      $("connection").textContent = "Администратор · " + (user.email || user.id);
+      $("logout").hidden = false;
+      $("reload").hidden = false;
+    }
+    async function verifyAdmin() {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!sessionData.session) return { ok:false, reason:"no-session" };
+
+      // getUser() обращается к Auth серверу и проверяет актуального пользователя.
+      const { data, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      const user = data.user;
+      if (!user) return { ok:false, reason:"no-session" };
+
+      // Проверяем app_metadata, а не user_metadata: последнее пользователь может менять сам.
+      if (user.app_metadata?.role !== "admin") return { ok:false, reason:"not-admin", user };
+      return { ok:true, user };
+    }
+    async function callAdmin(action, payload = {}) {
+      const { data, error } = await supabase.functions.invoke(FUNCTION_NAME, {
+        body: { action, ...payload }
+      });
+      if (error) {
+        let message = error.message || "Ошибка Edge Function";
+        try {
+          const response = error.context;
+          if (response && typeof response.json === "function") {
+            const body = await response.json();
+            if (body?.error) message = body.error;
+          }
+        } catch (_) {}
+        throw new Error(message);
+      }
+      if (data?.error) throw new Error(data.error);
+      return data;
+    }
+    function renderPhotos() {
+      const term = $("search").value.trim().toLowerCase();
+      const visible = photos.filter(p => {
+        const haystack = [p.display_name,p.handle,p.id,p.owner_id,p.status].join(" ").toLowerCase();
+        return haystack.includes(term);
+      });
+      $("total").textContent = photos.length;
+      $("active").textContent = photos.filter(p => p.status !== "removed").length;
+      $("removed").textContent = photos.filter(p => p.status === "removed").length;
+
+      if (!visible.length) {
+        $("photos").innerHTML = '<div class="empty">По этому запросу ничего не найдено.</div>';
+        return;
+      }
+      $("photos").innerHTML = visible.map(p => {
+        const removed = p.status === "removed";
+        const image = !removed && p.image_url
+          ? `<img class="image" src="${escapeHtml(p.image_url)}" alt="Фото участника" loading="lazy" referrerpolicy="no-referrer">`
+          : `<div class="no-image">${removed ? "Файл удалён" : "Превью недоступно"}</div>`;
+        return `<article class="photo">
+          ${image}
+          <div class="photo-body">
+            <div class="photo-title">${escapeHtml(p.display_name || "Участник")} · @${escapeHtml(p.handle || "user")}</div>
+            <div class="meta">Создано: ${escapeHtml(p.created_at ? new Date(p.created_at).toLocaleString("ru-RU") : "—")}</div>
+            <div class="meta">ID фото: ${escapeHtml(p.id)}</div>
+            <div class="meta">ID владельца: ${escapeHtml(p.owner_id)}</div>
+            <span class="status ${removed ? "removed" : ""}">${escapeHtml(p.status || "unknown")}</span>
+            <div class="photo-actions">
+              <span class="meta">${removed ? "История записи сохранена" : "Файл в Storage"}</span>
+              ${removed ? "" : `<button class="btn danger" data-delete="${escapeHtml(p.id)}">Удалить фото</button>`}
+            </div>
+          </div>
+        </article>`;
+      }).join("");
+      $("photos").querySelectorAll("[data-delete]").forEach(button => {
+        button.addEventListener("click", () => deleteOne(button.dataset.delete));
+      });
+    }
+    async function loadPhotos() {
+      if (loading) return;
+      loading = true;
+      $("refresh").disabled = true;
+      $("reload").disabled = true;
+      $("photos").innerHTML = '<div class="empty">Загружаем фотографии…</div>';
+      notice("");
+      try {
+        const result = await callAdmin("list");
+        photos = Array.isArray(result.photos) ? result.photos : [];
+        renderPhotos();
+        log("Список загружен: " + photos.length + " записей.");
+      } catch (error) {
+        $("photos").innerHTML = '<div class="empty">Не удалось получить фотографии.</div>';
+        notice("Ошибка загрузки: " + error.message, true);
+        log("Ошибка загрузки: " + error.message, true);
+      } finally {
+        loading = false;
+        $("refresh").disabled = false;
+        $("reload").disabled = false;
+      }
+    }
+    async function deleteOne(photoId) {
+      if (busy) return;
+      const photo = photos.find(p => p.id === photoId);
+      const label = photo ? `${photo.display_name || "Участник"} (@${photo.handle || "user"})` : photoId;
+      if (!confirm(`Удалить файл фотографии ${label}?\n\nЗапись и результаты баттлов останутся в базе. Файл восстановить будет нельзя.`)) return;
+      busy = true;
+      try {
+        await callAdmin("delete_one", { photo_id: photoId });
+        log("Удалён файл фото " + photoId);
+        notice("Файл удалён. Запись и результаты участия сохранены.");
+        await loadPhotos();
+      } catch (error) {
+        notice("Удаление не выполнено: " + error.message, true);
+        log("Ошибка удаления " + photoId + ": " + error.message, true);
+      } finally {
+        busy = false;
+      }
+    }
+    async function deleteAll() {
+      if (busy) return;
+      const activeCount = photos.filter(p => p.status !== "removed").length;
+      if (!activeCount) {
+        notice("Нет активных фотографий для удаления.");
+        return;
+      }
+      if (!confirm(`ВНИМАНИЕ: будут безвозвратно удалены все файлы фотографий (${activeCount}), в том числе участвующие в активных баттлах.\n\nИстория и записи результатов останутся, изображения восстановить нельзя.\n\nПродолжить?`)) return;
+      const phrase = prompt('Для подтверждения введи точно: УДАЛИТЬ ВСЕ ФОТО');
+      if (phrase !== "УДАЛИТЬ ВСЕ ФОТО") {
+        log("Массовое удаление отменено: фраза подтверждения не совпала.");
+        return;
+      }
+      busy = true;
+      $("deleteAll").disabled = true;
+      try {
+        const result = await callAdmin("delete_all", { confirmation:"DELETE_ALL_ARENA_PHOTOS" });
+        notice(`Удалено: ${result.deleted} из ${result.total}. Метаданные и история сохранены.`);
+        log(`Массовое удаление завершено: ${result.deleted}/${result.total}.`);
+        await loadPhotos();
+      } catch (error) {
+        notice("Операция завершилась ошибкой или частично: " + error.message + ". Обнови список и проверь оставшиеся файлы.", true);
+        log("Ошибка массового удаления: " + error.message, true);
+        await loadPhotos();
+      } finally {
+        busy = false;
+        $("deleteAll").disabled = false;
+      }
+    }
+    async function boot() {
+      try {
+        if (!window.supabase?.createClient) throw new Error("Не загрузилась библиотека Supabase JS. Проверь подключение к CDN.");
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
+        });
+        $("connection").textContent = "Проверка доступа…";
+        const result = await verifyAdmin();
+        if (!result.ok && result.reason === "no-session") {
+          showAuth("Требуется вход", "Войди тем же Google-аккаунтом, который имеет роль admin в Supabase.", "login");
+          log("Активная сессия не найдена.");
+          return;
+        }
+        if (!result.ok && result.reason === "not-admin") {
+          showAuth("Нет прав администратора", "Аккаунт авторизован, но app_metadata.role не равен admin. Обратись к владельцу проекта.", "return");
+          log("Отклонён доступ для пользователя " + (result.user?.id || "unknown"), true);
+          return;
+        }
+        showDashboard(result.user);
+        log("Администратор подтверждён через Supabase Auth: " + result.user.id);
+        await loadPhotos();
+      } catch (error) {
+        showAuth("Не удалось проверить доступ", error.message, "return");
+        log("Ошибка запуска: " + error.message, true);
+      }
+    }
+
+    $("googleLogin").addEventListener("click", async () => {
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider:"google",
+          options:{ redirectTo:window.location.href }
+        });
+        if (error) throw error;
+      } catch (error) {
+        notice(error.message, true);
+        log("Ошибка входа Google: " + error.message, true);
+      }
+    });
+    $("returnApp").addEventListener("click", () => { window.location.href = "./"; });
+    $("refresh").addEventListener("click", loadPhotos);
+    $("reload").addEventListener("click", loadPhotos);
+    $("search").addEventListener("input", renderPhotos);
+    $("deleteAll").addEventListener("click", deleteAll);
+    $("logout").addEventListener("click", async () => {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        log("Ошибка выхода: " + error.message, true);
+        notice(error.message, true);
+      } else {
+        log("Сессия завершена.");
+        showAuth("Вы вышли", "Для повторного доступа войди через Google.", "login");
+      }
+    });
+
+    boot();
+  })();
+  </script>
+</body>
+</html>
