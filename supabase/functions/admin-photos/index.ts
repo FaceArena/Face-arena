@@ -74,6 +74,92 @@ Deno.serve(async (req: Request) => {
       return reply({ ok: true, user: profile });
     }
 
+    if (body?.action === "list_moderation") {
+      const { data: pending, error: pendingError } = await admin.from("arena_photo_moderation")
+        .select("id,owner_id,object_path,reason,categories,confidence,created_at")
+        .eq("decision", "pending").order("created_at", { ascending: true });
+      if (pendingError) throw pendingError;
+      const ownerIds = [...new Set((pending || []).map((p: any) => p.owner_id))];
+      const { data: profiles, error: profileError } = ownerIds.length
+        ? await admin.from("arena_profiles").select("user_id,display_name,handle").in("user_id", ownerIds)
+        : { data: [], error: null };
+      if (profileError) throw profileError;
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      const photos = await Promise.all((pending || []).map(async (p: any) => {
+        const { data, error } = await admin.storage.from("arena-photos").createSignedUrl(p.object_path, 300);
+        if (error) console.warn("[admin-photos moderation signed URL]", error.message);
+        const owner: any = profileMap.get(p.owner_id);
+        return {
+          ...p,
+          display_name: owner?.display_name || "Участник",
+          handle: owner?.handle || "user",
+          image_url: data?.signedUrl || null
+        };
+      }));
+      return reply({ photos });
+    }
+
+    if (body?.action === "reject_moderation") {
+      const moderationId = String(body?.moderation_id || "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(moderationId)) {
+        return reply({ error: "Invalid moderation id" }, 400);
+      }
+      const { data: item, error: findError } = await admin.from("arena_photo_moderation")
+        .select("id,object_path,decision").eq("id", moderationId).maybeSingle();
+      if (findError) throw findError;
+      if (!item || item.decision !== "pending") return reply({ error: "Photo is no longer pending review" }, 409);
+      const { data: updated, error: updateError } = await admin.from("arena_photo_moderation")
+        .update({ decision: "rejected", reviewed_at: new Date().toISOString(), reviewed_by: authData.user.id })
+        .eq("id", moderationId).eq("decision", "pending").select("id").maybeSingle();
+      if (updateError) throw updateError;
+      if (!updated) return reply({ error: "Photo is no longer pending review" }, 409);
+      const { error: storageError } = await admin.storage.from("arena-photos").remove([item.object_path]);
+      if (storageError) console.warn("[admin-photos rejected quarantine cleanup]", storageError.message);
+      return reply({ ok: true, decision: "rejected" });
+    }
+
+    if (body?.action === "approve_moderation") {
+      const moderationId = String(body?.moderation_id || "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(moderationId)) {
+        return reply({ error: "Invalid moderation id" }, 400);
+      }
+      const { data: item, error: findError } = await admin.from("arena_photo_moderation")
+        .select("id,owner_id,object_path,decision").eq("id", moderationId).maybeSingle();
+      if (findError) throw findError;
+      if (!item || item.decision !== "pending") return reply({ error: "Photo is no longer pending review" }, 409);
+      const extension = item.object_path.split(".").pop()?.toLowerCase();
+      if (!["jpg", "png", "webp"].includes(extension)) return reply({ error: "Unsupported quarantined image format" }, 415);
+      const { data: blob, error: downloadError } = await admin.storage.from("arena-photos").download(item.object_path);
+      if (downloadError || !blob) throw downloadError || new Error("Quarantined image is missing");
+      const objectPath = item.owner_id + "/" + crypto.randomUUID() + "." + extension;
+      const contentType = extension === "jpg" ? "image/jpeg" : "image/" + extension;
+      const { error: uploadError } = await admin.storage.from("arena-photos")
+        .upload(objectPath, new Uint8Array(await blob.arrayBuffer()), { contentType, upsert: false, cacheControl: "60" });
+      if (uploadError) throw uploadError;
+      const { data: photoId, error: enqueueError } = await admin.rpc("enqueue_moderated_arena_photo", {
+        p_owner_id: item.owner_id,
+        p_object_path: objectPath
+      });
+      if (enqueueError) {
+        await admin.storage.from("arena-photos").remove([objectPath]);
+        if (String(enqueueError.message || "").includes("Maximum 3 active")) {
+          return reply({ error: "У участника уже есть 3 активные фотографии. Освободите слот и повторите одобрение позже." }, 409);
+        }
+        throw enqueueError;
+      }
+      const { data: updated, error: updateError } = await admin.from("arena_photo_moderation")
+        .update({ decision: "approved", photo_id: photoId, reviewed_at: new Date().toISOString(), reviewed_by: authData.user.id })
+        .eq("id", moderationId).eq("decision", "pending").select("id").maybeSingle();
+      if (updateError || !updated) {
+        await admin.from("arena_photos").update({ status: "removed", updated_at: new Date().toISOString() }).eq("id", photoId);
+        await admin.storage.from("arena-photos").remove([objectPath]);
+        throw updateError || new Error("Moderation record changed during approval");
+      }
+      const { error: cleanupError } = await admin.storage.from("arena-photos").remove([item.object_path]);
+      if (cleanupError) console.warn("[admin-photos approved quarantine cleanup]", cleanupError.message);
+      return reply({ ok: true, decision: "approved", photo_id: photoId });
+    }
+
     if (body?.action === "list_results") {
       const rows: any[] = [];
       for (let offset = 0; ; offset += 1000) {
