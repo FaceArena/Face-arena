@@ -937,9 +937,8 @@ function bview(n){
   const b=arenaBattles.find(x=>x.id===n);if(!b)return;
   if(!b.battleUid&&!window.FaceArenaSync?.isOnline())b.battleUid=newBattleUid();
   const uid=b.battleUid;
-  if(window.FaceArenaSync?.isOnline()&&b.stage==="w"&&!b._visitRequested){
-    b._visitRequested=true;
-    window.FaceArenaSync.registerVisit(uid).then(result=>{if(result?.ok===false)toast("Голосование открыто, но серверный таймер временно недоступен")}).catch(error=>{b._visitRequested=false;toast(error?.message||"Не удалось открыть голосование")});
+  if(window.FaceArenaSync?.isOnline()&&b.stage==="w"&&!b.isParticipant){
+    requestBattleVisit(b);
   }else if(!window.FaceArenaSync?.isOnline()&&b.stage==="w"){
     b.stage="v";b.stageEnd=Date.now()+STAGE_SEC*1000;b.stageStarted=Date.now();
     window.FaceArenaAudio?.play("votingStart");
@@ -988,12 +987,30 @@ ${confirming?`<p class="done">Можно отменить участие во в
   });
   setTimeout(()=>{const bp=$("bp");if(bp){const p=bp.dataset.p||0;bp.style.transform=`scaleX(${p})`;const bar=bp.parentElement;if(bar){bar.style.setProperty("--sx",p);bar.style.setProperty("--p",String(Math.round((+p)*100)));}}},50);
 }
+function requestBattleVisit(b){
+  const sync=window.FaceArenaSync;
+  if(!sync?.isOnline?.()||!b||b.isParticipant||!b.battleUid||b._visitRequested||Date.now()<(b._visitRetryAt||0))return;
+  b._visitRequested=true;
+  sync.registerVisit(b.battleUid).then(result=>{
+    if(result?.ok===false)toast("Голосование открыто, но серверный таймер временно недоступен");
+  }).catch(error=>{
+    b._visitRequested=false;
+    b._visitRetryAt=Date.now()+3000;
+    if(location.hash==="#battle-"+b.id)toast(error?.message||"Не удалось открыть голосование");
+  });
+}
 function tick2(){
   const e=$("bcd");if(!e)return;
   const b=arenaBattles.find(x=>x.id===+e.dataset.id);if(!b)return;
   if(b.stage!=="m"&&b.stage!=="w"&&b.stage!=="v"){e.textContent=t("ending");return}
   const s=Math.max(0,Math.ceil((b.stageEnd-arenaNow())/1000));
   if(!$("bv").hidden&&s>=1&&s<=3)window.FaceArenaAudio?.play("countdown");
+  // If a viewer opened during the 10-second cancellation window, start voting
+  // automatically once it expires. Participants must never register as viewers.
+  if(!$("bv").hidden&&location.hash==="#battle-"+b.id&&
+     (b.stage==="w"||(b.stage==="m"&&s===0))&&!b.isParticipant){
+    requestBattleVisit(b);
+  }
   e.textContent=s?fmt(s):t("ending");
   const tl=$("btl");if(tl)tl.style.transform=`scaleX(${Math.min(1,Math.max(0,s/STAGE_SEC))})`;
 }
