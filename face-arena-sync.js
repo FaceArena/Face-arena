@@ -71,6 +71,9 @@
         this.dispatch(null);
       }
       this.renderAuthGate();
+      if (previousId !== nextId) {
+        window.dispatchEvent(new CustomEvent(nextUser ? "face-arena-authenticated-boot-start" : "face-arena-authenticated-boot-stop"));
+      }
       if (!nextUser) {
         this.stopPhotoUrlRefresh();
         this.photoUrlsExpiresAt = 0;
