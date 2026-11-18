@@ -29,6 +29,51 @@ Deno.serve(async (req: Request) => {
 
     const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const body = await req.json().catch(() => ({}));
+    if (body?.action === "list_users") {
+      const authUsers: any[] = [];
+      for (let page = 1; ; page++) {
+        const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (error) throw error;
+        const batch = data?.users || [];
+        authUsers.push(...batch);
+        if (batch.length < 1000) break;
+      }
+      const ids = authUsers.map((u: any) => u.id);
+      const { data: profiles, error: profileError } = ids.length
+        ? await admin.from("arena_profiles").select("user_id,display_name,handle,is_verified,created_at").in("user_id", ids)
+        : { data: [], error: null };
+      if (profileError) throw profileError;
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      const users = authUsers.map((u: any) => {
+        const profile: any = profileMap.get(u.id);
+        return {
+          user_id: u.id,
+          email: u.email || null,
+          created_at: u.created_at || null,
+          last_sign_in_at: u.last_sign_in_at || null,
+          display_name: profile?.display_name || u.user_metadata?.display_name || u.user_metadata?.name || "Участник",
+          handle: profile?.handle || null,
+          is_verified: profile?.is_verified === true,
+          profile_exists: !!profile
+        };
+      }).sort((a: any, b: any) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+      return reply({ users });
+    }
+
+    if (body?.action === "set_verified") {
+      const userId = String(body?.user_id || "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) return reply({ error: "Invalid user id" }, 400);
+      if (typeof body?.is_verified !== "boolean") return reply({ error: "is_verified must be boolean" }, 400);
+      const { data: profile, error: updateError } = await admin.from("arena_profiles")
+        .update({ is_verified: body.is_verified, updated_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .select("user_id,display_name,handle,is_verified")
+        .maybeSingle();
+      if (updateError) throw updateError;
+      if (!profile) return reply({ error: "Profile not found for this user" }, 404);
+      return reply({ ok: true, user: profile });
+    }
+
     if (body?.action === "list") {
       const photos: any[] = [];
       for (let offset = 0; ; offset += 1000) {
