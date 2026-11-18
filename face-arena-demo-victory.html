@@ -380,24 +380,36 @@ html.no-anim .victory-rays{animation:none}
 html.no-anim .victory-photo{animation:none}
 html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 
-#fa-boot-loader{position:fixed;inset:0;z-index:200000;display:grid;place-items:center;background:#050505;opacity:1;visibility:visible;transition:opacity .28s ease,visibility .28s ease}
+#fa-boot-loader{--fa-progress:0;position:fixed;inset:0;z-index:200000;display:flex;align-items:center;justify-content:center;background:#050505;opacity:1;visibility:visible;transition:opacity .7s cubic-bezier(.4,0,.2,1),visibility .7s}
 #fa-boot-loader.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
-.fa-boot-inner{display:flex;flex-direction:column;align-items:center;gap:18px;padding:28px;text-align:center}
-.fa-boot-brand{font:800 14px var(--hd);letter-spacing:.12em;display:flex;align-items:center;gap:8px;color:#fff}
-.fa-boot-brand-mark{display:flex;gap:0}
-.fa-boot-brand-mark b{width:10px;height:18px;display:block}
-.fa-boot-brand-mark b:first-child{background:var(--red);transform:skewX(-14deg)}
-.fa-boot-brand-mark b:last-child{background:var(--blue);transform:skewX(-14deg)}
-.fa-boot-caption{display:flex;align-items:center;gap:8px;color:var(--mu);font:600 12px/1.4 var(--bd)}
-.fa-boot-caption .dot{flex:none}
-@media(prefers-reduced-motion:reduce){.fa-boot-caption .dot{animation:none}}
+.fa-boot-inner{display:flex;flex-direction:column;align-items:center;gap:0;padding:24px;text-align:center;transition:transform .7s cubic-bezier(.4,0,.2,1),opacity .5s ease}
+#fa-boot-loader.is-hidden .fa-boot-inner{transform:translateY(-6px);opacity:0}
+.fa-boot-brand{display:flex;align-items:center;gap:14px;color:#fff}
+.fa-boot-brand-mark{display:flex;gap:0;height:22px;flex:none;animation:faBootBreath 3.2s ease-in-out 1.6s infinite}
+.fa-boot-brand-mark b{display:block;width:11px;height:22px;opacity:0;clip-path:polygon(28% 0,100% 0,72% 100%,0 100%)}
+.fa-boot-brand-mark b:first-child{background:#ef4444;animation:faBootInR 1s cubic-bezier(.16,.8,.2,1) .15s forwards}
+.fa-boot-brand-mark b:last-child{margin-left:-3.3px;background:#3b82f6;animation:faBootInB 1s cubic-bezier(.16,.8,.2,1) .3s forwards}
+.fa-boot-name{font:800 17px var(--hd);letter-spacing:.32em;margin-right:-.32em;white-space:nowrap;background:linear-gradient(100deg,#fff 40%,#ef4444 47%,#3b82f6 53%,#fff 60%) 100% 0/300% 100% no-repeat;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;opacity:0;animation:faBootUp .9s cubic-bezier(.16,.8,.2,1) .55s forwards,faBootShine 3s cubic-bezier(.45,0,.55,1) 1.5s infinite}
+.fa-boot-bar{position:relative;width:132px;height:1px;margin-top:38px;background:#1c1c1c;overflow:hidden;opacity:0;animation:faBootFade .8s ease 1s forwards}
+.fa-boot-bar b{position:absolute;inset:0;background:linear-gradient(90deg,#ef4444,#3b82f6);transform-origin:left;transform:scaleX(var(--fa-progress));transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.fa-boot-bar:after{content:"";position:absolute;top:0;bottom:0;width:40%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:faBootSweep 1.8s ease-in-out infinite}
+.fa-boot-caption{margin-top:16px;min-height:14px;color:#6b6b6b;font:600 11px/1.3 var(--bd);letter-spacing:.18em;text-transform:uppercase;opacity:0;animation:faBootFade .8s ease 1.2s forwards}
+@keyframes faBootInR{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:none}}
+@keyframes faBootInB{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+@keyframes faBootBreath{50%{opacity:.78}}
+@keyframes faBootUp{from{opacity:0;transform:translateY(8px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+@keyframes faBootShine{from{background-position:100% 0}to{background-position:0 0}}
+@keyframes faBootSweep{from{left:-40%}to{left:100%}}
+@keyframes faBootFade{to{opacity:1}}
+@media(prefers-reduced-motion:reduce){#fa-boot-loader *{animation-duration:.01ms!important;animation-delay:0ms!important;animation-iteration-count:1!important}}
 </style>
 </head>
 <body>
 <div id="fa-boot-loader" role="status" aria-live="polite">
   <div class="fa-boot-inner">
-    <div class="fa-boot-brand" aria-label="FACE ARENA"><i class="fa-boot-brand-mark" aria-hidden="true"><b></b><b></b></i>FACE ARENA</div>
-    <div class="fa-boot-caption"><span class="dot" aria-hidden="true"></span>Загружаем арену и фотографии…</div>
+    <div class="fa-boot-brand" aria-label="FACE ARENA"><i class="fa-boot-brand-mark" aria-hidden="true"><b></b><b></b></i><span class="fa-boot-name">FACE ARENA</span></div>
+    <div class="fa-boot-bar" aria-hidden="true"><b></b></div>
+    <div class="fa-boot-caption" id="fa-boot-caption">Загружаем арену</div>
   </div>
 </div>
 <div class="wrap" id="av">
@@ -2108,16 +2120,41 @@ function show(){
 }
 
 const faBootLoader=document.getElementById("fa-boot-loader");
-let faBootFinished=false;
+const faBootCaption=document.getElementById("fa-boot-caption");
+let faBootFinished=false,faBootStartedAt=Date.now(),faBootMinTimer=null;
+function setFaBootProgress(progress,status){
+  if(faBootFinished||!faBootLoader)return;
+  const value=Math.max(0,Math.min(1,Number(progress)||0));
+  faBootLoader.style.setProperty("--fa-progress",value.toFixed(3));
+  if(status&&faBootCaption)faBootCaption.textContent=status;
+}
+window.addEventListener("face-arena-loader-progress",event=>{
+  const detail=event.detail||{};
+  setFaBootProgress(detail.progress,detail.status);
+});
 function finishFaBoot(){
   if(faBootFinished)return;
-  faBootFinished=true;
-  faBootLoader?.classList.add("is-hidden");
-  setTimeout(()=>faBootLoader?.remove(),350);
+  const elapsed=Date.now()-faBootStartedAt;
+  const wait=Math.max(0,1250-elapsed);
+  if(faBootMinTimer)return;
+  faBootMinTimer=setTimeout(()=>{
+    if(faBootFinished)return;
+    faBootFinished=true;
+    setFaBootProgress(1,"Арена готова");
+    setTimeout(()=>{
+      faBootLoader?.classList.add("is-hidden");
+      setTimeout(()=>faBootLoader?.remove(),750);
+    },260);
+  },wait);
 }
 window.addEventListener("face-arena-sync-failed",finishFaBoot,{once:true});
 window.addEventListener("face-arena-critical-images-ready",finishFaBoot,{once:true});
-setTimeout(finishFaBoot,12000);
+setTimeout(()=>{
+  if(!faBootFinished){
+    setFaBootProgress(1,"Открываем арену");
+    finishFaBoot();
+  }
+},30000);
 addEventListener("hashchange",show);
 window.addEventListener("face-arena-snapshot",event=>{
   const snapshot=event.detail;
