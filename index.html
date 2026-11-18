@@ -2387,16 +2387,39 @@ saveState();
       if (button) button.disabled = false;
     }
   }
-  function injectAdminEntry() {
+  let adminMenuCheck = null;
+  async function injectAdminEntry() {
     const host = document.getElementById("sv");
     const menu = host?.querySelector(".settings-menu-list");
     if (!host || !menu) return;
     const existing = menu.querySelector("[data-fa-admin-entry]");
-    if (!isAdmin()) {
-      existing?.remove();
+    const localUserId = window.FaceArenaSync?.getUser?.()?.id;
+    if (localUserId === ADMIN_USER_ID) {
+      if (existing) return;
+      addAdminMenuItem(menu);
       return;
     }
-    if (existing) return;
+    if (existing) existing.remove();
+    const sync = window.FaceArenaSync;
+    if (!sync?.client?.auth?.getUser || adminMenuCheck) return;
+    adminMenuCheck = (async () => {
+      try {
+        const { data, error } = await sync.client.auth.getUser();
+        if (error) throw error;
+        const currentMenu = document.querySelector("#sv .settings-menu-list");
+        if (data?.user?.id === ADMIN_USER_ID && currentMenu) {
+          addAdminMenuItem(currentMenu);
+        }
+      } catch (error) {
+        console.warn("[FACE ARENA admin menu check]", error);
+      } finally {
+        adminMenuCheck = null;
+      }
+    })();
+    return adminMenuCheck;
+  }
+  function addAdminMenuItem(menu) {
+    if (menu.querySelector("[data-fa-admin-entry]")) return;
     const item = document.createElement("li");
     item.dataset.faAdminEntry = "true";
     item.innerHTML = '<button type="button" class="menu-item" style="color:#65a4ff" data-fa-admin-open>Администрирование</button>';
