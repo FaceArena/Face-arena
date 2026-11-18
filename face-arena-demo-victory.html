@@ -1374,6 +1374,7 @@ async function confirmAdd(){
       const result=await window.FaceArenaSync.uploadPhoto(pendingFile);
       pendingFile=null;pendingUrl=null;
       toast(result?.coordinatorAvailable===false?"Фото сохранено. Серверный таймер временно недоступен.":"Фото добавлено в общую очередь");
+      isPublishingPhoto=false;
       location.hash="queue";
     }catch(error){
       isPublishingPhoto=false;
