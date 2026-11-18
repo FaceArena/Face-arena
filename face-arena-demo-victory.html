@@ -954,6 +954,8 @@ function bview(n){
       else{blueSrc=up.dataUrl;blueNm=profile.name||"Вы";redSrc=up.opponentImg||redSrc;redNm=(up.opponentName||redNm).replace("@","")}
     }
   }
+  const redOwnerId=photos.find(p=>String(p.id)===String(b.redPhotoId))?.ownerId||null;
+  const blueOwnerId=photos.find(p=>String(p.id)===String(b.bluePhotoId))?.ownerId||null;
   const lead=tot?(rp>55?"R":(rp<45?"B":"eq")):"eq";
   const rCls=lead==="R"?"dom":(lead==="B"?"weak":"");
   const bCls=lead==="B"?"dom":(lead==="R"?"weak":"");
