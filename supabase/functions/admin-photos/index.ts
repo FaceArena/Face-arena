@@ -74,6 +74,60 @@ Deno.serve(async (req: Request) => {
       return reply({ ok: true, user: profile });
     }
 
+    if (body?.action === "list_results") {
+      const rows: any[] = [];
+      for (let offset = 0; ; offset += 1000) {
+        const { data, error } = await admin.from("arena_results")
+          .select("id,battle_id,lane_id,left_photo_id,right_photo_id,winner_photo_id,is_draw,left_votes,right_votes,total_votes,opening,no_contest,completed_at,is_hidden,hidden_at")
+          .order("completed_at", { ascending: false }).order("id", { ascending: false })
+          .range(offset, offset + 999);
+        if (error) throw error;
+        rows.push(...(data || []));
+        if (!data || data.length < 1000) break;
+      }
+      const photoIds = [...new Set(rows.flatMap((r: any) => [r.left_photo_id, r.right_photo_id]).filter(Boolean))];
+      const { data: photoRows, error: photoError } = photoIds.length
+        ? await admin.from("arena_photos").select("id,owner_id").in("id", photoIds)
+        : { data: [], error: null };
+      if (photoError) throw photoError;
+      const ownerIds = [...new Set((photoRows || []).map((p: any) => p.owner_id).filter(Boolean))];
+      const { data: profileRows, error: profileError } = ownerIds.length
+        ? await admin.from("arena_profiles").select("user_id,display_name,handle").in("user_id", ownerIds)
+        : { data: [], error: null };
+      if (profileError) throw profileError;
+      const photoMap = new Map((photoRows || []).map((p: any) => [p.id, p]));
+      const profileMap = new Map((profileRows || []).map((p: any) => [p.user_id, p]));
+      const results = rows.map((r: any) => {
+        const lp: any = photoMap.get(r.left_photo_id);
+        const rp: any = photoMap.get(r.right_photo_id);
+        const lprof: any = lp ? profileMap.get(lp.owner_id) : null;
+        const rprof: any = rp ? profileMap.get(rp.owner_id) : null;
+        return { ...r, left_name: lprof?.display_name || "Участник", left_handle: lprof?.handle || "user", right_name: rprof?.display_name || "Участник", right_handle: rprof?.handle || "user" };
+      });
+      return reply({ results });
+    }
+
+    if (body?.action === "set_result_hidden") {
+      const resultId = String(body?.result_id || "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(resultId)) return reply({ error: "Invalid result id" }, 400);
+      if (typeof body?.is_hidden !== "boolean") return reply({ error: "is_hidden must be boolean" }, 400);
+      const { data: result, error: updateError } = await admin.from("arena_results")
+        .update({ is_hidden: body.is_hidden, hidden_at: body.is_hidden ? new Date().toISOString() : null })
+        .eq("id", resultId).select("id,is_hidden,hidden_at").maybeSingle();
+      if (updateError) throw updateError;
+      if (!result) return reply({ error: "Result not found" }, 404);
+      return reply({ ok: true, result });
+    }
+
+    if (body?.action === "hide_all_results") {
+      if (body?.confirmation !== "HIDE_ALL_ARENA_RESULTS") return reply({ error: "Explicit confirmation required" }, 400);
+      const { data, error } = await admin.from("arena_results")
+        .update({ is_hidden: true, hidden_at: new Date().toISOString() })
+        .eq("is_hidden", false).select("id");
+      if (error) throw error;
+      return reply({ ok: true, hidden: data?.length || 0 });
+    }
+
     if (body?.action === "list") {
       const photos: any[] = [];
       for (let offset = 0; ; offset += 1000) {
