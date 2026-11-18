@@ -51,6 +51,37 @@ test("assignment preserves string IDs and starts battle",()=>{
  const r=E.assignChallenger(state,{photoId:"photo-abc",laneId:1},"battle-1",500);
  assert.equal(r.assigned,true);assert.equal(r.state.photos[0].status,"confirmed");assert.equal(r.state.lanes[0].userPhotoId,"photo-abc");
 });
+test("one vote is insufficient: challenger returns to queue and incumbent keeps title",()=>{
+ const state={photos:[{id:"challenger",status:"voting",side:"B",battleId:1,battleUid:"q1"}],lanes:[lane(1,{stage:"v",userPhotoId:"challenger",championPhotoId:"incumbent",battleUid:"q1",blueVotes:1,redVotes:0})],history:[],participantStats:{}};
+ const r=E.resolveBattle(state,1,100);
+ assert.equal(r.result.noContest,true);
+ assert.equal(r.state.lanes[0].championPhotoId,"incumbent");
+ assert.equal(r.state.photos[0].status,"queued");
+ assert.equal(r.state.history.length,0);
+ assert.equal(r.state.pairExclusions.length,1);
+ assert.equal(E.selectNextAssignment(r.state.photos,r.state.lanes,r.state.pairExclusions),null);
+});
+test("two split votes are a no-contest, not a draw or loss",()=>{
+ const state={photos:[{id:"challenger",status:"voting",side:"B",battleId:1,battleUid:"q2"}],lanes:[lane(1,{stage:"v",userPhotoId:"challenger",championPhotoId:"incumbent",battleUid:"q2",blueVotes:1,redVotes:1})],history:[],participantStats:{}};
+ const r=E.resolveBattle(state,1,100);
+ assert.equal(r.result.noContest,true);
+ assert.equal(r.state.lanes[0].championPhotoId,"incumbent");
+ assert.equal(r.state.participantStats.challenger,undefined);
+ assert.equal(r.state.photos[0].status,"queued");
+});
+test("two unanimous votes are enough to decide a battle",()=>{
+ const state={photos:[{id:"challenger",status:"voting",side:"B",dataUrl:"new"}],lanes:[lane(1,{stage:"v",userPhotoId:"challenger",championPhotoId:"incumbent",championSide:"R",battleUid:"q3",blueVotes:2,redVotes:0})],history:[],participantStats:{}};
+ const r=E.resolveBattle(state,1,100);
+ assert.equal(r.result.outcome,"win");
+ assert.equal(r.state.lanes[0].championPhotoId,"challenger");
+});
+test("opening battle with one vote does not appoint a champion",()=>{
+ const state={photos:[{id:"a",status:"confirmed",side:"R",userId:"u1"},{id:"b",status:"confirmed",side:"B",userId:"u2"}],lanes:[lane(1,{stage:"v",userPhotoId:"a",openingOpponentPhotoId:"b",battleUid:"q4",redVotes:1,blueVotes:0})],history:[],participantStats:{}};
+ const r=E.resolveBattle(state,1,100);
+ assert.equal(r.result.noContest,true);
+ assert.equal(r.state.lanes[0].championPhotoId,null);
+ assert.deepEqual(r.state.photos.map(p=>p.status),["queued","queued"]);
+});
 test("champion defense increments stats once and is idempotent",()=>{
  const state={photos:[{id:"champ",status:"voting",side:"R",dataUrl:"x"}],lanes:[lane(1,{stage:"v",userPhotoId:"champ",championPhotoId:"champ",championSide:"R",battleUid:"b",redVotes:4,blueVotes:1})],history:[],participantStats:{champ:{wins:1,defenses:0,currentStreak:1,bestStreak:1,isChampion:true}}};
  const r=E.resolveBattle(state,1,999);assert.equal(r.result.outcome,"win");assert.equal(r.state.participantStats.champ.defenses,1);
