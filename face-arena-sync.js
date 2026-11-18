@@ -144,7 +144,11 @@
       const snapshot = this.lastSnapshot;
       this.photoUrlRefreshInFlight = true;
       try {
-        const paths = (snapshot.photos || []).filter(photo => photo.objectPath && photo.status !== "removed").map(photo => photo.objectPath);
+        const paths = (snapshot.photos || []).filter(photo =>
+          photo.objectPath &&
+          photo.status !== "removed" &&
+          (photo.ownerId === this.user.id || ["matched", "champion", "completed"].includes(photo.status))
+        ).map(photo => photo.objectPath);
         const [signed, rankingResult] = await Promise.all([
           this.createPhotoSignedUrlMap(paths, 900),
           this.client.rpc("get_top_arena_ranking")
@@ -392,7 +396,12 @@
         const profiles = new Map(profileRes.data.map(x => [x.user_id, x]));
         const photoRows = photoRes.data;
         const visiblePhotoRows = photoRows.filter(p => p.status !== "removed");
-        const signedPhotoUrls = await this.createPhotoSignedUrlMap(visiblePhotoRows.map(p => p.object_path), 900);
+        // Queue rows are needed for global FIFO positions, but their images stay private
+        // until the photo enters an active battle. Owners can always see their own queue.
+        const signedPhotoRows = visiblePhotoRows.filter(p =>
+          p.owner_id === requestUserId || ["matched", "champion", "completed"].includes(p.status)
+        );
+        const signedPhotoUrls = await this.createPhotoSignedUrlMap(signedPhotoRows.map(p => p.object_path), 900);
         this.photoUrlsExpiresAt = Date.now() + 900000;
         const photosById = new Map(photoRows.map(p => [p.id, {
           ...p, dataUrl: signedPhotoUrls.get(p.object_path) || ""
