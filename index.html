@@ -1220,14 +1220,22 @@ const _viewHtmlCache=new WeakMap();
 function setViewHTML(view,html){
   if(!view)return false;
   const source=String(html);
-  const normalize=markup=>String(markup).replace(/(<img\b(?=[^>]*\bdata-photo-path="[^"]*")[^>]*\bsrc=")[^"]*(")/gi,"$1__FA_SIGNED_PHOTO_URL__$2");
+  const normalize=markup=>{
+    const template=document.createElement("template");
+    template.innerHTML=String(markup);
+    template.content.querySelectorAll("img[data-photo-path]").forEach(img=>{
+      img.setAttribute("src","__FA_SIGNED_PHOTO_URL__");
+    });
+    return template.innerHTML;
+  };
+  const desired=normalize(source);
   const current=normalize(view.innerHTML);
-  if(current.trim()!==""&&_viewHtmlCache.get(view)===current)return false;
+  const cached=_viewHtmlCache.get(view);
+  // Skip only when both the requested markup and the live DOM still match
+  // the last rendered version. This avoids replacing image nodes on routine
+  // snapshots without suppressing genuine profile/data changes.
+  if(desired.trim()!==""&&desired===cached&&current===cached)return false;
   view.innerHTML=source;
-  // Cache the browser-serialized DOM, not the original template string:
-  // innerHTML serialization can differ from the source while representing
-  // the same markup. Compare against the actual DOM on the next render so
-  // external DOM clearing/mutation is detected and repaired.
   _viewHtmlCache.set(view,normalize(view.innerHTML));
   return true;
 }
