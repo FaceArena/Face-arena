@@ -1221,7 +1221,8 @@ function setViewHTML(view,html){
   if(!view)return false;
   const source=String(html);
   const stable=source.replace(/(<img\b(?=[^>]*\bdata-photo-path="[^"]*")[^>]*\bsrc=")[^"]*(")/gi,"$1__FA_SIGNED_PHOTO_URL__$2");
-  if(_viewHtmlCache.get(view)===stable)return false;
+  const current=view.innerHTML.replace(/(<img\b(?=[^>]*\bdata-photo-path="[^"]*")[^>]*\bsrc=")[^"]*(")/gi,"$1__FA_SIGNED_PHOTO_URL__$2");
+  if(_viewHtmlCache.get(view)===stable&&current===stable)return false;
   view.innerHTML=source;
   _viewHtmlCache.set(view,stable);
   return true;
