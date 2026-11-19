@@ -1,6 +1,6 @@
 -- FACE ARENA Web Push subscriptions and notification delivery
-create schema if not exists net;
-create extension if not exists pg_net with schema net;
+create schema if not exists extensions;
+create extension if not exists pg_net with schema extensions;
 
 create table if not exists public.arena_push_subscriptions (
   id uuid primary key default gen_random_uuid(),
