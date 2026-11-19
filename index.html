@@ -2950,10 +2950,9 @@ saveState();
     try {
       const api = getClient();
       if (!api) return;
-      const { data, error } = await api.from("arena_platform_controls")
-        .select("battles_paused,publications_blocked").eq("singleton", true).single();
+      const { data, error } = await api.rpc("get_arena_platform_controls");
       if (error) throw error;
-      render(data || {});
+      render((Array.isArray(data) ? data[0] : data) || {});
     } catch (error) {
       console.warn("[FACE ARENA maintenance status]", error);
     }
