@@ -2360,7 +2360,11 @@ function writePageScrollTop(top){
   window.scrollTo(0,value);
 }
 window.addEventListener("scroll",()=>{
-  if(_activeScrollKey)_tabScrollPositions.set(_activeScrollKey,readPageScrollTop());
+  // A hash route can make iOS Home Screen apps jump before hashchange runs.
+  // Do not overwrite the previous tab position with that transient jump.
+  if(_activeScrollKey&&scrollKeyForRoute(location.hash.slice(1))===_activeScrollKey){
+    _tabScrollPositions.set(_activeScrollKey,readPageScrollTop());
+  }
 },{passive:true});
 window.addEventListener("pagehide",()=>{
   if(_activeScrollKey)_tabScrollPositions.set(_activeScrollKey,readPageScrollTop());
