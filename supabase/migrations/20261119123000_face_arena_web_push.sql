@@ -1,4 +1,5 @@
 -- FACE ARENA Web Push subscriptions and notification delivery
+create schema if not exists net;
 create extension if not exists pg_net with schema net;
 
 create table if not exists public.arena_push_subscriptions (
