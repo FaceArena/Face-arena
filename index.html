@@ -2382,7 +2382,7 @@ window.addEventListener("pagehide",saveActiveTabScroll);
 window.addEventListener("pageshow",restoreActiveTabScroll);
 document.addEventListener("visibilitychange",()=>{if(document.hidden)saveActiveTabScroll();else restoreActiveTabScroll()});
 function scrollKeyForRoute(hash){
-  if(hash===""||/^battle-\\d+$/.test(hash))return "arena";
+  if(hash===""||/^battle-\d+$/.test(hash))return "arena";
   if(hash==="queue"||hash.startsWith("match-"))return "queue";
   if(hash==="upload")return "upload";
   if(hash==="profile"||/^profile-[0-9a-f-]{36}$/i.test(hash))return "profile";
