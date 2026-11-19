@@ -2426,22 +2426,35 @@ function show(){
   const go=()=>{
     hideAll();
     let target=null;
-    if(/^battle-(\d+)$/.test(hash)){
-      const n=+RegExp.$1;
-      if(n>=1&&n<=arenaBattles.length){bview(n);target=views.bv;setTab(0);tick2()}
-    } else if(/^match-(.+)$/.test(hash)){
-      renderMatch(decodeURIComponent(RegExp.$1));target=views.mv;setTab(1);
-    } else if(/^result-(.+)$/.test(hash)){
-      renderResult(decodeURIComponent(RegExp.$1));target=views.rv;setTab(3);
-    } else if(hash==="queue"){renderQueue();target=views.qv;setTab(1)}
-    else if(hash==="upload"){renderUpload();target=views.uv;setTab(2)}
-    else if(/^profile-[0-9a-f-]{36}$/i.test(hash)){renderPublicProfile(decodeURIComponent(hash.slice(8)));target=views.pv;setTab(3)}
-    else if(hash==="profile"){renderProfile();target=views.pv;setTab(3)}
-    else if(hash==="results"){renderResults();target=views.iv;setTab(4)}
-    else if(hash==="notifications"){renderNotifications();target=views.nv;setTab(3)}
-    else if(hash==="settings"){renderSettings();target=views.sv;setTab(3)}
-    else if(hash===""){renderArenaGrid();target=views.av;setTab(0)}
-    else {renderNotFound();target=views.nfv;setTab(0)}
+    try{
+      if(/^battle-(\d+)$/.test(hash)){
+        const n=+RegExp.$1;
+        if(n>=1&&n<=arenaBattles.length){bview(n);target=views.bv;setTab(0);tick2()}
+      } else if(/^match-(.+)$/.test(hash)){
+        renderMatch(decodeURIComponent(RegExp.$1));target=views.mv;setTab(1);
+      } else if(/^result-(.+)$/.test(hash)){
+        renderResult(decodeURIComponent(RegExp.$1));target=views.rv;setTab(3);
+      } else if(hash==="queue"){renderQueue();target=views.qv;setTab(1)}
+      else if(hash==="upload"){renderUpload();target=views.uv;setTab(2)}
+      else if(/^profile-[0-9a-f-]{36}$/i.test(hash)){renderPublicProfile(decodeURIComponent(hash.slice(8)));target=views.pv;setTab(3)}
+      else if(hash==="profile"){renderProfile();target=views.pv;setTab(3)}
+      else if(hash==="results"){renderResults();target=views.iv;setTab(4)}
+      else if(hash==="notifications"){renderNotifications();target=views.nv;setTab(3)}
+      else if(hash==="settings"){renderSettings();target=views.sv;setTab(3)}
+      else if(hash===""){renderArenaGrid();target=views.av;setTab(0)}
+      else {renderNotFound();target=views.nfv;setTab(0)}
+    }catch(error){
+      console.error("[FACE ARENA route render]",{route:hash,error});
+      const isProfile=hash==="profile"||/^profile-[0-9a-f-]{36}$/i.test(hash);
+      target=isProfile?views.pv:views.nfv;
+      target.replaceChildren();
+      const fallback=document.createElement("div");
+      fallback.className="empty-box";
+      fallback.textContent=isProfile
+        ?"Не удалось отобразить профиль. Переключись на арену и попробуй снова."
+        :"Не удалось открыть этот экран. Попробуй ещё раз.";
+      target.appendChild(fallback);
+    }
     if(target!==views.mv)clearInterval(matchTimerId);
     if(target)showView(target);
     // Hide bottom nav on settings (full-screen menu)
