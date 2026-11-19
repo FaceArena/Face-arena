@@ -50,6 +50,7 @@
     .empty{padding:35px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px}
     .notice{margin:12px 0;padding:11px 13px;border-radius:10px;background:#111d2c;border:1px solid #253d5d;color:#b9d7ff;white-space:pre-wrap;overflow-wrap:anywhere}
     .notice.error{background:#2a171b;border-color:#603039;color:#ffb0b5}
+    .control-grid{display:grid;gap:12px;margin:14px 0}.control-row{display:flex;align-items:flex-start;gap:12px;padding:14px;background:#0d121a;border:1px solid var(--line);border-radius:12px}.control-row input{width:19px;height:19px;flex:none;margin:2px 0 0;accent-color:var(--blue)}.control-row strong{display:block}.control-row small{display:block;color:var(--muted);margin-top:3px}.control-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.control-status{font-size:12px;color:var(--muted)}
     details{margin-top:18px;background:#0d1118;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
     summary{cursor:pointer;color:#b9c5d5;font-weight:650}
     #logs{max-height:220px;overflow:auto;margin:10px 0 0;padding-left:18px;color:var(--muted);font:11px/1.6 ui-monospace,SFMono-Regular,monospace;white-space:pre-wrap}
@@ -84,6 +85,29 @@
         <div class="stat"><div class="label">Активные фото</div><strong id="active">—</strong></div>
         <div class="stat"><div class="label">Удалённые файлы</div><strong id="removed">—</strong></div>
       </div>
+      <section class="panel" id="platformControlsPanel" style="margin-bottom:16px">
+        <div class="toolbar" style="margin-bottom:4px">
+          <div>
+            <h2 style="font-size:17px;margin:0">Управление ареной</h2>
+            <div class="meta">Глобальные ограничения для всех пользователей</div>
+          </div>
+        </div>
+        <div class="control-grid">
+          <label class="control-row" for="adminBattlesPaused">
+            <input id="adminBattlesPaused" type="checkbox">
+            <span><strong>Остановить все баттлы</strong><small>Немедленно отменит текущие активные баттлы без победителя и без изменения рейтинга. Фотографии и завершённые результаты сохранятся.</small></span>
+          </label>
+          <label class="control-row" for="adminPublicationsBlocked">
+            <input id="adminPublicationsBlocked" type="checkbox">
+            <span><strong>Запретить новые публикации</strong><small>Заблокирует загрузку и одобрение новых фотографий. Уже опубликованные фото и результаты не затрагиваются.</small></span>
+          </label>
+        </div>
+        <div class="control-actions">
+          <button class="btn primary" id="savePlatformControls">Сохранить настройки</button>
+          <button class="btn" id="refreshPlatformControls">Обновить статус</button>
+          <span class="control-status" id="platformControlsStatus" role="status">Загружаем состояние…</span>
+        </div>
+      </section>
       <section class="panel" style="margin-bottom:16px">
         <div class="toolbar">
           <input class="search" id="userSearch" type="search" placeholder="Поиск пользователя по имени, email, handle или ID">
@@ -209,6 +233,83 @@
       }
       if (data?.error) throw new Error(data.error);
       return data;
+    }
+
+    let platformControls = { battles_paused:false, publications_blocked:false };
+    async function loadPlatformControls() {
+      const status = $("platformControlsStatus");
+      $("refreshPlatformControls").disabled = true;
+      status.textContent = "Загружаем состояние…";
+      try {
+        const response = await callAdmin("get_platform_controls");
+        const controls = response.controls || response;
+        if (!controls || typeof controls.battles_paused !== "boolean" || typeof controls.publications_blocked !== "boolean") {
+          throw new Error("Сервер вернул некорректное состояние ограничений.");
+        }
+        platformControls = {
+          battles_paused: controls.battles_paused,
+          publications_blocked: controls.publications_blocked
+        };
+        $("adminBattlesPaused").checked = platformControls.battles_paused;
+        $("adminPublicationsBlocked").checked = platformControls.publications_blocked;
+        status.textContent = "Состояние загружено · " +
+          (platformControls.battles_paused ? "баттлы остановлены" : "баттлы работают") + " · " +
+          (platformControls.publications_blocked ? "публикации закрыты" : "публикации открыты");
+        log("Настройки арены загружены.");
+      } catch (error) {
+        status.textContent = "Не удалось загрузить настройки: " + error.message;
+        log("Ошибка загрузки настроек арены: " + error.message, true);
+      } finally {
+        $("refreshPlatformControls").disabled = false;
+      }
+    }
+    async function savePlatformControls() {
+      if (busy) return;
+      const next = {
+        battles_paused: $("adminBattlesPaused").checked,
+        publications_blocked: $("adminPublicationsBlocked").checked
+      };
+      const changes = [];
+      if (next.battles_paused !== platformControls.battles_paused) {
+        changes.push(next.battles_paused
+          ? "Остановить все текущие баттлы без определения победителей и изменения рейтинга."
+          : "Возобновить работу баттлов.");
+      }
+      if (next.publications_blocked !== platformControls.publications_blocked) {
+        changes.push(next.publications_blocked
+          ? "Запретить новые публикации фотографий."
+          : "Разрешить новые публикации фотографий.");
+      }
+      if (!changes.length) {
+        $("platformControlsStatus").textContent = "Изменений нет.";
+        return;
+      }
+      if (!confirm("Подтверди изменение глобальных настроек FACE ARENA:\n\n" + changes.join("\n\n") + "\n\nПродолжить?")) return;
+      busy = true;
+      $("savePlatformControls").disabled = true;
+      $("refreshPlatformControls").disabled = true;
+      $("platformControlsStatus").textContent = "Сохраняем настройки…";
+      try {
+        const response = await callAdmin("set_platform_controls", next);
+        platformControls = next;
+        const result = response.result || {};
+        const cancelled = Number(result.cancelled_battles ?? result.cancelled ?? 0);
+        $("platformControlsStatus").textContent = "Настройки сохранены · " +
+          (next.battles_paused ? "баттлы остановлены" : "баттлы работают") + " · " +
+          (next.publications_blocked ? "публикации закрыты" : "публикации открыты");
+        notice("Глобальные настройки арены сохранены." + (cancelled ? " Отменено активных баттлов: " + cancelled + "." : ""));
+        log("Настройки арены сохранены: " + JSON.stringify(next) + (cancelled ? "; отменено баттлов: " + cancelled : ""));
+        await loadPlatformControls();
+      } catch (error) {
+        $("platformControlsStatus").textContent = "Ошибка сохранения: " + error.message;
+        notice("Не удалось сохранить настройки арены: " + error.message, true);
+        log("Ошибка сохранения настроек арены: " + error.message, true);
+        await loadPlatformControls();
+      } finally {
+        busy = false;
+        $("savePlatformControls").disabled = false;
+        $("refreshPlatformControls").disabled = false;
+      }
     }
     function renderPhotos() {
       const term = $("search").value.trim().toLowerCase();
@@ -491,7 +592,7 @@
         }
         showDashboard(result.user);
         log("Администратор подтверждён через Supabase Auth: " + result.user.id);
-        await Promise.all([loadPhotos(), loadUsers(), loadResults()]);
+        await Promise.all([loadPhotos(), loadUsers(), loadResults(), loadPlatformControls()]);
       } catch (error) {
         showAuth("Не удалось проверить доступ", error.message, "return");
         log("Ошибка запуска: " + error.message, true);
@@ -514,6 +615,8 @@
     $("refresh").addEventListener("click", loadPhotos);
     $("refreshUsers").addEventListener("click", loadUsers);
     $("refreshResults").addEventListener("click", loadResults);
+    $("savePlatformControls").addEventListener("click", savePlatformControls);
+    $("refreshPlatformControls").addEventListener("click", loadPlatformControls);
     $("resultSearch").addEventListener("input", renderResults);
     $("hideAllResults").addEventListener("click", hideAllResults);
     $("userSearch").addEventListener("input", renderUsers);
