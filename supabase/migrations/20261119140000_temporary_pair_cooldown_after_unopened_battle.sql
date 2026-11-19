@@ -41,11 +41,4 @@ begin
   execute v_def;
 end;
 $$;
-
--- This specific pair was excluded only because neither participant opened its battle.
--- Let the current queue retry it after the same short cooldown.
-update private.arena_pair_exclusions
-set expires_at = now() + interval '2 minutes'
-where photo_low = '10905e4b-ed15-427b-85e1-782cdc953fc1'::uuid
-  and photo_high = 'fa935aa3-3f1b-4bd8-ab40-77cc5a0099c5'::uuid
-  and expires_at is null;
+ 
