@@ -2385,7 +2385,8 @@ function show(){
   const nextScrollKey=scrollKeyForRoute(hash);
   const previousScrollKey=_activeScrollKey;
   const changingScrollTab=previousScrollKey!==null&&previousScrollKey!==nextScrollKey;
-  if(changingScrollTab&&previousScrollKey)_tabScrollPositions.set(previousScrollKey,readPageScrollTop());
+  // The previous tab position is captured continuously by the scroll listener.
+  // Do not read it here: iOS may already have applied the new hash scroll.
   const restoreScrollY=changingScrollTab?(_tabScrollPositions.get(nextScrollKey)||0):readPageScrollTop();
   // Supabase Google OAuth implicit-flow callback temporarily occupies the hash.
   // It is not an application route; let Supabase validate the tokens and restore
