@@ -1220,11 +1220,15 @@ const _viewHtmlCache=new WeakMap();
 function setViewHTML(view,html){
   if(!view)return false;
   const source=String(html);
-  const stable=source.replace(/(<img\b(?=[^>]*\bdata-photo-path="[^"]*")[^>]*\bsrc=")[^"]*(")/gi,"$1__FA_SIGNED_PHOTO_URL__$2");
-  const current=view.innerHTML.replace(/(<img\b(?=[^>]*\bdata-photo-path="[^"]*")[^>]*\bsrc=")[^"]*(")/gi,"$1__FA_SIGNED_PHOTO_URL__$2");
-  if(_viewHtmlCache.get(view)===stable&&view.innerHTML.trim()!=="")return false;
+  const normalize=markup=>String(markup).replace(/(<img\b(?=[^>]*\bdata-photo-path="[^"]*")[^>]*\bsrc=")[^"]*(")/gi,"$1__FA_SIGNED_PHOTO_URL__$2");
+  const current=normalize(view.innerHTML);
+  if(current.trim()!==""&&_viewHtmlCache.get(view)===current)return false;
   view.innerHTML=source;
-  _viewHtmlCache.set(view,stable);
+  // Cache the browser-serialized DOM, not the original template string:
+  // innerHTML serialization can differ from the source while representing
+  // the same markup. Compare against the actual DOM on the next render so
+  // external DOM clearing/mutation is detected and repaired.
+  _viewHtmlCache.set(view,normalize(view.innerHTML));
   return true;
 }
 function statusLabel(st){
