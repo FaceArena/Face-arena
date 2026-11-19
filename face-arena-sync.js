@@ -641,6 +641,8 @@
             myVotes: result.left_votes, oppVotes: result.right_votes,
             myImg: leftPhoto?.dataUrl || "",
             opponentImg: rightPhoto?.dataUrl || "",
+            myPhotoPath: leftPhoto?.object_path || "",
+            opponentPhotoPath: rightPhoto?.object_path || "",
             opponentPhotoId: result.right_photo_id,
             myName: leftProfile.display_name || "Участник",
             opponentName: rightProfile.display_name || "Участник",
@@ -662,6 +664,8 @@
             myVotes, oppVotes, myName: profiles.get(myPhoto.owner_id)?.display_name || "Вы",
             myImg: myPhoto.dataUrl || "",
             opponentImg: opponent?.dataUrl || "",
+            myPhotoPath: myPhoto.object_path || "",
+            opponentPhotoPath: opponent?.object_path || "",
             opponentPhotoId: opponent?.id || null,
             opponentName: profiles.get(opponent?.owner_id)?.display_name || "Участник", completedAt: Date.parse(result.completed_at)
           });
