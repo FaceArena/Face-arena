@@ -2346,6 +2346,25 @@ function renderNotFound(){
 }
 const _tabScrollPositions=new Map();
 let _activeScrollKey=null;
+const _faStandalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+function readPageScrollTop(){
+  const scrolling=document.scrollingElement;
+  return Math.max(0,window.scrollY||0,scrolling?.scrollTop||0,document.documentElement?.scrollTop||0,document.body?.scrollTop||0);
+}
+function writePageScrollTop(top){
+  const value=Math.max(0,Number(top)||0);
+  const scrolling=document.scrollingElement;
+  if(scrolling)scrolling.scrollTop=value;
+  if(document.documentElement)document.documentElement.scrollTop=value;
+  if(document.body)document.body.scrollTop=value;
+  window.scrollTo(0,value);
+}
+window.addEventListener("scroll",()=>{
+  if(_activeScrollKey)_tabScrollPositions.set(_activeScrollKey,readPageScrollTop());
+},{passive:true});
+window.addEventListener("pagehide",()=>{
+  if(_activeScrollKey)_tabScrollPositions.set(_activeScrollKey,readPageScrollTop());
+});
 function scrollKeyForRoute(hash){
   if(hash===""||/^battle-\\d+$/.test(hash))return "arena";
   if(hash==="queue"||hash.startsWith("match-"))return "queue";
@@ -2362,8 +2381,8 @@ function show(){
   const nextScrollKey=scrollKeyForRoute(hash);
   const previousScrollKey=_activeScrollKey;
   const changingScrollTab=previousScrollKey!==null&&previousScrollKey!==nextScrollKey;
-  if(changingScrollTab&&previousScrollKey)_tabScrollPositions.set(previousScrollKey,window.scrollY);
-  const restoreScrollY=changingScrollTab?(_tabScrollPositions.get(nextScrollKey)||0):window.scrollY;
+  if(changingScrollTab&&previousScrollKey)_tabScrollPositions.set(previousScrollKey,readPageScrollTop());
+  const restoreScrollY=changingScrollTab?(_tabScrollPositions.get(nextScrollKey)||0):readPageScrollTop();
   // Supabase Google OAuth implicit-flow callback temporarily occupies the hash.
   // It is not an application route; let Supabase validate the tokens and restore
   // the session before the router decides which view to display.
@@ -2399,9 +2418,10 @@ function show(){
     bindGear();
     _activeScrollKey=nextScrollKey;
     if(changingScrollTab){
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        window.scrollTo({top:restoreScrollY,behavior:"auto"});
-      }));
+      const restore=()=>writePageScrollTop(restoreScrollY);
+      requestAnimationFrame(()=>requestAnimationFrame(restore));
+      // iOS Home Screen apps may apply hash scrolling after the hashchange frame.
+      if(_faStandalone)setTimeout(restore,120);
     }
     _navLock=false;
   };
