@@ -1020,6 +1020,80 @@
       await this.loadSnapshot();
     }
 
+    async getPushStatus() {
+      const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+      if (!supported) return { supported: false, subscribed: false, permission: "unsupported" };
+      const registration = await navigator.serviceWorker.getRegistration("/");
+      const subscription = registration ? await registration.pushManager.getSubscription() : null;
+      return { supported: true, subscribed: !!subscription, permission: Notification.permission };
+    }
+
+    async enablePush() {
+      if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
+      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+        throw new Error("Этот браузер не поддерживает Push-уведомления.");
+      }
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      const isStandalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+      if (isIOS && !isStandalone) {
+        throw new Error("На iPhone сначала добавьте FACE ARENA на экран «Домой» и откройте приложение с его значка.");
+      }
+
+      // Request permission immediately in the click call stack (required by Safari/iOS).
+      const permissionPromise = Notification.requestPermission();
+      const permission = await permissionPromise;
+      if (permission !== "granted") throw new Error("Разрешите уведомления FACE ARENA в настройках браузера.");
+
+      const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      await navigator.serviceWorker.ready;
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        const publicKey = "BL3_H65oUHsO9eE_ECzysuk7_B_vaTFVZvbqvCp06lHy31A6MfMQdQ1SPHet9aJnCYPBhKAMc4JBHehF3Mt2XDc";
+        const padding = "=".repeat((4 - publicKey.length % 4) % 4);
+        const raw = atob((publicKey + padding).replace(/-/g, "+").replace(/_/g, "/"));
+        const applicationServerKey = Uint8Array.from(raw, char => char.charCodeAt(0));
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey,
+        });
+      }
+
+      const serialized = subscription.toJSON();
+      const keys = serialized.keys || {};
+      if (!serialized.endpoint || !keys.p256dh || !keys.auth) {
+        throw new Error("Браузер вернул неполную Push-подписку. Попробуйте ещё раз.");
+      }
+      const { error } = await this.client.from("arena_push_subscriptions").upsert({
+        user_id: this.user.id,
+        endpoint: serialized.endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+        expiration_time: serialized.expirationTime || null,
+        user_agent: navigator.userAgent.slice(0, 500),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "endpoint" });
+      if (error) {
+        await subscription.unsubscribe().catch(() => {});
+        throw error;
+      }
+      return true;
+    }
+
+    async disablePush() {
+      if (!this.isOnline()) throw new Error("Сначала войдите в аккаунт.");
+      const registration = await navigator.serviceWorker.getRegistration("/");
+      const subscription = registration ? await registration.pushManager.getSubscription() : null;
+      if (!subscription) return true;
+      const { error } = await this.client.from("arena_push_subscriptions")
+        .delete()
+        .eq("user_id", this.user.id)
+        .eq("endpoint", subscription.endpoint);
+      if (error) throw error;
+      await subscription.unsubscribe();
+      return true;
+    }
+
     async refreshNotifications() {
       if (!this.isOnline()) return [];
       const userId = this.user.id;
