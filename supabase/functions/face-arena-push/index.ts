@@ -67,16 +67,24 @@ Deno.serve(async (req: Request) => {
       publicKey: config.public_key,
       privateKey: config.private_key,
     };
+    const notificationPayload = notification.payload && typeof notification.payload === "object"
+      ? notification.payload
+      : {};
+    const targetUrl = notificationPayload.result_id
+      ? "/#result-" + encodeURIComponent(String(notificationPayload.result_id))
+      : notificationPayload.lane_id
+        ? "/#battle-" + String(Number(notificationPayload.lane_id))
+        : "/";
     const payloadData = JSON.stringify({
       title: notification.title || "FACE ARENA",
       body: notification.body || "У тебя новое событие на арене.",
-      url: "/#notifications",
+      url: targetUrl,
       tag: "face-arena-" + notification.id,
     });
 
     let sent = 0;
     let removed = 0;
-    const failures: string[] = [];
+    let failed = 0;
 
     for (const subscription of subscriptions) {
       try {
@@ -99,19 +107,26 @@ Deno.serve(async (req: Request) => {
           continue;
         }
         if (!response.ok) {
-          const detail = await response.text().catch(() => "");
-          failures.push(response.status + (detail ? ": " + detail.slice(0, 120) : ""));
+          failed++;
+          console.warn("[FACE ARENA push provider rejected delivery]", {
+            status: response.status,
+            host: new URL(subscription.endpoint).host,
+          });
           continue;
         }
         sent++;
       } catch (error) {
-        failures.push(error instanceof Error ? error.message.slice(0, 160) : "Push delivery failed");
+        failed++;
+        console.warn("[FACE ARENA push delivery error]", {
+          host: (() => { try { return new URL(subscription.endpoint).host; } catch { return "invalid-endpoint"; } })(),
+          message: error instanceof Error ? error.message.slice(0, 160) : "Push delivery failed",
+        });
       }
     }
 
     return Response.json(
-      { ok: true, sent, removed, failed: failures.length },
-      { headers: corsHeaders },
+      { ok: failed === 0, sent, removed, failed },
+      { status: failed ? 502 : 200, headers: corsHeaders },
     );
   } catch (error) {
     console.error("[FACE ARENA push]", error);
