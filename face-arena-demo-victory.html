@@ -6,11 +6,12 @@
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#050505">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FACE ARENA">
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="icon" type="image/png" href="/IMG_9559.png?v=1">
-<link rel="apple-touch-icon" href="/IMG_9559.png?v=1">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
 <title>FACE ARENA — Кто красивее?</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,12 +20,14 @@
 <style>
 :root{--bg:#050505;--s:#101010;--c:#151515;--tx:#fff;--mu:#8c8c8c;--red:#FF3434;--blue:#3478FF;
 --hd:'Unbounded','Arial Black',system-ui,sans-serif;--bd:'Manrope',system-ui,-apple-system,sans-serif;
-color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+color-scheme:dark;box-sizing:border-box}
 html{scroll-padding-top:env(safe-area-inset-top,0px);background:var(--bg)}
 *,*::before,*::after{box-sizing:inherit}
 /* Keep content visible while web fonts load; avoid full-page opacity flash */
 html,body{opacity:1}
-body{margin:0;background:var(--bg);color:var(--tx);font:400 14px/1.45 var(--bd);padding-bottom:88px;overflow-x:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);overflow:hidden;overscroll-behavior:none}
+body{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg);color:var(--tx);font:400 14px/1.45 var(--bd);overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+#appScroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-top:env(safe-area-inset-top,0px)}
 .wrap{max-width:1180px;margin:0 auto;padding:0 12px}
 header{display:flex;align-items:center;justify-content:space-between;padding:14px 0 6px;gap:10px}
 .logo{font:800 clamp(12px,3.6vw,14px) var(--hd);letter-spacing:.1em;display:flex;align-items:center;gap:2px;min-width:0;white-space:nowrap;flex-shrink:1}
@@ -70,7 +73,7 @@ h1{font:800 clamp(28px,8.5vw,72px)/.95 var(--hd);letter-spacing:-.02em;margin:16
 .grid{display:grid;gap:12px;grid-template-columns:repeat(2,1fr);contain:content}
 @media(min-width:640px){.grid{gap:16px}}
 @media(min-width:1000px){.grid{grid-template-columns:repeat(3,1fr)}}
-.card{background:var(--c);border-radius:16px;padding:10px;cursor:pointer;opacity:1;animation:none;transition:transform .18s cubic-bezier(.2,.7,.2,1);-webkit-tap-highlight-color:transparent;touch-action:manipulation;will-change:auto;transform:translateZ(0);contain:layout style}
+.card{background:var(--c);border-radius:16px;padding:10px;cursor:pointer;opacity:1;animation:none;transition:transform .18s cubic-bezier(.2,.7,.2,1);-webkit-tap-highlight-color:transparent;touch-action:manipulation;will-change:auto;contain:layout style}
 @keyframes in{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
 .card:hover{transform:translateY(-2px)}.card:active{transform:scale(.97)}
 .card:focus-visible{outline:2px solid #fff;outline-offset:2px}
@@ -90,7 +93,7 @@ h1{font:800 clamp(28px,8.5vw,72px)/.95 var(--hd);letter-spacing:-.02em;margin:16
 }
 .ph img{
   width:100%;height:100%;object-fit:cover;object-position:center top;display:block;
-  transition:transform .25s ease-out;transform:translateZ(0);
+  transition:transform .25s ease-out;
   /* soft vignette so subject sits on colored studio back */
   -webkit-mask-image:radial-gradient(ellipse 92% 88% at 50% 42%,#000 55%,transparent 100%);
   mask-image:radial-gradient(ellipse 92% 88% at 50% 42%,#000 55%,transparent 100%);
@@ -112,7 +115,7 @@ h1{font:800 clamp(28px,8.5vw,72px)/.95 var(--hd);letter-spacing:-.02em;margin:16
 .tm b{font:800 16px var(--hd);font-variant-numeric:tabular-nums}
 .tl{height:2px;background:#222;margin-top:6px;overflow:hidden;border-radius:2px}
 .tl u{display:block;height:100%;background:#fff;transform-origin:left;transition:transform 1s linear;text-decoration:none}
-nav{position:fixed;left:0;right:0;bottom:0;padding:6px 10px calc(6px + env(safe-area-inset-bottom,0px));background:rgba(10,10,10,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);z-index:5}
+nav{position:relative;flex:0 0 auto;left:auto;right:auto;bottom:auto;padding:6px 10px calc(6px + env(safe-area-inset-bottom,0px));background:#0a0a0a;backdrop-filter:none;-webkit-backdrop-filter:none;z-index:5}
 .tabs{position:relative;max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
 .tabs button{background:none;border:0;color:var(--mu);font:700 9px var(--bd);letter-spacing:.08em;text-transform:uppercase;padding:6px 0 4px;display:grid;grid-template-rows:22px 14px;align-content:center;justify-items:center;gap:6px;min-height:58px;box-sizing:border-box;cursor:pointer;transition:color .22s;touch-action:manipulation}
 .tabs button.on{color:#fff}
@@ -120,23 +123,24 @@ nav{position:fixed;left:0;right:0;bottom:0;padding:6px 10px calc(6px + env(safe-
 .tabs button:not(svg){text-align:center;white-space:nowrap}
 .ind{position:absolute;top:0;left:0;width:25%;height:2px;display:flex;justify-content:center;transition:transform .35s cubic-bezier(.2,.7,.2,1)}
 .ind::after{content:"";width:28px;height:2px;background:linear-gradient(90deg,var(--red),var(--blue))}
-.toast{position:fixed;left:50%;bottom:calc(78px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);background:#fff;color:#000;font-weight:700;font-size:12px;padding:9px 14px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .22s,transform .22s;z-index:6;max-width:90vw;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);background:#fff;color:#000;font-weight:700;font-size:12px;padding:9px 14px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .22s,transform .22s;z-index:6;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .back{background:none;border:0;color:var(--mu);font:700 12px var(--bd);letter-spacing:.1em;text-transform:uppercase;padding:14px 0 8px;min-height:44px;cursor:pointer;touch-action:manipulation}
-.view,#av{opacity:0;transform:translate3d(0,6px,0);pointer-events:none;transition:opacity .15s ease-out,transform .15s ease-out;will-change:opacity,transform;backface-visibility:hidden}
-.view.is-on,#av.is-on{opacity:1;transform:translate3d(0,0,0);pointer-events:auto}
-.view.is-leave,#av.is-leave{opacity:0;transform:translate3d(0,-4px,0);pointer-events:none}
-.view.is-on,#av.is-on{will-change:auto}
+.view,#av{pointer-events:none}
+.view.is-on,#av.is-on{pointer-events:auto;animation:viewIn .12s ease-out}
+@keyframes viewIn{from{opacity:0}to{opacity:1}}
+html.no-anim .view,html.no-anim #av{animation:none!important}
+@media (prefers-reduced-motion:reduce){.view.is-on,#av.is-on{animation:none}}
 @keyframes fadeUp{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
 @keyframes fadeScale{from{opacity:0;transform:scale3d(.98,.98,1)}to{opacity:1;transform:scale3d(1,1,1)}}
 .card{animation-name:fadeUp}
-.top-item{opacity:0;animation:fadeUp .18s ease-out forwards;animation-delay:calc(min(var(--i,0),4)*18ms);transform:translateZ(0)}
-.match-card{animation:fadeScale .18s ease-out;transform:translateZ(0)}
-.q-item{opacity:0;animation:fadeUp .18s ease-out forwards;animation-delay:calc(min(var(--i,0),5)*16ms);transform:translateZ(0)}
+.top-item{opacity:0;animation:fadeUp .18s ease-out forwards;animation-delay:calc(min(var(--i,0),4)*18ms)}
+.match-card{animation:fadeScale .18s ease-out}
+.q-item{opacity:0;animation:fadeUp .18s ease-out forwards;animation-delay:calc(min(var(--i,0),5)*16ms)}
 .settings-block{opacity:0;animation:fadeUp .18s ease-out forwards;animation-delay:calc(min(var(--i,0),3)*16ms)}
 .pr-head,.pr-stats{opacity:0;animation:fadeUp .18s ease-out forwards}
 .pr-head{animation-delay:12ms}.pr-stats{animation-delay:24ms}
-html.no-anim .view,html.no-anim #av{transition:none!important;opacity:1!important;transform:none!important}
+html.no-anim .view,html.no-anim #av{animation:none!important}
 html.no-anim .top-item,html.no-anim .q-item,html.no-anim .settings-block,html.no-anim .pr-head,html.no-anim .pr-stats,html.no-anim .match-card{animation:none!important;opacity:1!important}
 .big{max-width:640px;margin:0 auto}
 .big .duel{border-radius:16px;gap:3px}
@@ -145,6 +149,8 @@ html.no-anim .top-item,html.no-anim .q-item,html.no-anim .settings-block,html.no
 .big .vs{width:48px;height:48px;margin:0;font-size:14px;box-shadow:0 0 0 3px var(--bg);transform:translate(-50%,-50%)}
 .big .bar{height:7px;margin-top:14px}
 .big .side{left:8px;top:8px;font-size:11px;padding:4px 8px}
+.B .side{left:auto;right:6px}
+.big .B .side{left:auto;right:8px}
 .big .pct{font-size:13px}
 .big .tm b{font-size:22px}
 .big .tm small{font-size:11px}
@@ -162,7 +168,7 @@ h2{font:800 15px var(--hd);letter-spacing:.08em;text-transform:uppercase;margin:
 .big .nm{display:flex;align-items:center;gap:8px}
 .av{width:28px;height:28px;border-radius:50%;overflow:hidden;flex:none;position:relative;background:var(--s)}
 .av img{width:100%;height:100%;object-fit:cover;transform:scale(2.4);transform-origin:50% 42%}
-.nk{background:none;border:0;color:#fff;font:700 14px var(--bd);padding:4px 0;min-height:40px;cursor:pointer;transition:opacity .2s;touch-action:manipulation}.nk:hover{opacity:.7}.nk[data-profile-user]{text-decoration:underline;text-decoration-color:#ffffff55;text-underline-offset:4px}.public-profile-photos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.public-profile-photos .ph-card{aspect-ratio:1;overflow:hidden;border-radius:13px;background:#111}.public-profile-photos img{width:100%;height:100%;object-fit:cover}.profile-loading{padding:28px 12px;text-align:center;color:var(--mu)}
+.nk{background:none;border:0;color:#fff;font:700 14px var(--bd);padding:4px 0;min-height:40px;cursor:pointer;transition:opacity .2s;touch-action:manipulation}.nk:hover{opacity:.7}.nk[data-profile-user]{text-decoration:underline;text-decoration-color:#ffffff55;text-underline-offset:4px}.public-profile-photos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.public-profile-photos .ph-card{aspect-ratio:1;overflow:hidden;border-radius:13px;background:#111}.public-profile-photos img{width:100%;height:100%;object-fit:cover;background:var(--s);display:block}.profile-loading{padding:28px 12px;text-align:center;color:var(--mu)}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.75);opacity:0;pointer-events:none;transition:opacity .28s;z-index:10}
 .ov.on{opacity:1;pointer-events:auto}
 .sh{position:absolute;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:var(--s);border-radius:20px 20px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom,0px));transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.7,.2,1)}
@@ -177,7 +183,7 @@ textarea:focus{outline:2px solid #fff}
 .done{background:var(--c);border-radius:12px;padding:12px;margin:16px 0 8px;font-weight:600;font-size:14px}
 
 /* Not-found view — match the site's black palette and typography */
-.not-found{min-height:calc(100svh - 24px);display:flex;align-items:center;justify-content:center;padding:40px 18px;text-align:center}
+.not-found{min-height:100%;display:flex;align-items:center;justify-content:center;padding:40px 18px;text-align:center}
 .not-found-inner{width:100%;max-width:520px}
 .not-found-mark{display:flex;align-items:center;justify-content:center;gap:9px;font:800 12px var(--hd);letter-spacing:.16em;color:#fff;margin-bottom:42px}
 .not-found-mark i{display:flex;gap:4px}
@@ -196,7 +202,7 @@ textarea:focus{outline:2px solid #fff}
 html.no-anim *,html.no-anim *::before,html.no-anim *::after{animation:none!important;transition:none!important}
 html.no-anim .card{opacity:1}
 /* Settings — full-screen menu style */
-#sv.settings-menu{padding-bottom:calc(100px + env(safe-area-inset-bottom,0px));min-height:100vh}
+#sv.settings-menu{padding-bottom:24px;min-height:100%}
 .settings-menu-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column}
 .settings-menu-list li{margin:0}
 .settings-menu-list a,.settings-menu-list button.menu-item{
@@ -294,7 +300,7 @@ html.no-anim .card{opacity:1}
 .limit-note{font-size:12px;color:var(--mu);margin:8px 0 0;text-align:center}
 .my-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:0}
 .my-photos .ph-card{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--s)}
-.my-photos .ph-card img{width:100%;height:100%;object-fit:cover}
+.my-photos .ph-card img{width:100%;height:100%;object-fit:cover;background:var(--s);display:block}
 .my-photos .ph-card .rm{position:absolute;top:6px;right:6px;width:28px;height:28px;border:0;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;font-size:16px;cursor:pointer;display:grid;place-items:center}
 .pr-head{display:flex;align-items:center;gap:14px;margin-bottom:18px}
 .pr-av{width:72px;height:72px;border-radius:50%;overflow:hidden;background:var(--s);flex:none}
@@ -313,7 +319,7 @@ html.no-anim .card{opacity:1}
 .hist-item{background:var(--c);border-radius:14px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;cursor:pointer;touch-action:manipulation}
 .hist-item:active{opacity:.85}
 .hist-item .sides{display:flex;align-items:center;gap:8px}
-.hist-item .sides img{width:40px;height:50px;object-fit:cover;border-radius:8px}
+.hist-item .sides img{width:40px;height:50px;object-fit:cover;border-radius:8px;background:var(--s);display:block}
 .hist-item .vs-s{font:800 10px var(--hd);color:var(--mu)}
 .hist-item .res{font:800 12px var(--hd);letter-spacing:.06em}
 .hist-item .res.win{color:#4ade80}.hist-item .res.lose{color:var(--red)}.hist-item .res.draw{color:var(--mu)}.hist-item .res.red{color:var(--red)}.hist-item .res.blue{color:var(--blue)}
@@ -485,6 +491,7 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
   </div>
 </div>
 
+<div id="appScroll">
 <div class="wrap" id="av">
 <header><div class="logo"><img class="fa-brand-logo-image" src="/IMG_9559.png?v=1" alt="" aria-hidden="true">FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span data-i="live"></span></div><button type="button" class="btn-notifications" aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span class="notification-count" hidden></span></button><button type="button" class="btn-gear"  aria-label="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
 <h1 data-i="title"></h1>
@@ -504,6 +511,7 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 <div class="wrap view" id="iv" hidden></div>
 <div class="wrap view" id="nv" hidden></div>
 <div class="wrap view" id="nfv" hidden></div>
+</div>
 <nav><div class="tabs" id="tabs"><span class="ind" id="ind"></span></div></nav>
 <div class="toast" id="toast" role="status"></div>
 <div class="ov" id="ov"><div class="sh" id="sh" role="dialog" aria-modal="true"></div></div>
@@ -806,8 +814,8 @@ function renderArenaGrid(){
     const vsCls=lead==="R"?"push-b":(lead==="B"?"push-r":"");
     return `<article class="card" tabindex="0" role="button" aria-label="${t("battle")}${b.id}" style="--i:${i}" data-id="${b.id}">
 <div class="top"><span class="num">Линия ${String(b.id).padStart(2,"0")}</span><span class="chip ${w&&isActive?"":isActive?"v":""}">${chipText}</span></div>
-<div class="duel"><div class="ph R ${rCls}">${crownR}<img alt="" loading="lazy" fetchpriority="auto" decoding="async" src="${redSrc}"><span class="side">RED</span><div class="nm">${esc(redNm)}${verifiedBadge(redVerified)}</div></div>
-<div class="ph B ${bCls}">${crownB}<img alt="" loading="lazy" fetchpriority="auto" decoding="async" src="${blueSrc}"><span class="side">BLUE</span><div class="nm">${esc(blueNm)}${verifiedBadge(blueVerified)}</div></div><div class="vs ${vsCls}">VS</div></div>${streak}
+<div class="duel"><div class="ph R ${rCls}">${crownR}<img alt="" loading="${i<4?"eager":"lazy"}" fetchpriority="${i===0?"high":"auto"}" decoding="async" src="${redSrc}"><span class="side">RED</span><div class="nm">${esc(redNm)}${verifiedBadge(redVerified)}</div></div>
+<div class="ph B ${bCls}">${crownB}<img alt="" loading="${i<4?"eager":"lazy"}" fetchpriority="${i===0?"high":"auto"}" decoding="async" src="${blueSrc}"><span class="side">BLUE</span><div class="nm">${esc(blueNm)}${verifiedBadge(blueVerified)}</div></div><div class="vs ${vsCls}">VS</div></div>${streak}
 <div class="bar ${tot?"":"zero"} ${lead!=="eq"?"fight":""}" style="--p:${rp};--sx:${rp/100}"><u data-p="${rp/100}"></u>${lead!=="eq"?`<i class="clash"></i>`:""}</div>
 <div class="pct">${tot?`<span class="r ${lead==="R"?"lead":""}">RED ${rp}%</span><span class="m">${pl(tot,["голос","голоса","голосов"])}</span><span class="b ${lead==="B"?"lead":""}">${100-rp}% BLUE</span>`:`<span class="m">${t("noVotes")}</span>`}</div>
 ${isActive?`<div class="tm"><small>${confirming?"Отмена участия":t(w?"tWait":"tVote")}</small><b class="cd">${fmt(left)}</b></div><div class="tl"><u style="transform:scaleX(${left/STAGE_SEC})"></u></div>`:""}</article>`;
@@ -1208,6 +1216,28 @@ async function submit(n){
 $("ov").onclick=e=>{if(e.target==$("ov"))closeV()};
 addEventListener("keydown",e=>{if(e.key==="Escape")closeV()});
 
+const _viewHtmlCache=new WeakMap();
+function setViewHTML(view,html){
+  if(!view)return false;
+  const source=String(html);
+  const normalize=markup=>{
+    const template=document.createElement("template");
+    template.innerHTML=String(markup);
+    template.content.querySelectorAll("img[data-photo-path]").forEach(img=>{
+      img.setAttribute("src","__FA_SIGNED_PHOTO_URL__");
+    });
+    return template.innerHTML;
+  };
+  const desired=normalize(source);
+  const current=normalize(view.innerHTML);
+  const cached=_viewHtmlCache.get(view);
+  // Skip only when both requested markup and live DOM match the last render.
+  // If iOS or another route cleared/mutated the view, rebuild it.
+  if(desired.trim()!==""&&desired===cached&&current===cached)return false;
+  view.innerHTML=source;
+  _viewHtmlCache.set(view,normalize(view.innerHTML));
+  return true;
+}
 function statusLabel(st){
   return t({queued:"stQueued",matched:"stMatched",confirmed:"stConfirmed",voting:"stVoting",champion:"stChampion",completed:"stCompleted",cancelled:"stCancelled"}[st]||"stQueued");
 }
@@ -1236,9 +1266,9 @@ function renderQueue(){
       const frameCls=p.side?`frame-${p.side}`:"";
       const qIdx=qOrder.findIndex(x=>x.id===p.id);
       const posLabel=qIdx>=0?` · позиция ${qIdx+1} (впереди: ${qIdx})`:"";
-      const waitLabel=p.status==="queued"?`<small class="queue-wait" data-queued-at="${Number(p.queuedAt)||Date.now()}">В очереди · ${elapsedQueue(p.queuedAt)}</small>`:"";
+      const waitLabel=p.status==="queued"?`<small class="queue-wait" data-queued-at="${Number(p.queuedAt)||Date.now()}">В очереди</small>`:"";
       return `<div class="q-item" style="--i:${show.indexOf(p)}">
-        <img class="${frameCls}" src="${p.dataUrl}" alt="">
+        <img class="${frameCls}" data-photo-path="${esc(p.objectPath||"")}" src="${p.dataUrl}" alt="">
         <div class="info"><b>Фото #${String(p.id).slice(-4)}</b><span>${statusLabel(p.status)}${p.side?` · ${p.side}`:""}${posLabel}</span>${waitLabel}</div>
         <div class="acts">
           ${canFind?`<button class="btn-sm-blue" data-act="find" data-id="${p.id}">${t("findPair")}</button>`:""}
@@ -1255,7 +1285,7 @@ function renderQueue(){
   }
   
 
-  $("qv").innerHTML=`
+  const queueHtml=`
     ${hdrHTML()}
     <h1 class="sec-h">${t("qTitle")}</h1>
     <p class="sec-lead">${t("qLead")}</p>
@@ -1266,6 +1296,7 @@ function renderQueue(){
     </div>
     ${qOrder.length?`<p class="queue-explain">Фото уже принято сервером. Поиск соперника идёт автоматически — время зависит от свободной линии и появления подходящего соперника.</p>`:""}
     ${list}`;
+  if(!setViewHTML($("qv"),queueHtml)){tickQueueWaits();return;}
   const go=$("goUp");if(go)go.onclick=()=>{location.hash="upload"};
   $("qv").querySelectorAll("[data-act]").forEach(btn=>{
     const id=btn.dataset.id, act=btn.dataset.act;
@@ -1286,6 +1317,7 @@ function renderQueue(){
       }
     };
   });
+  tickQueueWaits();
 }
 
 function startMatch(photoId){
@@ -1603,13 +1635,13 @@ function renderProfile(){
   let activeHtml="";
   if(actives.length){
     activeHtml=`<h2>${t("prActive")}</h2><div class="my-photos">${actives.map(p=>`
-      <div class="ph-card ${p.side?`frame-${p.side}`:""}"><img src="${p.dataUrl}" alt=""></div>`).join("")}</div>`;
+      <div class="ph-card ${p.side?`frame-${p.side}`:""}"><img data-photo-path="${esc(p.objectPath||"")}" src="${p.dataUrl}" alt=""></div>`).join("")}</div>`;
   }
 
   let archHtml="";
   if(archived.length){
     archHtml=`<h2>${t("prArchived")}</h2><div class="my-photos">${archived.map(p=>`
-      <div class="ph-card"><img src="${p.dataUrl}" alt="">
+      <div class="ph-card"><img data-photo-path="${esc(p.objectPath||"")}" src="${p.dataUrl}" alt="">
         <button class="rm" data-id="${p.id}" title="Удалить из архива">×</button>
       </div>`).join("")}</div>
       <p class="limit-note">Удаление архивного фото не стирает запись в истории</p>`;
@@ -1620,9 +1652,9 @@ function renderProfile(){
     histHtml=`<h2>${t("prHist")}</h2><div class="hist">`+history.map((h,i)=>`
       <div class="hist-item" data-result="${esc(historyResultKey(h,i))}">
         <div class="sides">
-          <img src="${h.myImg||face(1,"R")}" alt="">
+          <img data-photo-path="${esc(h.myPhotoPath||"")}" src="${h.myImg||face(1,"R")}" alt="">
           <span class="vs-s">VS</span>
-          <img src="${h.opponentImg||face(2,"B")}" alt="">
+          <img data-photo-path="${esc(h.opponentPhotoPath||"")}" src="${h.opponentImg||face(2,"B")}" alt="">
         </div>
         <div style="text-align:right">
           <div class="res ${h.result}">${t(h.result==="win"?"prWin":h.result==="lose"?"prLose":"prDraw")}</div>
@@ -1631,7 +1663,7 @@ function renderProfile(){
       </div>`).join("")+`</div>`;
   } else histHtml=`<div class="empty-box"><p>${t("prEmptyHist")}</p></div>`;
 
-  $("pv").innerHTML=`
+  const profileHtml=`
     ${hdrHTML()}
     <h1 class="sec-h">${t("prTitle")}</h1>
     <p class="sec-lead">${t("prLead")}</p>
@@ -1660,6 +1692,7 @@ function renderProfile(){
     ${activeHtml}
     ${histHtml}
     ${archHtml}`;
+  if(!setViewHTML($("pv"),profileHtml))return;
 
   const ownAvatar=$("pv").querySelector("[data-avatar-path]");
   if(ownAvatar&&ownAvatar.dataset.avatarPath){
@@ -1692,7 +1725,7 @@ async function renderPublicProfile(userId){
   const renderToken=(renderPublicProfile._requestId||0)+1;
   renderPublicProfile._requestId=renderToken;
   const host=$("pv");
-  host.innerHTML=`${hdrHTML()}<h1 class="sec-h">Профиль участника</h1><div class="profile-loading">Загружаем профиль…</div>`;
+  setViewHTML(host,`${hdrHTML()}<h1 class="sec-h">Профиль участника</h1><div class="profile-loading">Загружаем профиль…</div>`);
   if(!window.FaceArenaSync?.isOnline?.()){
     host.querySelector(".profile-loading").textContent="Войдите в аккаунт, чтобы просматривать профили участников.";
     return;
@@ -1701,8 +1734,7 @@ async function renderPublicProfile(userId){
     const data=await window.FaceArenaSync.getPublicProfile(userId);
     if(renderPublicProfile._requestId!==renderToken||location.hash.slice(1)!=="profile-"+encodeURIComponent(userId))return;
     if(!data){
-      host.innerHTML=`${hdrHTML()}<h1 class="sec-h">Профиль закрыт</h1><div class="empty-box"><p>Владелец отключил публичный профиль. Его фотографии и данные профиля недоступны.</p><button class="btn" id="publicProfileBack" type="button">Вернуться к баттлам</button></div>`;
-      $("publicProfileBack").onclick=()=>location.hash="";
+      if(setViewHTML(host,`${hdrHTML()}<h1 class="sec-h">Профиль закрыт</h1><div class="empty-box"><p>Владелец отключил публичный профиль. Его фотографии и данные профиля недоступны.</p><button class="btn" id="publicProfileBack" type="button">Вернуться к баттлам</button></div>`))$("publicProfileBack").onclick=()=>location.hash="";
       return;
     }
     const photosList=Array.isArray(data.photos)?data.photos:[];
@@ -1710,8 +1742,8 @@ async function renderPublicProfile(userId){
     if(renderPublicProfile._requestId!==renderToken||location.hash.slice(1)!=="profile-"+encodeURIComponent(userId))return;
     const photoUrl=p=>signedPhotoUrls.get(p.object_path)||"";
     const avatarUrl=data.avatar_path?signedPhotoUrls.get(data.avatar_path)||"":"";
-    const photoCards=photosList.length?photosList.map(p=>`<div class="ph-card"><img data-photo-path="${esc(p.object_path)}" src="${esc(photoUrl(p))}" alt="Фото участника" loading="lazy"></div>`).join(""):`<div class="empty-box"><p>У участника пока нет опубликованных фотографий.</p></div>`;
-    host.innerHTML=`
+    const photoCards=photosList.length?photosList.map(p=>`<div class="ph-card"><img data-photo-path="${esc(p.object_path)}" src="${esc(photoUrl(p))}" alt="Фото участника"></div>`).join(""):`<div class="empty-box"><p>У участника пока нет опубликованных фотографий.</p></div>`;
+    const publicProfileHtml=`
       ${hdrHTML()}<h1 class="sec-h">Профиль участника</h1><p class="sec-lead">Публичный профиль FACE ARENA</p>
       <div class="pr-head"><div class="pr-av">${avatarUrl?`<img data-avatar-path="${esc(data.avatar_path)}" data-photo-path="${esc(data.avatar_path)}" src="${esc(avatarUrl)}" alt="Аватар участника">`:""}</div>
       <div><div class="pr-name">${esc(data.display_name||"Участник")}${verifiedBadge(data.is_verified)}</div><div class="pr-handle">@${esc(data.handle||"user")}</div></div></div>
@@ -1719,6 +1751,8 @@ async function renderPublicProfile(userId){
       <div class="stat"><b>${photosList.filter(p=>p.status==="completed"||p.status==="cancelled").length}</b><span>В архиве</span></div>
       <div class="stat"><b>${photosList.filter(p=>["queued","matched","confirmed","voting","champion"].includes(p.status)).length}</b><span>Активные</span></div></div>
       <h2>Фотографии</h2><div class="public-profile-photos">${photoCards}</div>`;
+    const publicProfileChanged=setViewHTML(host,publicProfileHtml);
+    if(publicProfileChanged){
     const publicAvatar=host.querySelector("[data-avatar-path]");
     if(publicAvatar)publicAvatar.onerror=async()=>{
       if(publicAvatar.dataset.avatarRetried){publicAvatar.removeAttribute("src");return}
@@ -1729,10 +1763,10 @@ async function renderPublicProfile(userId){
         if(fresh)publicAvatar.src=fresh;else publicAvatar.removeAttribute("src");
       }catch(error){console.warn("[FACE ARENA public avatar retry]",error);publicAvatar.removeAttribute("src")}
     };
+    }
   }catch(error){
     if(renderPublicProfile._requestId!==renderToken||location.hash.slice(1)!=="profile-"+encodeURIComponent(userId))return;
-    host.innerHTML=`${hdrHTML()}<h1 class="sec-h">Не удалось открыть профиль</h1><div class="empty-box"><p>${esc(window.FaceArenaErrors.message(error,"Не удалось загрузить профиль. Попробуйте позже."))}</p><button class="btn" id="publicProfileBack" type="button">Назад</button></div>`;
-    $("publicProfileBack").onclick=()=>history.back();
+    if(setViewHTML(host,`${hdrHTML()}<h1 class="sec-h">Не удалось открыть профиль</h1><div class="empty-box"><p>${esc(window.FaceArenaErrors.message(error,"Не удалось загрузить профиль. Попробуйте позже."))}</p><button class="btn" id="publicProfileBack" type="button">Назад</button></div>`))$("publicProfileBack").onclick=()=>history.back();
   }
 }
 
@@ -2272,9 +2306,9 @@ function renderResults(){
   const content=rows.length?'<div class="hist">'+rows.map(h=>`
     <div class="hist-item" role="button" tabindex="0" data-result="${esc(h._resultKey)}">
       <div class="sides">
-        <img src="${h.myImg||face(1,"R")}" alt="">
+        <img data-photo-path="${esc(h.myPhotoPath||"")}" src="${h.myImg||face(1,"R")}" alt="">
         <span class="vs-s">VS</span>
-        <img src="${h.opponentImg||face(2,"B")}" alt="">
+        <img data-photo-path="${esc(h.opponentPhotoPath||"")}" src="${h.opponentImg||face(2,"B")}" alt="">
       </div>
       <div style="text-align:right">
         <div class="res ${esc(h.result)}">${h.result==="red"?"Победа RED":h.result==="blue"?"Победа BLUE":h.result==="win"?t("prWin"):h.result==="lose"?t("prLose"):h.result==="no-contest"?"Бой не засчитан":"Ничья"}</div>
@@ -2282,11 +2316,12 @@ function renderResults(){
         <div style="font-size:10px;color:var(--mu);margin-top:3px">Баттл №${esc(h.battleId||h.laneId||"—")}</div>
       </div>
     </div>`).join("")+'</div>':'<div class="empty-box"><p>Завершённые баттлы появятся здесь.</p></div>';
-  $("iv").innerHTML=`
+  const resultsHtml=`
     ${hdrHTML()}
     <h1 class="sec-h">Итоги</h1>
     <p class="sec-lead">Результаты завершённых баттлов. Записи остаются здесь после освобождения активных слотов.</p>
     ${content}`;
+  if(!setViewHTML($("iv"),resultsHtml))return;
   $("iv").querySelectorAll("[data-result]").forEach(el=>{
     const open=()=>{location.hash="result-"+encodeURIComponent(el.dataset.result)};
     el.onclick=open;
@@ -2297,19 +2332,20 @@ function renderResults(){
 function renderResult(photoId){
   const h=(arenaResults||[]).find((x,i)=>historyResultKey(x,i)===String(photoId))||history.find((x,i)=>historyResultKey(x,i)===String(photoId))||history.find(x=>String(x.photoId)===String(photoId));
   if(!h){location.hash="profile";return}
-  $("rv").innerHTML=`
+  const resultDetailHtml=`
     ${hdrHTML()}
     <button class="back" id="bkR">← ${t("resBack")}</button>
     <h1 class="sec-h">${t("resTitle")}</h1>
 <div class="result-detail">
       <div class="match-duel">
-        <div><img src="${h.myImg}" alt=""><div style="font-size:12px;margin-top:6px">RED · ${esc(h.myName||"Участник")}</div></div>
-        <div><img src="${h.opponentImg}" alt=""><div style="font-size:12px;margin-top:6px">BLUE · ${esc(h.opponentName||"Участник")}</div></div>
+        <div><img data-photo-path="${esc(h.myPhotoPath||"")}" src="${h.myImg}" alt=""><div style="font-size:12px;margin-top:6px">RED · ${esc(h.myName||"Участник")}</div></div>
+        <div><img data-photo-path="${esc(h.opponentPhotoPath||"")}" src="${h.opponentImg}" alt=""><div style="font-size:12px;margin-top:6px">BLUE · ${esc(h.opponentName||"Участник")}</div></div>
       </div>
       <div class="score" style="color:${h.result==="red"?"var(--red)":h.result==="blue"?"var(--blue)":h.result==="win"?"#4ade80":h.result==="lose"?"var(--red)":"var(--mu)"}">${h.result==="no-contest"?"Бой не засчитан":h.result==="red"?"Победа RED":h.result==="blue"?"Победа BLUE":"Ничья"}</div>
       <div style="text-align:center;font:800 20px var(--hd)">${h.myVotes} : ${h.oppVotes}</div>
       <p class="note" style="text-align:center">Баттл №${h.battleId} · ${new Date(h.completedAt).toLocaleString("ru")}</p>
     </div>`;
+  if(!setViewHTML($("rv"),resultDetailHtml))return;
   $("bkR").onclick=()=>{location.hash="profile"};
 }
 
@@ -2324,7 +2360,7 @@ function showView(el){
   if(!el)return;
   el.hidden=false;
   el.classList.remove("is-leave");
-  requestAnimationFrame(()=>{el.classList.add("is-on")});
+  el.classList.add("is-on");
 }
 let _navLock=false;
 function renderNotFound(){
@@ -2346,31 +2382,21 @@ function renderNotFound(){
 }
 const _tabScrollPositions=new Map();
 let _activeScrollKey=null;
-const _faStandalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
-function readPageScrollTop(){
-  const scrolling=document.scrollingElement;
-  return Math.max(0,window.scrollY||0,scrolling?.scrollTop||0,document.documentElement?.scrollTop||0,document.body?.scrollTop||0);
-}
-function writePageScrollTop(top){
-  const value=Math.max(0,Number(top)||0);
-  const scrolling=document.scrollingElement;
-  if(scrolling)scrolling.scrollTop=value;
-  if(document.documentElement)document.documentElement.scrollTop=value;
-  if(document.body)document.body.scrollTop=value;
-  window.scrollTo(0,value);
-}
-window.addEventListener("scroll",()=>{
-  // A hash route can make iOS Home Screen apps jump before hashchange runs.
-  // Do not overwrite the previous tab position with that transient jump.
+function readPageScrollTop(){return $("appScroll").scrollTop}
+function writePageScrollTop(top){$("appScroll").scrollTop=Math.max(0,Number(top)||0)}
+const appScroll=$("appScroll");
+if(appScroll)appScroll.addEventListener("scroll",()=>{
   if(_activeScrollKey&&scrollKeyForRoute(location.hash.slice(1))===_activeScrollKey){
     _tabScrollPositions.set(_activeScrollKey,readPageScrollTop());
   }
 },{passive:true});
-window.addEventListener("pagehide",()=>{
-  if(_activeScrollKey)_tabScrollPositions.set(_activeScrollKey,readPageScrollTop());
-});
+function saveActiveTabScroll(){if(_activeScrollKey)_tabScrollPositions.set(_activeScrollKey,readPageScrollTop())}
+function restoreActiveTabScroll(){if(!_activeScrollKey)return;const saved=_tabScrollPositions.get(_activeScrollKey);if(Number.isFinite(saved))writePageScrollTop(saved)}
+window.addEventListener("pagehide",saveActiveTabScroll);
+window.addEventListener("pageshow",restoreActiveTabScroll);
+document.addEventListener("visibilitychange",()=>{if(document.hidden)saveActiveTabScroll();else restoreActiveTabScroll()});
 function scrollKeyForRoute(hash){
-  if(hash===""||/^battle-\\d+$/.test(hash))return "arena";
+  if(hash===""||/^battle-\d+$/.test(hash))return "arena";
   if(hash==="queue"||hash.startsWith("match-"))return "queue";
   if(hash==="upload")return "upload";
   if(hash==="profile"||/^profile-[0-9a-f-]{36}$/i.test(hash))return "profile";
@@ -2422,12 +2448,7 @@ function show(){
     if(navEl)navEl.style.display=(hash==="settings"||target===views.nfv)?"none":"";
     bindGear();
     _activeScrollKey=nextScrollKey;
-    if(changingScrollTab){
-      const restore=()=>writePageScrollTop(restoreScrollY);
-      requestAnimationFrame(()=>requestAnimationFrame(restore));
-      // iOS Home Screen apps may apply hash scrolling after the hashchange frame.
-      if(_faStandalone)setTimeout(restore,120);
-    }
+    if(changingScrollTab)writePageScrollTop(restoreScrollY);
     _navLock=false;
   };
   // Instant switch — CSS handles the short fade, no artificial delay
@@ -2501,8 +2522,7 @@ window.addEventListener("face-arena-photo-urls-refreshed",event=>{
   const urls=event.detail?.urls||{};
   document.querySelectorAll("img[data-photo-path]").forEach(img=>{
     const next=urls[img.dataset.photoPath];
-    if(next)img.src=next;
-    else img.removeAttribute("src");
+    if(next&&img.src!==next)img.src=next;
   });
 });
 window.addEventListener("face-arena-snapshot",event=>{
