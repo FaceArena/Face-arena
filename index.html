@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#050505">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FACE ARENA">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <title>FACE ARENA — Кто красивее?</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1785,7 +1791,11 @@ function renderSettings(){
       <button type="button" class="settings-back" id="backFromNotifications">← Назад</button>
       <h2 class="sec-h" style="margin-top:4px">Уведомления</h2>
       <div class="set-row"><div><div class="lbl">Уведомления о баттлах</div><div class="sub">Начало баттла, победа, поражение и чемпионский титул</div></div><button type="button" class="set-toggle" id="battleNotificationsToggle" aria-label="Уведомления о баттлах"></button></div>
-      <p class="set-info">Уведомления сохраняются в приложении и синхронизируются между устройствами. Push-уведомления на экран телефона пока не подключены.</p>
+      <div class="set-row" style="margin-top:12px">
+        <div><div class="lbl">Push на телефон</div><div class="sub" id="pushNotificationStatus">Проверяем поддержку…</div></div>
+        <button type="button" class="menu-item" id="pushNotificationsButton" style="width:auto;min-width:108px;padding:10px 12px;border:1px solid #292929;border-radius:10px">Включить</button>
+      </div>
+      <p class="set-info">На iPhone сначала добавьте FACE ARENA на экран «Домой» через меню «Поделиться», затем откройте приложение с его значка и нажмите «Включить».</p>
       <button type="button" class="menu-item" id="openNotificationsInbox" style="padding:10px 0;color:#9bbcff">Открыть все уведомления</button>
     </div>
 
@@ -1945,6 +1955,58 @@ function renderSettings(){
     ta.setAttribute("aria-pressed",String(prefAnim));
     toast(prefAnim?"Анимации включены":"Анимации отключены");
   };
+
+  let pushIsSubscribed=false;
+  const pushButton=$("pushNotificationsButton");
+  const pushStatus=$("pushNotificationStatus");
+  const refreshPushControl=async()=>{
+    if(!pushButton||!pushStatus)return;
+    const sync=window.FaceArenaSync;
+    if(!sync?.isOnline?.()){
+      pushStatus.textContent="Войдите в аккаунт, чтобы включить Push.";
+      pushButton.disabled=true;
+      return;
+    }
+    try{
+      const status=await sync.getPushStatus();
+      pushIsSubscribed=!!status.subscribed;
+      pushButton.textContent=pushIsSubscribed?"Отключить":"Включить";
+      pushButton.disabled=!status.supported;
+      pushStatus.textContent=!status.supported
+        ?"Этот браузер не поддерживает Push-уведомления."
+        :pushIsSubscribed
+          ?"Push включены на этом устройстве."
+          :status.permission==="denied"
+            ?"Разрешение запрещено в настройках браузера."
+            :"Push отключены на этом устройстве.";
+    }catch(error){
+      pushStatus.textContent="Не удалось проверить состояние Push.";
+      pushButton.disabled=false;
+    }
+  };
+  if(pushButton)pushButton.onclick=async()=>{
+    const sync=window.FaceArenaSync;
+    if(!sync?.isOnline?.()){toast("Сначала войдите в аккаунт");return;}
+    pushButton.disabled=true;
+    try{
+      if(pushIsSubscribed){
+        await sync.disablePush();
+        toast("Push отключены на этом устройстве");
+      }else{
+        await sync.enablePush();
+        toast("Push-уведомления включены");
+      }
+      await refreshPushControl();
+    }catch(error){
+      toast(window.FaceArenaErrors.message(error,"Не удалось настроить Push-уведомления."));
+      await refreshPushControl();
+    }finally{
+      pushButton.disabled=false;
+    }
+  };
+  refreshPushControl();
+  window.addEventListener("face-arena-authenticated-boot-start",refreshPushControl);
+  window.addEventListener("face-arena-snapshot",refreshPushControl);
 
   const privacyKeys=[
     ["privacyProfileToggle","profile_public"],
