@@ -29,6 +29,20 @@ Deno.serve(async (req: Request) => {
 
     const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const body = await req.json().catch(() => ({}));
+    if (body?.action === "get_platform_controls") {
+      const { data, error } = await admin.rpc("get_arena_platform_controls");
+      if (error) throw error;
+      return reply({ controls: Array.isArray(data) ? data[0] || null : data });
+    }
+    if (body?.action === "set_platform_controls") {
+      if (typeof body?.battles_paused !== "boolean" || typeof body?.publications_blocked !== "boolean") return reply({ error: "Invalid maintenance settings" }, 400);
+      const { data, error } = await admin.rpc("admin_set_arena_platform_controls", {
+        p_battles_paused: body.battles_paused,
+        p_publications_blocked: body.publications_blocked
+      });
+      if (error) throw error;
+      return reply({ ok: true, result: data });
+    }
     if (body?.action === "list_users") {
       const authUsers: any[] = [];
       for (let page = 1; ; page++) {
@@ -119,6 +133,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (body?.action === "approve_moderation") {
+      const { data: controlsRows, error: controlsError } = await admin.rpc("get_arena_platform_controls");
+      if (controlsError) throw controlsError;
+      const controls = Array.isArray(controlsRows) ? controlsRows[0] : controlsRows;
+      if (controls?.publications_blocked) {
+        return reply({ error: "Публикация фотографий временно приостановлена. Одобрение новых фото станет доступно после снятия ограничений." }, 503);
+      }
       const moderationId = String(body?.moderation_id || "");
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(moderationId)) {
         return reply({ error: "Invalid moderation id" }, 400);
