@@ -1220,10 +1220,22 @@ const _viewHtmlCache=new WeakMap();
 function setViewHTML(view,html){
   if(!view)return false;
   const source=String(html);
-  const stable=source.replace(/(<img\b(?=[^>]*\bdata-photo-path="[^"]*")[^>]*\bsrc=")[^"]*(")/gi,"$1__FA_SIGNED_PHOTO_URL__$2");
-  if(_viewHtmlCache.get(view)===stable)return false;
+  const normalize=markup=>{
+    const template=document.createElement("template");
+    template.innerHTML=String(markup);
+    template.content.querySelectorAll("img[data-photo-path]").forEach(img=>{
+      img.setAttribute("src","__FA_SIGNED_PHOTO_URL__");
+    });
+    return template.innerHTML;
+  };
+  const desired=normalize(source);
+  const current=normalize(view.innerHTML);
+  const cached=_viewHtmlCache.get(view);
+  // Skip only when both requested markup and live DOM match the last render.
+  // If iOS or another route cleared/mutated the view, rebuild it.
+  if(desired.trim()!==""&&desired===cached&&current===cached)return false;
   view.innerHTML=source;
-  _viewHtmlCache.set(view,stable);
+  _viewHtmlCache.set(view,normalize(view.innerHTML));
   return true;
 }
 function statusLabel(st){
