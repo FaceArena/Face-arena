@@ -210,14 +210,22 @@
         if (this.lastSnapshot !== snapshot || this.user?.id !== snapshot.userId) return false;
         const photos = (snapshot.photos || []).map(photo => ({
           ...photo,
-          dataUrl: photo.objectPath && photo.status !== "removed" ? signed.get(photo.objectPath) || "" : ""
+          // A partial Storage response must not blank a still-valid signed URL.
+          dataUrl: photo.objectPath && photo.status !== "removed"
+            ? signed.get(photo.objectPath) || photo.dataUrl || ""
+            : ""
         }));
-        const profile = { ...snapshot.profile, avatarUrl: snapshot.profile?.avatarPath ? signed.get(snapshot.profile.avatarPath) || "" : "" };
+        const profile = {
+          ...snapshot.profile,
+          avatarUrl: snapshot.profile?.avatarPath
+            ? signed.get(snapshot.profile.avatarPath) || snapshot.profile.avatarUrl || ""
+            : ""
+        };
         const byId = new Map(photos.map(photo => [String(photo.id), photo]));
         const imageFor = (photoId, fallback) => {
           if (photoId == null) return fallback || "";
           const photo = byId.get(String(photoId));
-          return photo ? photo.dataUrl : "";
+          return photo?.dataUrl || fallback || "";
         };
         const arenaBattles = (snapshot.arenaBattles || []).map(battle => ({
           ...battle,
