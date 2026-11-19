@@ -2344,9 +2344,26 @@ function renderNotFound(){
   const back=$("notFoundBack");
   if(back)back.onclick=()=>{if(history.length>1)history.back();else location.href="/"};
 }
+const _tabScrollPositions=new Map();
+let _activeScrollKey=null;
+function scrollKeyForRoute(hash){
+  if(hash===""||/^battle-\\d+$/.test(hash))return "arena";
+  if(hash==="queue"||hash.startsWith("match-"))return "queue";
+  if(hash==="upload")return "upload";
+  if(hash==="profile"||/^profile-[0-9a-f-]{36}$/i.test(hash))return "profile";
+  if(hash==="results"||hash.startsWith("result-"))return "results";
+  if(hash==="settings")return "settings";
+  if(hash==="notifications")return "notifications";
+  return hash||"arena";
+}
 function show(){
   if(_navLock)return;
   const hash=location.hash.slice(1)||"";
+  const nextScrollKey=scrollKeyForRoute(hash);
+  const previousScrollKey=_activeScrollKey;
+  const changingScrollTab=previousScrollKey!==null&&previousScrollKey!==nextScrollKey;
+  if(changingScrollTab&&previousScrollKey)_tabScrollPositions.set(previousScrollKey,window.scrollY);
+  const restoreScrollY=changingScrollTab?(_tabScrollPositions.get(nextScrollKey)||0):window.scrollY;
   // Supabase Google OAuth implicit-flow callback temporarily occupies the hash.
   // It is not an application route; let Supabase validate the tokens and restore
   // the session before the router decides which view to display.
@@ -2380,7 +2397,12 @@ function show(){
     const navEl=document.querySelector("nav");
     if(navEl)navEl.style.display=(hash==="settings"||target===views.nfv)?"none":"";
     bindGear();
-    window.scrollTo({top:0,behavior:reduce?"auto":"smooth"});
+    _activeScrollKey=nextScrollKey;
+    if(changingScrollTab){
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        window.scrollTo({top:restoreScrollY,behavior:"auto"});
+      }));
+    }
     _navLock=false;
   };
   // Instant switch — CSS handles the short fade, no artificial delay
