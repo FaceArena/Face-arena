@@ -2485,7 +2485,18 @@ function finishFaBoot(){
 }
 window.addEventListener("face-arena-sync-failed",finishFaBoot);
 window.addEventListener("face-arena-critical-images-ready",finishFaBoot);
-addEventListener("hashchange",show);
+// Tab changes use the History API instead of native hash navigation.
+ // Native fragment navigation can reset document scroll in iOS Home Screen apps.
+ try{history.scrollRestoration="manual"}catch(_){}
+ function navigateTab(route){
+   const nextHash=route?"#"+route:"";
+   if(_activeScrollKey)_tabScrollPositions.set(_activeScrollKey,readPageScrollTop());
+   if(location.hash===nextHash){show();return}
+   history.pushState(null,"",location.pathname+location.search+nextHash);
+   show();
+ }
+ addEventListener("hashchange",show);
+ addEventListener("popstate",show);
 window.addEventListener("face-arena-photo-urls-refreshed",event=>{
   const urls=event.detail?.urls||{};
   document.querySelectorAll("img[data-photo-path]").forEach(img=>{
@@ -2574,11 +2585,11 @@ const IC={
   if(!i)b.className="on";
   b.innerHTML=`<svg viewBox="0 0 24 24">${IC[k]}</svg>${t(k)}`;
   b.onclick=()=>{
-    if(i===0)location.hash="";
-    else if(i===1)location.hash="queue";
-    else if(i===2)location.hash="upload";
-    else if(i===3)location.hash="profile";
-    else location.hash="results";
+    if(i===0)navigateTab("");
+    else if(i===1)navigateTab("queue");
+    else if(i===2)navigateTab("upload");
+    else if(i===3)navigateTab("profile");
+    else navigateTab("results");
   };
   $("tabs").appendChild(b);
 });
