@@ -2394,8 +2394,22 @@ if(appScroll)appScroll.addEventListener("scroll",()=>{
 function saveActiveTabScroll(){if(_activeScrollKey)_tabScrollPositions.set(_activeScrollKey,readPageScrollTop())}
 function restoreActiveTabScroll(){if(!_activeScrollKey)return;const saved=_tabScrollPositions.get(_activeScrollKey);if(Number.isFinite(saved))writePageScrollTop(saved)}
 window.addEventListener("pagehide",saveActiveTabScroll);
-window.addEventListener("pageshow",restoreActiveTabScroll);
-document.addEventListener("visibilitychange",()=>{if(document.hidden)saveActiveTabScroll();else restoreActiveTabScroll()});
+// iOS PWA/Safari can restore a frozen document without replaying the app router.
+// Reconcile the active route on resume instead of restoring scroll into a stale/empty view.
+function resumeActiveRoute(){
+  if(document.visibilityState==="hidden")return;
+  requestAnimationFrame(()=>{
+    if(document.visibilityState==="hidden")return;
+    show();
+    restoreActiveTabScroll();
+  });
+}
+window.addEventListener("pageshow",resumeActiveRoute);
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden)saveActiveTabScroll();
+  else resumeActiveRoute();
+});
+window.addEventListener("focus",resumeActiveRoute);
 function scrollKeyForRoute(hash){
   if(hash===""||/^battle-\d+$/.test(hash))return "arena";
   if(hash==="queue"||hash.startsWith("match-"))return "queue";
