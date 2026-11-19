@@ -448,6 +448,24 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 @keyframes faBootFade{to{opacity:1}}
 @media(prefers-reduced-motion:reduce){#fa-boot-loader *{animation-duration:.01ms!important;animation-delay:0ms!important;animation-iteration-count:1!important}}
 </style>
+
+<style id="fa-push-onboarding-style">
+#fa-push-onboarding{position:fixed;inset:0;z-index:210000;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#fa-push-onboarding.is-visible{display:flex}
+.fa-push-onboarding-card{width:min(100%,360px);padding:24px 22px 20px;border:1px solid rgba(255,255,255,.12);border-radius:20px;background:linear-gradient(155deg,#171a20,#090a0d 72%);box-shadow:0 24px 80px rgba(0,0,0,.55);text-align:center;color:#fff}
+.fa-push-onboarding-mark{width:42px;height:42px;margin:0 auto 16px;display:flex;justify-content:center;align-items:center;gap:0}
+.fa-push-onboarding-mark b{height:30px;width:14px;display:block;transform:skew(-18deg)}
+.fa-push-onboarding-mark b:first-child{background:#ef4444;border-radius:3px 0 0 3px}
+.fa-push-onboarding-mark b:last-child{background:#3978ff;border-radius:0 3px 3px 0}
+.fa-push-onboarding-card h2{margin:0 0 9px;font-size:20px;font-weight:800;letter-spacing:-.03em}
+.fa-push-onboarding-card p{margin:0;color:#a6a6ad;font-size:13px;line-height:1.55}
+.fa-push-onboarding-actions{display:flex;gap:10px;margin-top:21px}
+.fa-push-onboarding-actions button{flex:1;min-height:44px;border-radius:11px;font:700 13px inherit;cursor:pointer}
+#fa-push-onboarding-enable{border:0;background:linear-gradient(100deg,#ef4444,#3978ff);color:#fff}
+#fa-push-onboarding-later{border:1px solid #303038;background:#17171c;color:#c8c8ce}
+#fa-push-onboarding-enable:disabled{opacity:.6;cursor:wait}
+</style>
+
 </head>
 <body>
 <div id="fa-boot-loader" role="status" aria-live="polite">
@@ -457,6 +475,19 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
     <div class="fa-boot-caption" id="fa-boot-caption">Загружаем арену</div>
   </div>
 </div>
+
+<div id="fa-push-onboarding" role="dialog" aria-modal="true" aria-labelledby="fa-push-onboarding-title" aria-describedby="fa-push-onboarding-description">
+  <div class="fa-push-onboarding-card">
+    <div class="fa-push-onboarding-mark" aria-hidden="true"><b></b><b></b></div>
+    <h2 id="fa-push-onboarding-title">Не пропускай битвы</h2>
+    <p id="fa-push-onboarding-description">Разреши уведомления FACE ARENA, чтобы получать сообщения о начале баттлов и результатах прямо на телефон.</p>
+    <div class="fa-push-onboarding-actions">
+      <button type="button" id="fa-push-onboarding-later">Позже</button>
+      <button type="button" id="fa-push-onboarding-enable">Включить</button>
+    </div>
+  </div>
+</div>
+
 <div class="wrap" id="av">
 <header><div class="logo"><i><b></b><b></b></i>FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span data-i="live"></span></div><button type="button" class="btn-notifications" aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span class="notification-count" hidden></span></button><button type="button" class="btn-gear"  aria-label="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
 <h1 data-i="title"></h1>
@@ -2754,6 +2785,69 @@ saveState();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
   else start();
+})();
+</script>
+
+
+<script id="fa-push-onboarding-script">
+(()=>{
+  const overlay=document.getElementById("fa-push-onboarding");
+  const enable=document.getElementById("fa-push-onboarding-enable");
+  const later=document.getElementById("fa-push-onboarding-later");
+  const loader=document.getElementById("fa-boot-loader");
+  if(!overlay||!enable||!later)return;
+  let checked=false,shown=false;
+  const dismissedKey=userId=>"fa_push_prompt_dismissed_v1:"+userId;
+  const dismiss=()=>{
+    const userId=window.FaceArenaSync?.getUser?.()?.id;
+    if(userId){try{localStorage.setItem(dismissedKey(userId),"1")}catch(_){}}
+    overlay.classList.remove("is-visible");
+  };
+  later.addEventListener("click",dismiss);
+  overlay.addEventListener("click",event=>{if(event.target===overlay)dismiss()});
+  const maybeShow=async()=>{
+    if(checked||shown)return;
+    if(loader&&!loader.classList.contains("is-hidden"))return;
+    const sync=window.FaceArenaSync;
+    const user=sync?.getUser?.();
+    if(!user?.id||!sync?.isOnline?.())return;
+    checked=true;
+    try{
+      const status=await sync.getPushStatus();
+      if(!status.supported||status.subscribed||status.permission!=="default")return;
+      try{if(localStorage.getItem(dismissedKey(user.id))==="1")return}catch(_){}
+      const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+      const standalone=window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+      if(isIOS&&!standalone){
+        document.getElementById("fa-push-onboarding-description").textContent="Сначала добавь FACE ARENA на экран «Домой» через меню «Поделиться», затем открой приложение с его значка и включи уведомления в настройках.";
+        enable.textContent="Понятно";
+        enable.onclick=dismiss;
+      }else{
+        enable.onclick=async()=>{
+          enable.disabled=true;
+          enable.textContent="Подключаем…";
+          try{
+            await sync.enablePush();
+            overlay.classList.remove("is-visible");
+            if(typeof toast==="function")toast("Push-уведомления включены");
+          }catch(error){
+            if(typeof toast==="function")toast(window.FaceArenaErrors?.message?.(error,"Не удалось включить уведомления.")||"Не удалось включить уведомления.");
+            enable.disabled=false;
+            enable.textContent="Повторить";
+          }
+        };
+      }
+      shown=true;
+      overlay.classList.add("is-visible");
+    }catch(_){checked=false;}
+  };
+  const observer=loader?new MutationObserver(()=>{
+    if(loader.classList.contains("is-hidden"))setTimeout(maybeShow,450);
+  }):null;
+  if(observer)observer.observe(loader,{attributes:true,attributeFilter:["class"]});
+  window.addEventListener("face-arena-authenticated-boot-stop",()=>setTimeout(maybeShow,450));
+  window.addEventListener("face-arena-snapshot",()=>{if(!checked)setTimeout(maybeShow,450)});
+  if(loader?.classList.contains("is-hidden"))setTimeout(maybeShow,700);
 })();
 </script>
 
