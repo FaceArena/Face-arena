@@ -2487,12 +2487,12 @@ window.addEventListener("face-arena-sync-failed",finishFaBoot);
 window.addEventListener("face-arena-critical-images-ready",finishFaBoot);
 // Tab changes use the History API instead of native hash navigation.
  // Native fragment navigation can reset document scroll in iOS Home Screen apps.
- try{history.scrollRestoration="manual"}catch(_){}
+ try{window.history.scrollRestoration="manual"}catch(_){}
  function navigateTab(route){
    const nextHash=route?"#"+route:"";
    if(_activeScrollKey)_tabScrollPositions.set(_activeScrollKey,readPageScrollTop());
    if(location.hash===nextHash){show();return}
-   history.pushState(null,"",location.pathname+location.search+nextHash);
+   window.history.pushState(null,"",location.pathname+location.search+nextHash);
    show();
  }
  addEventListener("hashchange",show);
