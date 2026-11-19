@@ -107,9 +107,10 @@ h1{font:800 clamp(28px,8.5vw,72px)/.95 var(--hd);letter-spacing:-.02em;margin:16
 .tl u{display:block;height:100%;background:#fff;transform-origin:left;transition:transform 1s linear;text-decoration:none}
 nav{position:fixed;left:0;right:0;bottom:0;padding:6px 10px calc(6px + env(safe-area-inset-bottom,0px));background:rgba(10,10,10,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);z-index:5}
 .tabs{position:relative;max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
-.tabs button{background:none;border:0;color:var(--mu);font:700 9px var(--bd);letter-spacing:.08em;text-transform:uppercase;padding:6px 0;display:grid;justify-items:center;gap:3px;min-height:44px;cursor:pointer;transition:color .22s;touch-action:manipulation}
+.tabs button{background:none;border:0;color:var(--mu);font:700 9px var(--bd);letter-spacing:.08em;text-transform:uppercase;padding:6px 0 4px;display:grid;grid-template-rows:22px 14px;align-content:center;justify-items:center;gap:6px;min-height:58px;box-sizing:border-box;cursor:pointer;transition:color .22s;touch-action:manipulation}
 .tabs button.on{color:#fff}
-.tabs svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tabs button svg{width:18px;height:18px;display:block;align-self:center;justify-self:center;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tabs button:not(svg){text-align:center;white-space:nowrap}
 .ind{position:absolute;top:0;left:0;width:25%;height:2px;display:flex;justify-content:center;transition:transform .35s cubic-bezier(.2,.7,.2,1)}
 .ind::after{content:"";width:28px;height:2px;background:linear-gradient(90deg,var(--red),var(--blue))}
 .toast{position:fixed;left:50%;bottom:calc(78px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);background:#fff;color:#000;font-weight:700;font-size:12px;padding:9px 14px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .22s,transform .22s;z-index:6;max-width:90vw;text-align:center}
