@@ -1437,8 +1437,11 @@ function confirmMatch(p){
 
 function renderUpload(){
   const canAdd=activeCount()<MAX_ACTIVE;
+  const platformPublicationsBlocked = window.FaceArenaPlatformControls?.publicationsBlocked === true;
   let preview="";
-  if(pendingUrl){
+  if(platformPublicationsBlocked){
+    preview=`<div class="empty" style="border:1px solid #4a2828;color:#ffb0b0">Новые публикации временно приостановлены. Попробуйте позже.</div>`;
+  } else if(pendingUrl){
     preview=`<div class="preview-box"><img src="${pendingUrl}" alt="preview">
       <div class="act">
         <button class="rep" id="repBtn">${t("upReplace")}</button>
@@ -2580,6 +2583,19 @@ saveState();
         <button type="button" class="settings-back" id="faAdminBack">← Назад</button>
         <h2 class="sec-h" style="margin-top:4px">Администрирование</h2>
         <p class="set-info">Управление фотографиями участников FACE ARENA. Удаление файлов необратимо.</p>
+        <section style="margin:16px 0;padding:14px;border:1px solid #353535;border-radius:14px;background:#101010">
+          <h3 style="font:800 13px Unbounded,Arial,sans-serif;margin:0 0 10px">Режим обслуживания</h3>
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;color:#fff;font-size:13px">
+            <span><strong>Остановить все баттлы</strong><small style="display:block;color:var(--mu);font-size:11px;margin-top:4px">Текущие матчи будут отменены без результата</small></span>
+            <input id="faAdminBattlesPaused" type="checkbox" style="width:22px;height:22px;accent-color:#ff3434">
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;color:#fff;font-size:13px;border-top:1px solid #252525">
+            <span><strong>Запретить публикации</strong><small style="display:block;color:var(--mu);font-size:11px;margin-top:4px">Новые фотографии нельзя будет загрузить</small></span>
+            <input id="faAdminPublicationsBlocked" type="checkbox" style="width:22px;height:22px;accent-color:#ff3434">
+          </label>
+          <button type="button" id="faAdminSaveControls" class="menu-item" style="width:100%;padding:12px;border:1px solid #555;border-radius:10px;background:#1a1a1a;color:#fff;font-weight:800">Сохранить настройки</button>
+          <div id="faAdminControlsStatus" class="set-info" aria-live="polite" style="margin-top:8px"></div>
+        </section>
         <h3 style="font:800 13px Unbounded,Arial,sans-serif;margin:18px 0 8px">Фото ожидают проверки</h3>
         <div id="faModerationStats" class="set-info">Загружаем список…</div>
         <div id="faModerationPhotos" style="display:grid;gap:10px;margin:10px 0 18px"></div>
@@ -2597,10 +2613,49 @@ saveState();
       };
       document.getElementById("faAdminRefresh").onclick = loadPhotos;
       document.getElementById("faAdminDeleteAll").onclick = deleteAllPhotos;
+      document.getElementById("faAdminSaveControls").onclick = savePlatformControls;
     } else {
       panel.classList.add("on");
     }
     loadPhotos();
+    loadPlatformControls();
+  }
+  async function loadPlatformControls() {
+    const status = document.getElementById("faAdminControlsStatus");
+    try {
+      const result = await invoke("get_platform_controls");
+      const controls = result.controls || {};
+      document.getElementById("faAdminBattlesPaused").checked = controls.battles_paused === true;
+      document.getElementById("faAdminPublicationsBlocked").checked = controls.publications_blocked === true;
+      if (status) status.textContent = "Текущие настройки загружены.";
+    } catch (error) {
+      if (status) status.textContent = "Не удалось загрузить настройки обслуживания.";
+      console.error("[FACE ARENA platform controls]", error);
+    }
+  }
+  async function savePlatformControls() {
+    if (adminBusy || !isAdmin()) return;
+    const battlesPaused = document.getElementById("faAdminBattlesPaused").checked;
+    const publicationsBlocked = document.getElementById("faAdminPublicationsBlocked").checked;
+    if (battlesPaused && !confirm("Остановить все текущие баттлы? Незавершённые матчи будут отменены без победителя и без изменения рейтинга.")) return;
+    const button = document.getElementById("faAdminSaveControls");
+    const status = document.getElementById("faAdminControlsStatus");
+    adminBusy = true;
+    if (button) button.disabled = true;
+    if (status) status.textContent = "Применяем настройки…";
+    try {
+      const result = await invoke("set_platform_controls", { battles_paused: battlesPaused, publications_blocked: publicationsBlocked });
+      const cancelled = Number(result.result?.cancelled_battles || 0);
+      if (status) status.textContent = "Сохранено. Отменено текущих баттлов: " + cancelled + ". Настройки применяются для всех пользователей.";
+      window.FaceArenaSync?.loadSnapshot?.().catch(() => {});
+    } catch (error) {
+      console.error("[FACE ARENA save platform controls]", error);
+      if (status) status.textContent = "Не удалось применить настройки. Ничего не изменено: " + (error.message || "ошибка сервера");
+      await loadPlatformControls();
+    } finally {
+      adminBusy = false;
+      if (button) button.disabled = false;
+    }
   }
   async function loadModerationPhotos() {
     const stats = document.getElementById("faModerationStats");
@@ -2848,5 +2903,67 @@ saveState();
 })();
 </script>
 
+<script>
+(() => {
+  const SUPABASE_URL = "https://nvvkmjeobnnxlrpiuisf.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_-a7Qjy5NL3ZUaKfLpIi4Dg_x2hzmNKE";
+  let client = null;
+  let banner = null;
+  const adminId = "ac86c2a7-9ec6-4016-a0d5-a6810578fd2c";
+  function getClient() {
+    if (!client && window.supabase?.createClient) client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    return client;
+  }
+  function render(controls) {
+    window.FaceArenaPlatformControls = {
+      battlesPaused: controls?.battles_paused === true,
+      publicationsBlocked: controls?.publications_blocked === true
+    };
+    const userId = window.FaceArenaSync?.getUser?.()?.id;
+    if (userId === adminId) {
+      if (banner) banner.remove();
+      banner = null;
+      return;
+    }
+    const paused = window.FaceArenaPlatformControls.battlesPaused;
+    const blocked = window.FaceArenaPlatformControls.publicationsBlocked;
+    if (!paused && !blocked) {
+      if (banner) banner.remove();
+      banner = null;
+      return;
+    }
+    if (!banner) {
+      banner = document.createElement("aside");
+      banner.id = "fa-platform-maintenance-banner";
+      banner.style.cssText = "margin:10px 12px 14px;padding:13px 14px;border:1px solid #553030;border-radius:13px;background:#170e0e;color:#fff;font:600 12px/1.5 Manrope,Arial,sans-serif";
+      const header = document.querySelector("header");
+      if (header?.parentNode) header.insertAdjacentElement("afterend", banner);
+      else document.body.prepend(banner);
+    }
+    let message = "";
+    if (paused && blocked) message = "Техническое обслуживание: баттлы остановлены, новые публикации временно недоступны. Ваши фотографии, профили и результаты завершённых матчей сохранены. Спасибо за понимание.";
+    else if (paused) message = "Баттлы временно приостановлены. Незавершённые матчи отменены без победителя и без изменения рейтинга. Завершённые результаты и фотографии сохранены.";
+    else message = "Новые публикации временно приостановлены. Уже загруженные фотографии, профиль и результаты доступны. Спасибо за понимание.";
+    banner.textContent = message;
+  }
+  async function refresh() {
+    try {
+      const api = getClient();
+      if (!api) return;
+      const { data, error } = await api.from("arena_platform_controls")
+        .select("battles_paused,publications_blocked").eq("singleton", true).single();
+      if (error) throw error;
+      render(data || {});
+    } catch (error) {
+      console.warn("[FACE ARENA maintenance status]", error);
+    }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", refresh, { once: true });
+  else refresh();
+  setInterval(refresh, 20000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+  window.addEventListener("face-arena-authenticated-boot-stop", refresh);
+})();
+</script>
 </body>
 </html>
