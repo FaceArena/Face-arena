@@ -225,16 +225,28 @@
           blueImg: imageFor(battle.bluePhotoId, battle.blueImg),
           championImg: imageFor(battle.championPhotoId, battle.championImg)
         }));
-        const arenaResults = (snapshot.arenaResults || []).map(result => ({
-          ...result,
-          myImg: imageFor(result.photoId, result.myImg),
-          opponentImg: imageFor(result.opponentPhotoId, result.opponentImg)
-        }));
-        const history = (snapshot.history || []).map(result => ({
-          ...result,
-          myImg: imageFor(result.photoId, result.myImg),
-          opponentImg: imageFor(result.opponentPhotoId, result.opponentImg)
-        }));
+        const arenaResults = (snapshot.arenaResults || []).map(result => {
+          const myPhoto = byId.get(String(result.photoId));
+          const opponentPhoto = byId.get(String(result.opponentPhotoId));
+          return {
+            ...result,
+            myPhotoPath: myPhoto?.objectPath || result.myPhotoPath || "",
+            opponentPhotoPath: opponentPhoto?.objectPath || result.opponentPhotoPath || "",
+            myImg: imageFor(result.photoId, result.myImg),
+            opponentImg: imageFor(result.opponentPhotoId, result.opponentImg)
+          };
+        });
+        const history = (snapshot.history || []).map(result => {
+          const myPhoto = byId.get(String(result.photoId));
+          const opponentPhoto = byId.get(String(result.opponentPhotoId));
+          return {
+            ...result,
+            myPhotoPath: myPhoto?.objectPath || result.myPhotoPath || "",
+            opponentPhotoPath: opponentPhoto?.objectPath || result.opponentPhotoPath || "",
+            myImg: imageFor(result.photoId, result.myImg),
+            opponentImg: imageFor(result.opponentPhotoId, result.opponentImg)
+          };
+        });
         const participantStats = Object.fromEntries(Object.entries(snapshot.participantStats || {}).map(([id, stats]) => [
           id, { ...stats, img: imageFor(stats.photoId, stats.img) }
         ]));
