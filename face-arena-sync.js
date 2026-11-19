@@ -1064,15 +1064,13 @@
       if (!serialized.endpoint || !keys.p256dh || !keys.auth) {
         throw new Error("Браузер вернул неполную Push-подписку. Попробуйте ещё раз.");
       }
-      const { error } = await this.client.from("arena_push_subscriptions").upsert({
-        user_id: this.user.id,
-        endpoint: serialized.endpoint,
-        p256dh: keys.p256dh,
-        auth: keys.auth,
-        expiration_time: serialized.expirationTime || null,
-        user_agent: navigator.userAgent.slice(0, 500),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "endpoint" });
+      const { error } = await this.client.rpc("save_arena_push_subscription", {
+        p_endpoint: serialized.endpoint,
+        p_p256dh: keys.p256dh,
+        p_auth: keys.auth,
+        p_expiration_time: serialized.expirationTime || null,
+        p_user_agent: navigator.userAgent.slice(0, 500),
+      });
       if (error) {
         await subscription.unsubscribe().catch(() => {});
         throw error;
