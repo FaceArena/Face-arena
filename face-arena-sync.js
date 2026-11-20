@@ -307,7 +307,7 @@
         #fa-auth-gate{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(5,5,5,.96);backdrop-filter:blur(18px)}
         #fa-auth-gate.on{display:flex}
         #fa-auth-card{width:min(100%,420px);padding:26px 22px;background:#101010;border:1px solid #262626;border-radius:20px}
-        #fa-auth-card .fa-logo{font:800 13px Unbounded,Arial,sans-serif;letter-spacing:.1em;margin-bottom:28px}
+        #fa-auth-card .fa-logo{font:800 13px Unbounded,Arial,sans-serif;letter-spacing:.1em;line-height:1.55;margin-bottom:28px}#fa-auth-card .fa-logo-mark{display:inline-block;letter-spacing:.12em}
         #fa-auth-card h2{font:800 23px Unbounded,Arial,sans-serif;margin:0 0 8px}
         #fa-auth-card p{color:#999;font-size:13px;margin:0 0 18px}
         #fa-auth-card input{display:block;width:100%;margin:10px 0;padding:14px 13px;border-radius:10px;border:1px solid #303030;background:#080808;color:#fff;font:600 14px Manrope,Arial,sans-serif;outline:none}
@@ -324,14 +324,13 @@
       gate.id = "fa-auth-gate";
       gate.innerHTML = `
         <div id="fa-auth-card">
-          <div class="fa-logo"><span style="color:#ff3434">F</span><span style="color:#3478ff">A</span> FACE ARENA</div>
+          <div class="fa-logo">FACE ARENA<br><span class="fa-logo-mark">(<span style="color:#ff3434">F</span><span style="color:#3478ff">A</span>)</span></div>
           <h2 id="fa-auth-title">Войти в арену</h2>
           <p id="fa-auth-desc">Войдите, чтобы участвовать в общих битвах и сохранять результаты на всех устройствах.</p>
           <input id="fa-auth-name" autocomplete="nickname" maxlength="32" placeholder="Ваше имя">
           <input id="fa-auth-email" type="email" autocomplete="email" placeholder="Email">
           <input id="fa-auth-password" type="password" autocomplete="current-password" placeholder="Пароль (от 8 символов)">
           <button id="fa-auth-submit">Войти</button>
-          <button id="fa-auth-google" class="secondary">Продолжить с Google</button>
           <button id="fa-auth-toggle" class="secondary">Создать аккаунт</button>
           <div id="fa-auth-error" role="status" aria-live="polite"></div>
         </div>`;
@@ -342,7 +341,6 @@
         this.renderAuthGate();
       };
       document.getElementById("fa-auth-submit").onclick = () => this.submitAuth();
-      document.getElementById("fa-auth-google").onclick = () => this.googleAuth();
       gate.addEventListener("keydown", e => {
         if (e.key === "Enter") this.submitAuth();
       });
@@ -377,27 +375,17 @@
       errorEl.textContent = "";
       try {
         const result = this.authMode === "signup"
-          ? await this.client.auth.signUp({ email, password, options: { data: { display_name: name }, emailRedirectTo: location.origin + location.pathname } })
+          ? await this.client.auth.signUp({ email, password, options: { data: { display_name: name } } })
           : await this.client.auth.signInWithPassword({ email, password });
         if (result.error) throw result.error;
         if (this.authMode === "signup" && !result.data.session) {
-          errorEl.textContent = "Проверьте почту и подтвердите email, затем войдите.";
+          errorEl.textContent = "Supabase всё ещё требует подтверждение email. Нужно отключить Confirm email в настройках Auth.";
         }
       } catch (error) {
         errorEl.textContent = friendlyError(error, "Не удалось выполнить вход. Проверьте данные и попробуйте снова.");
       } finally {
         button.disabled = false;
       }
-    }
-
-    async googleAuth() {
-      const errorEl = document.getElementById("fa-auth-error");
-      errorEl.textContent = "";
-      const { error } = await this.client.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: location.origin + location.pathname }
-      });
-      if (error) errorEl.textContent = friendlyError(error, "Не удалось войти через Google. Попробуйте другой способ входа.");
     }
 
     showFatal(message) {
