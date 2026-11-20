@@ -9,9 +9,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FACE ARENA">
-<link rel="manifest" href="/manifest.webmanifest">
-<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
 <title>FACE ARENA — Кто красивее?</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -469,11 +469,34 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 #fa-push-onboarding-enable:disabled{opacity:.6;cursor:wait}
 </style>
 
+
+<style id="fa-install-guide-style">
+#fa-install-guide{position:fixed;inset:0;z-index:220000;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow-y:auto}
+#fa-install-guide.is-visible{display:flex}
+.fa-install-guide-card{width:min(100%,410px);max-height:calc(100dvh - 36px);overflow-y:auto;padding:24px 20px 18px;border:1px solid #292929;border-radius:22px;background:linear-gradient(155deg,#171717 0%,#090909 72%);box-shadow:0 24px 90px #000b;color:#fff;text-align:left}
+.fa-install-guide-brand{display:flex;align-items:center;justify-content:center;gap:11px;margin:0 auto 20px}
+.fa-install-guide-brand img{width:52px;height:52px;object-fit:contain;border-radius:8px}
+.fa-install-guide-name{font:800 15px/1.35 var(--hd);letter-spacing:.055em;text-align:left}
+.fa-install-guide-name span:first-child{color:#ff3434}.fa-install-guide-name span:last-child{color:#3478ff}
+.fa-install-guide-kicker{text-align:center;color:#9a9a9a;font:700 10px var(--bd);letter-spacing:.18em;text-transform:uppercase;margin-bottom:9px}
+.fa-install-guide-card h2{margin:0 0 9px;text-align:center;font:800 clamp(19px,5vw,23px)/1.2 var(--hd);letter-spacing:-.025em;text-transform:uppercase}
+.fa-install-guide-intro{margin:0 auto 19px;max-width:330px;text-align:center;color:#aaa;font:400 13px/1.55 var(--bd)}
+.fa-install-guide-steps{display:grid;gap:9px;margin:0;padding:0;list-style:none}
+.fa-install-guide-steps li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:11px;align-items:start;padding:12px;border:1px solid #242424;border-radius:13px;background:#101010}
+.fa-install-guide-num{width:27px;height:27px;display:grid;place-items:center;border-radius:9px;background:linear-gradient(135deg,#ef3434,#3478ff);font:800 12px var(--hd);color:#fff}
+.fa-install-guide-steps strong{display:block;font:700 12px var(--bd);color:#fff;margin:1px 0 3px}
+.fa-install-guide-steps p{margin:0;color:#a5a5a5;font:400 11px/1.45 var(--bd)}
+.fa-install-guide-tip{margin:13px 1px 0;color:#858585;font:400 10px/1.5 var(--bd);text-align:center}
+.fa-install-guide-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:17px}
+.fa-install-guide-actions button{min-height:47px;border:0;border-radius:12px;background:linear-gradient(100deg,#ef3434,#3478ff);color:#fff;font:800 11px var(--hd);letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+.fa-install-guide-actions button:focus-visible{outline:2px solid #fff;outline-offset:3px}
+@media(prefers-reduced-motion:no-preference){#fa-install-guide.is-visible .fa-install-guide-card{animation:faInstallGuideIn .28s ease-out}@keyframes faInstallGuideIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}}
+</style>
 </head>
 <body>
 <div id="fa-boot-loader" role="status" aria-live="polite">
   <div class="fa-boot-inner">
-    <div class="fa-boot-brand" aria-label="FACE ARENA"><img class="fa-boot-brand-mark" src="/IMG_9559.png?v=1" alt="" aria-hidden="true"><span class="fa-boot-name">FACE ARENA</span></div>
+    <div class="fa-boot-brand" aria-label="FACE ARENA"><img class="fa-boot-brand-mark" src="https://face-arena-cloudflare.pages.dev/IMG_9559.png?v=1" alt="" aria-hidden="true"><span class="fa-boot-name">FACE ARENA</span></div>
     <div class="fa-boot-bar" aria-hidden="true"><b></b></div>
     <div class="fa-boot-caption" id="fa-boot-caption">Загружаем арену</div>
   </div>
@@ -481,7 +504,7 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 
 <div id="fa-push-onboarding" role="dialog" aria-modal="true" aria-labelledby="fa-push-onboarding-title" aria-describedby="fa-push-onboarding-description">
   <div class="fa-push-onboarding-card">
-    <img class="fa-push-onboarding-mark" src="/IMG_9559.png?v=1" alt="" aria-hidden="true">
+    <img class="fa-push-onboarding-mark" src="https://face-arena-cloudflare.pages.dev/IMG_9559.png?v=1" alt="" aria-hidden="true">
     <h2 id="fa-push-onboarding-title">Не пропускай битвы</h2>
     <p id="fa-push-onboarding-description">Разреши уведомления FACE ARENA, чтобы получать сообщения о начале баттлов и результатах прямо на телефон.</p>
     <div class="fa-push-onboarding-actions">
@@ -491,9 +514,29 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
   </div>
 </div>
 
+<div id="fa-install-guide" role="dialog" aria-modal="true" aria-labelledby="fa-install-guide-title" aria-describedby="fa-install-guide-description">
+  <section class="fa-install-guide-card">
+    <div class="fa-install-guide-brand">
+      <img src="https://face-arena-cloudflare.pages.dev/IMG_9559.png?v=1" alt="FACE ARENA">
+      <div class="fa-install-guide-name">FACE ARENA (<span>F</span><span>A</span>)</div>
+    </div>
+    <div class="fa-install-guide-kicker">Быстрый доступ на iPhone</div>
+    <h2 id="fa-install-guide-title">Твоя арена —<br>в одном нажатии</h2>
+    <p class="fa-install-guide-intro" id="fa-install-guide-description">Добавь FACE ARENA на главный экран iPhone. Так будет удобнее возвращаться на арену: откроешь её прямо с иконки, без поиска сайта во вкладках.</p>
+    <ol class="fa-install-guide-steps">
+      <li><span class="fa-install-guide-num">1</span><div><strong>Открой сайт в Safari</strong><p>Если ты сейчас в другом браузере или мессенджере, открой FACE ARENA через Safari.</p></div></li>
+      <li><span class="fa-install-guide-num">2</span><div><strong>Нажми «Поделиться»</strong><p>Это значок квадрата со стрелкой вверх в меню Safari.</p></div></li>
+      <li><span class="fa-install-guide-num">3</span><div><strong>Выбери «На экран Домой»</strong><p>Если пункта не видно, прокрути меню вниз и найди его в списке действий.</p></div></li>
+      <li><span class="fa-install-guide-num">4</span><div><strong>Включи «Открывать как веб-приложение»</strong><p>Нажми «Добавить» — и иконка FACE ARENA появится на главном экране.</p></div></li>
+    </ol>
+    <p class="fa-install-guide-tip">Это бесплатно. Установка не удаляет сайт и не меняет твой аккаунт.</p>
+    <div class="fa-install-guide-actions"><button type="button" id="fa-install-guide-close">Понятно, перейти к арене</button></div>
+  </section>
+</div>
+
 <div id="appScroll">
 <div class="wrap" id="av">
-<header><div class="logo"><img class="fa-brand-logo-image" src="/IMG_9559.png?v=1" alt="" aria-hidden="true">FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span data-i="live"></span></div><button type="button" class="btn-notifications" aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span class="notification-count" hidden></span></button><button type="button" class="btn-gear"  aria-label="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
+<header><div class="logo"><img class="fa-brand-logo-image" src="https://face-arena-cloudflare.pages.dev/IMG_9559.png?v=1" alt="" aria-hidden="true">FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span data-i="live"></span></div><button type="button" class="btn-notifications" aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span class="notification-count" hidden></span></button><button type="button" class="btn-gear"  aria-label="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
 <h1 data-i="title"></h1>
 <p class="lead" data-i="lead"></p>
 <div class="stats" id="stats"></div>
@@ -511,12 +554,13 @@ html.no-anim .victory-overlay,html.no-anim .victory-panel{transition:none}
 <div class="wrap view" id="iv" hidden></div>
 <div class="wrap view" id="nv" hidden></div>
 <div class="wrap view" id="nfv" hidden></div>
+<div class="wrap" style="padding:18px 12px 24px;text-align:center;display:flex;justify-content:center;gap:18px"><a href="./privacy.html" style="color:#777;font:600 11px Manrope,Arial,sans-serif;text-decoration:none">Privacy Policy</a><a href="./terms.html" style="color:#777;font:600 11px Manrope,Arial,sans-serif;text-decoration:none">Terms of Service</a></div>
 </div>
 <nav><div class="tabs" id="tabs"><span class="ind" id="ind"></span></div></nav>
 <div class="toast" id="toast" role="status"></div>
 <div class="ov" id="ov"><div class="sh" id="sh" role="dialog" aria-modal="true"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./face-arena-sync.js?v=20261119-web-push-v1"></script>
+<script src="./face-arena-sync.js?v=20261121-fa-brand-v2"></script>
 <script src="./face-arena-audio.js"></script>
 <script src="./face-arena-game-engine.js"></script>
 <script>
@@ -584,7 +628,7 @@ function tickQueueWaits(){document.querySelectorAll("[data-queued-at]").forEach(
 const toast=m=>{const e=$("toast");e.textContent=m;e.classList.add("show");clearTimeout(toast.h);toast.h=setTimeout(()=>e.classList.remove("show"),2400)};
 const GEAR_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
 function hdrHTML(showGear=true){
-  return `<header><div class="logo"><img class="fa-brand-logo-image" src="/IMG_9559.png?v=1" alt="" aria-hidden="true">FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span>${t("live")}</span></div>${showGear?`<button type="button" class="btn-notifications" aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span class="notification-count" hidden></span></button><button type="button" class="btn-gear"  aria-label="Настройки">${GEAR_SVG}</button>`:""}</div></header>`;
+  return `<header><div class="logo"><img class="fa-brand-logo-image" src="https://face-arena-cloudflare.pages.dev/IMG_9559.png?v=1" alt="" aria-hidden="true">FACE ARENA</div><div class="hdr-right"><div class="live"><span class="dot"></span><span>${t("live")}</span></div>${showGear?`<button type="button" class="btn-notifications" aria-label="Уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span class="notification-count" hidden></span></button><button type="button" class="btn-gear"  aria-label="Настройки">${GEAR_SVG}</button>`:""}</div></header>`;
 }
 function bindGear(){
   document.querySelectorAll(".btn-gear").forEach(g=>{
@@ -1776,7 +1820,7 @@ function renderSettings(){
   $("sv").classList.add("settings-menu");
   $("sv").innerHTML=`
     <header>
-      <div class="logo"><img class="fa-brand-logo-image" src="/IMG_9559.png?v=1" alt="" aria-hidden="true">FACE ARENA</div>
+      <div class="logo"><img class="fa-brand-logo-image" src="https://face-arena-cloudflare.pages.dev/IMG_9559.png?v=1" alt="" aria-hidden="true">FACE ARENA</div>
       <div class="hdr-right">
         <button type="button" class="btn-settings-close" aria-label="Закрыть" id="setCloseX" style="color:#fff">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -2367,7 +2411,7 @@ function renderNotFound(){
   $("nfv").innerHTML=`
     <section class="not-found" role="main" aria-labelledby="notFoundTitle">
       <div class="not-found-inner">
-        <div class="not-found-mark"><img class="fa-brand-logo-image" src="/IMG_9559.png?v=1" alt="" aria-hidden="true">FACE ARENA</div>
+        <div class="not-found-mark"><img class="fa-brand-logo-image" src="https://face-arena-cloudflare.pages.dev/IMG_9559.png?v=1" alt="" aria-hidden="true">FACE ARENA</div>
         <p class="not-found-code" aria-label="404">404</p>
         <h1 class="not-found-title" id="notFoundTitle">Арена не найдена</h1>
         <p class="not-found-copy">Похоже, ты забрёл за пределы арены. Такой страницы здесь нет.</p>
@@ -3040,6 +3084,37 @@ saveState();
   setInterval(refresh, 20000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
   window.addEventListener("face-arena-authenticated-boot-stop", refresh);
+})();
+</script>
+
+<script id="fa-install-guide-script">
+(()=>{
+  const guide=document.getElementById("fa-install-guide");
+  const close=document.getElementById("fa-install-guide-close");
+  const loader=document.getElementById("fa-boot-loader");
+  const pushGuide=document.getElementById("fa-push-onboarding");
+  if(!guide||!close)return;
+  const key="fa_install_guide_seen_v1";
+  const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  const isStandalone=window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+  if(!isIOS||isStandalone)return;
+  let shown=false;
+  const dismiss=()=>{try{localStorage.setItem(key,"1")}catch(_){}guide.classList.remove("is-visible")};
+  close.addEventListener("click",dismiss);
+  guide.addEventListener("click",event=>{if(event.target===guide)dismiss()});
+  const maybeShow=()=>{
+    if(shown)return;
+    try{if(localStorage.getItem(key)==="1")return}catch(_){}
+    if(loader&&!loader.classList.contains("is-hidden")&&loader.classList.contains("is-active"))return;
+    if(pushGuide?.classList.contains("is-visible"))return;
+    shown=true;
+    guide.classList.add("is-visible");
+  };
+  if(loader){new MutationObserver(()=>{if(loader.classList.contains("is-hidden")||!loader.classList.contains("is-active"))setTimeout(maybeShow,500)}).observe(loader,{attributes:true,attributeFilter:["class"]})}
+  if(pushGuide){new MutationObserver(()=>{if(!pushGuide.classList.contains("is-visible"))setTimeout(maybeShow,350)}).observe(pushGuide,{attributes:true,attributeFilter:["class"]})}
+  window.addEventListener("face-arena-authenticated-boot-stop",()=>setTimeout(maybeShow,650));
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(maybeShow,900),{once:true});
+  else setTimeout(maybeShow,900);
 })();
 </script>
 </body>
